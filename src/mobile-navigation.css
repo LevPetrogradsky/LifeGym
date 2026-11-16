@@ -1,4 +1,16 @@
 @media (max-width: 760px) {
+  :root[data-theme='light'] .app-shell .mobile-nav {
+    --mobile-nav-accent: #6550c8;
+    --mobile-nav-active: #4e34b8;
+    --mobile-nav-selected: #eeeaff;
+  }
+
+  :root[data-theme='dark'] .app-shell .mobile-nav {
+    --mobile-nav-accent: #c5b9ff;
+    --mobile-nav-active: #e0d9ff;
+    --mobile-nav-selected: #39334c;
+  }
+
   .app-shell .mobile-nav {
     align-items: stretch;
     gap: 4px;
@@ -18,6 +30,7 @@
     font-weight: 700;
     line-height: 1.12;
     text-align: center;
+    color: var(--mobile-nav-accent);
   }
 
   .app-shell .mobile-nav .nav-button svg {
@@ -34,13 +47,13 @@
   }
 
   .app-shell .mobile-nav .nav-button.selected {
-    background: color-mix(in srgb, var(--soft) 88%, var(--surface));
-    color: color-mix(in srgb, var(--accent) 65%, var(--text));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
+    background: var(--mobile-nav-selected);
+    color: var(--mobile-nav-active);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mobile-nav-active) 16%, transparent);
   }
 
   .app-shell .mobile-nav .nav-button:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--mobile-nav-active);
     outline-offset: -2px;
   }
 

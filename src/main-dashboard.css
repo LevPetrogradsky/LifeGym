@@ -856,21 +856,21 @@
 
 .life-main-break {
   display: grid;
-  gap: 12px;
+  gap: 0;
+  padding: 15px 17px;
 }
+
+.life-main-tasks > .life-main-break { margin-bottom: 16px; }
 
 .life-main-break-heading {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
 }
 
 .life-main-break-heading > div { flex: 1; min-width: 0; }
 
-.life-main-break--compact { gap: 0; padding: 15px 17px; }
-.life-main-break--compact .life-main-break-heading { align-items: center; }
-.life-main-break--compact .life-main-break-heading h2 { font-size: 19px; }
-.life-main-break--compact .life-main-text { padding: 8px 13px; }
+.life-main-break .life-main-text { padding: 8px 13px; }
 
 .life-main-break-resume {
   display: flex;
@@ -896,30 +896,10 @@
 }
 .life-main-break-resume:hover { border-color: var(--main-blue-text); }
 
-.life-main-break-tip {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--main-muted);
-  font-size: 12px;
-  font-weight: 650;
-  line-height: 1.25;
-  pointer-events: none;
-}
-.life-main-break-tip svg {
-  width: 78px;
-  height: 28px;
-  flex: none;
-  stroke: #dc303a;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
 .life-main-break-tip--resume,
 .life-main-break-tip--finish { justify-self: end; margin-right: 4px; }
 .life-main-break-tip--resume svg,
 .life-main-break-tip--finish svg { transform: translateY(-9px); }
-:root[data-theme='dark'] .life-main-break-tip svg { stroke: #ff6c73; }
 
 .life-main-break-heading > svg {
   flex: none;
@@ -929,7 +909,7 @@
 
 .life-main-break-heading h2 {
   margin: 0 0 3px;
-  font-size: 22px;
+  font-size: 19px;
 }
 
 .life-main-break-heading p {
@@ -942,7 +922,7 @@
   justify-self: center;
 }
 
-.life-main-break--compact .life-main-text.life-main-break-finish {
+.life-main-break .life-main-text.life-main-break-finish {
   justify-self: end;
   min-height: 44px;
   border: 1px solid var(--main-blue-text);
@@ -950,7 +930,7 @@
   color: var(--main-blue-text);
   box-shadow: 0 3px 9px rgb(25 50 87 / 9%);
 }
-.life-main-break--compact .life-main-break-finish:hover {
+.life-main-break .life-main-break-finish:hover {
   background: var(--main-surface);
 }
 

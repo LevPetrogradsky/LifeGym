@@ -4,7 +4,7 @@ import type { JournalEntry, JournalFolder, JournalFolderAppearance } from '../da
 import JournalFolders from './JournalFolders'
 import EntryFolderDrag from './EntryFolderDrag'
 import { FolderGlyph } from './FolderGlyph'
-import { FolderSheet } from './FolderPicker'
+import FolderPicker, { FolderSheet } from './FolderPicker'
 import { JournalSheet } from './JournalSheet'
 import UnifiedSearch from '../search/UnifiedSearch'
 import { prepareJournalPhoto } from './photo'
@@ -47,13 +47,15 @@ interface JournalFormProps {
   draft: JournalDraft
   onDraftChange: Dispatch<SetStateAction<JournalDraft>>
   onSubmit: (draft: JournalDraft) => boolean
-  folder?: JournalFolder
+  folders?: JournalFolder[]
+  folderId?: string
+  onFolderChange?: (folderId: string) => void
   linkedTaskTitle?: string
   onUnlinkTask?: () => void
   onCancel?: () => void
 }
 
-function JournalForm({ id, draft, onDraftChange, onSubmit, folder, linkedTaskTitle, onUnlinkTask, onCancel, language = 'en' }: JournalFormProps) {
+function JournalForm({ id, draft, onDraftChange, onSubmit, folders, folderId, onFolderChange, linkedTaskTitle, onUnlinkTask, onCancel, language = 'en' }: JournalFormProps) {
   const t = (text: string) => translate(language, text)
   const [photoError, setPhotoError] = useState('')
   const [saveError, setSaveError] = useState(false)
@@ -123,7 +125,6 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folder, linkedTaskTit
         <button type="button" className="journal-icon" aria-label={t('Unlink task')} onClick={onUnlinkTask}><X size={17} aria-hidden="true" /></button>
       </div>}
       {!onCancel && <label htmlFor={id}>{t('Brain dump')}</label>}
-      {folder && <p className="journal-composer-folder"><FolderGlyph {...folder} size={14} /> {t('Saving to')} {folder.name}</p>}
       <textarea
         ref={textArea}
         id={id}
@@ -136,6 +137,11 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folder, linkedTaskTit
           onDraftChange(current => ({ ...current, text }))
         }}
       />
+      {!onCancel && folders && folders.length > 0 && onFolderChange && <div className="journal-form-folder">
+        <FolderPicker label={t('Save in folder')} value={folderId ?? ''}
+          options={[{ value: '', label: t('No folder') }, ...folders.map(folder => ({ value: folder.id, label: folder.name, folder }))]}
+          onChange={onFolderChange} />
+      </div>}
       {draft.photo && (
         <div className="journal-photo-preview">
           <img src={draft.photo} alt={t('Attached photo preview')} />
@@ -310,8 +316,10 @@ export default function JournalPage({
   const t = (text: string) => translate(language, text)
   const [searchOpen, setSearchOpen] = useState(false)
   const [folderFilter, setFolderFilter] = useState('all')
+  const [composerFolderId, setComposerFolderId] = useState('')
   const [notice, setNotice] = useState('')
   const currentFolder = folders.find(folder => `folder:${folder.id}` === folderFilter)
+  const selectedFolderId = folders.some(folder => folder.id === composerFolderId) ? composerFolderId : ''
   const scopedEntries = folderFilter === 'unfiled'
     ? entries.filter(entry => !entry.folderId)
     : currentFolder ? entries.filter(entry => entry.folderId === currentFolder.id) : entries
@@ -355,16 +363,21 @@ export default function JournalPage({
           <button className="journal-icon" type="button" onClick={onDismissPrompt} aria-label="Dismiss prompt"><X size={17} /></button>
         </div>
       )}
-      <JournalForm language={language} id="journal-entry" draft={draft} onDraftChange={onDraftChange} folder={currentFolder}
+      <JournalForm language={language} id="journal-entry" draft={draft} onDraftChange={onDraftChange}
+        folders={folders} folderId={selectedFolderId} onFolderChange={setComposerFolderId}
         linkedTaskTitle={linkedTaskTitle} onUnlinkTask={onUnlinkTask} onSubmit={next => {
-        const saved = onCreate(next, currentFolder?.id)
-        if (saved) setNotice('Entry saved.')
+        const saved = onCreate(next, selectedFolderId || undefined)
+        if (saved) {
+          setComposerFolderId('')
+          setNotice('Entry saved.')
+        }
         return saved
       }} />
       <JournalFolders language={language} folders={folders} entries={entries} filter={currentFolder || folderFilter === 'unfiled' ? folderFilter : 'all'}
         onFilterChange={setFolderFilter} onSave={onSaveFolder} onReorder={onReorderFolders} onDelete={id => {
           const deleted = onDeleteFolder(id)
           if (deleted && currentFolder?.id === id) setFolderFilter('unfiled')
+          if (deleted && composerFolderId === id) setComposerFolderId('')
           return deleted
         }} />
       <section className="journal-timeline" aria-labelledby="journal-timeline-title">

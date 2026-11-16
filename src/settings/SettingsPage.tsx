@@ -2,6 +2,7 @@ import { useState, type ChangeEvent, type ReactNode } from 'react'
 import { ChevronRight, Compass, Copy, Download, ExternalLink, Github, HardDrive, Info, Monitor, Moon, Palette, Sun, Timer, Upload, UserRound } from 'lucide-react'
 import { breakReminderMinutes, maxDisplayNameLength, visibleShortcuts, type BreakReminderMinutes, type PostFocusAction, type Shortcut, type ShortcutLocation, type Theme } from '../data'
 import { translate, type AppLanguage } from '../language'
+import InteractiveTip from '../InteractiveTip'
 import './settings.css'
 
 interface SettingsPageProps {
@@ -138,9 +139,13 @@ export default function SettingsPage({
     <main className="settings-page" aria-labelledby="settings-page-title">
       <div className="settings-page__header">
         <h1 id="settings-page-title">{t('Settings')}</h1>
-        <button type="button" className="settings-page__toggle-all" onClick={toggleAll}>
-          {t(anyOpen ? 'Collapse All' : 'Expand All')}
-        </button>
+        <div className="settings-page__toggle-all-wrap">
+          <button type="button" className="settings-page__toggle-all" onClick={toggleAll}>
+            {t(anyOpen ? 'Collapse All' : 'Expand All')}
+          </button>
+          {interactiveTips && <InteractiveTip className="settings-page__toggle-tip"
+            label={t(anyOpen ? 'Collapse all sections' : 'Expand all sections')} />}
+        </div>
       </div>
 
       <div className="settings-page__groups">
@@ -173,7 +178,7 @@ export default function SettingsPage({
 
         <SettingsGroup title={t('Focus')} icon={<Timer size={18} />} open={openSections.focus} onOpenChange={open => setSection('focus', open)}>
           <label className="settings-page__toggle">
-            <span className="settings-page__toggle-copy"><strong>{t('Interactive tips')}</strong><span>{t('Show hints for focus actions on Home.')}</span></span>
+            <span className="settings-page__toggle-copy"><strong>{t('Interactive tips')}</strong><span>{t('Show hints for focus actions on Home and Tasks.')}</span></span>
             <input type="checkbox" role="switch" aria-label={t('Interactive tips')} checked={interactiveTips}
               onChange={event => onInteractiveTipsChange(event.currentTarget.checked)} />
           </label>

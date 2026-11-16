@@ -169,6 +169,16 @@
   color: var(--journal-muted);
 }
 
+.journal-form-folder { margin: 8px 0 10px; }
+
+.journal-form-folder .journal-folder-trigger {
+  min-height: 40px;
+  padding: 7px 10px;
+  background: var(--journal-field);
+  color: var(--journal-accent);
+  font-size: 13px;
+}
+
 .journal-form-edit textarea {
   overflow-y: hidden;
   resize: none;

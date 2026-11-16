@@ -85,21 +85,24 @@ export function DiscoveryQuestion({ step, answers, onChange, onNext, language = 
   return <form className="flow-question" onSubmit={event => { event.preventDefault(); if (answerText(step, answer)) onNext() }}>
     <progress className="flow-progress" max={prompts.length} value={step + 1} aria-label={t('Reflection progress')} />
     <DiscoveryConversation answers={answers.slice(0, step)} language={language} />
-    <h1 id="flow-title" className="flow-bubble flow-bubble-prompt" tabIndex={-1}>{t(prompt.question)}</h1>
-    <fieldset className="flow-choices" aria-labelledby="flow-title">
-      {[...prompt.choices.map(choice => choice.label), 'Write my own'].map((label, index) => <label className="flow-choice" key={label}>
-        <input type="radio" name="discovery-answer" checked={answer.choice === index} onChange={() => onChange({ ...answer, choice: index })} />
-        <span className="flow-radio" aria-hidden="true"><Check size={11} strokeWidth={3} /></span>
-        <span>{t(label)}</span>
-      </label>)}
-      {answer.choice === other && <label className="flow-custom">
-        {t('Your answer')}
-        <textarea value={answer.custom} onChange={event => onChange({ ...answer, custom: event.target.value })} maxLength={500} rows={2} />
-      </label>}
-    </fieldset>
-    <button className="flow-primary" type="submit" disabled={!answerText(step, answer)}>
-      {t(step === prompts.length - 1 ? 'See summary' : 'Next')} <ArrowRight size={19} />
-    </button>
+    <div className="flow-question-card">
+      <p className="flow-question-kicker">{t('Reflection')}</p>
+      <h1 id="flow-title" tabIndex={-1}>{t(prompt.question)}</h1>
+      <fieldset className="flow-choices" aria-labelledby="flow-title">
+        {[...prompt.choices.map(choice => choice.label), 'Write my own'].map((label, index) => <label className="flow-choice" key={label}>
+          <input type="radio" name="discovery-answer" checked={answer.choice === index} onChange={() => onChange({ ...answer, choice: index })} />
+          <span className="flow-radio" aria-hidden="true"><Check size={11} strokeWidth={3} /></span>
+          <span>{t(label)}</span>
+        </label>)}
+        {answer.choice === other && <label className="flow-custom">
+          {t('Your answer')}
+          <textarea value={answer.custom} onChange={event => onChange({ ...answer, custom: event.target.value })} maxLength={500} rows={2} />
+        </label>}
+      </fieldset>
+      <button className="flow-primary" type="submit" disabled={!answerText(step, answer)}>
+        {t(step === prompts.length - 1 ? 'See summary' : 'Next')} <ArrowRight size={19} />
+      </button>
+    </div>
   </form>
 }
 

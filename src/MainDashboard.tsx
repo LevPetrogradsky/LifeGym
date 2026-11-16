@@ -4,6 +4,7 @@ import { taskLists, type LifeOSData, type Task, type TaskList } from './data'
 import { todayTaskLimit } from './task-rules'
 import { translate } from './language'
 import { JournalSheet } from './journal/JournalSheet'
+import InteractiveTip from './InteractiveTip'
 import './main-dashboard.css'
 
 interface MainDashboardProps {
@@ -37,6 +38,31 @@ const listLabels: Record<TaskList, string> = { today: 'Today', someday: 'Someday
 const taskList = (task: Task): TaskList => task.list ?? 'today'
 
 type TaskEditor = { id: string | null; title: string; list: TaskList }
+
+function BreakCard({ taskTitle, language, interactiveTips, onResume, onFinish }: {
+  taskTitle: string
+  language: 'en' | 'ru'
+  interactiveTips: boolean
+  onResume: () => void
+  onFinish: () => void
+}) {
+  const t = (text: string) => translate(language, text)
+  return <section className="life-main-today life-main-break" aria-labelledby="life-main-break-title">
+    <div className="life-main-break-heading">
+      <Pause size={20} aria-hidden="true" />
+      <div>
+        <h2 id="life-main-break-title">{t('On a break')}</h2>
+        <p>{taskTitle}</p>
+      </div>
+      <button type="button" className="life-main-break-resume" aria-label={t('Resume focus')} title={t('Resume focus')} onClick={onResume}>
+        <span><Play size={15} fill="currentColor" aria-hidden="true" /></span>
+      </button>
+    </div>
+    {interactiveTips && <InteractiveTip className="life-main-break-tip--resume" label={t('Back to focus')} />}
+    <button type="button" className="life-main-text life-main-break-finish" onClick={onFinish}>{t('Finish session')}</button>
+    {interactiveTips && <InteractiveTip className="life-main-break-tip--finish" label={t('Save and finish')} />}
+  </section>
+}
 
 export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, repoUrl, tasks, pausedTaskTitle, displayName, language = 'en', interactiveTips, onResume, onFinishPaused, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onPresets, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
   const t = (text: string) => translate(language, text)
@@ -167,31 +193,8 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
     if (onDeleteTask(id)) setDeleting(null)
   }
 
-  const renderBreakCard = (compact: boolean) => pausedTaskTitle !== undefined && (
-    <section className={`life-main-today life-main-break${compact ? ' life-main-break--compact' : ''}`} aria-labelledby="life-main-break-title">
-      <div className="life-main-break-heading">
-        <Pause size={20} aria-hidden="true" />
-        <div>
-          <h2 id="life-main-break-title">{t('On a break')}</h2>
-          <p>{pausedTaskTitle}</p>
-        </div>
-        {compact && <button type="button" className="life-main-break-resume" aria-label={t('Resume focus')} title={t('Resume focus')} onClick={onResume}>
-          <span><Play size={15} fill="currentColor" aria-hidden="true" /></span>
-        </button>}
-      </div>
-      {compact && interactiveTips && <div className="life-main-break-tip life-main-break-tip--resume">
-        <span>{t('Back to focus')}</span>
-        <svg viewBox="0 0 78 28" fill="none" aria-hidden="true"><path d="M2 23 C19 27 28 28 48 25 C67 23 71 20 71 5 M64 11 L71 3 L77 11" /></svg>
-      </div>}
-      {!compact && <button type="button" className="life-main-primary" onClick={onResume}><Play size={16} fill="currentColor" /> {t('Resume focus')}</button>}
-      <button type="button" className={`life-main-text${compact ? ' life-main-break-finish' : ''}`} onClick={onFinishPaused}>{t('Finish session')}</button>
-      {compact && interactiveTips && <div className="life-main-break-tip life-main-break-tip--finish">
-        <span>{t('Save and finish')}</span>
-        <svg viewBox="0 0 78 28" fill="none" aria-hidden="true"><path d="M2 23 C19 27 28 28 48 25 C67 23 71 20 71 5 M64 11 L71 3 L77 11" /></svg>
-      </div>}
-    </section>
-  )
-  const breakCard = renderBreakCard(false)
+  const breakCard = pausedTaskTitle !== undefined && <BreakCard taskTitle={pausedTaskTitle} language={language}
+    interactiveTips={interactiveTips} onResume={onResume} onFinish={onFinishPaused} />
 
   const addTaskButton = <button type="button" className={`life-main-add-task${!nextTask && !breakCard ? ' life-main-add-task-inline' : ''}`} onClick={() => openTasks(true)}>
     <span className="life-main-shortcut-icon add"><Plus size={21} aria-hidden="true" /></span>
@@ -217,7 +220,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
     </header>
 
     <div className="life-main-stack">
-      {renderBreakCard(true) || <section className="life-main-today" aria-labelledby="life-main-today">
+      {breakCard || <section className="life-main-today" aria-labelledby="life-main-today">
         <div className="life-main-today-heading">
           <h2 id="life-main-today">{t('Today')}</h2>
           {totalToday > 0 && <span>{doneToday.length} / {totalToday} {language === 'ru' ? 'выполнено' : 'done'}</span>}

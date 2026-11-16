@@ -15,6 +15,7 @@
   --flow-muted: #626982;
   --flow-ink: #181a37;
   --flow-card: #fff;
+  --flow-question-option: #fbfbfe;
   --flow-shadow: 0 6px 24px rgb(32 24 76 / 5%);
   --flow-primary: #5841de;
   --flow-primary-bg: linear-gradient(115deg, #6c55ea, #5235da);
@@ -34,6 +35,7 @@
   --flow-muted: #b8b8b8;
   --flow-ink: #ececec;
   --flow-card: #242424;
+  --flow-question-option: #2c2a37;
   --flow-shadow: none;
   --flow-primary: #dedede;
   --flow-primary-bg: #dedede;
@@ -41,6 +43,22 @@
   --flow-primary-text: #202020;
   --flow-progress: #dedede;
 }
+
+:root[data-theme=dark] .flow-reflect-page {
+  --flow-purple: #c6b8ff;
+  --flow-selected: #38334d;
+  --flow-border: #4c4561;
+  --flow-hover: #a697e3;
+  --flow-ink: #f2efff;
+  --flow-card: #292636;
+  --flow-primary: #b9a7ff;
+  --flow-primary-bg: #b9a7ff;
+  --flow-primary-hover: #cbbcff;
+  --flow-primary-text: #211541;
+  --flow-progress: linear-gradient(90deg, #a895ff, #c7baff);
+}
+
+:root[data-theme=dark] .flow-shell .main-area:has(.flow-reflect-page) { background: #211e2c; }
 
 .flow-engine-page :focus-visible {
   outline: 2px solid var(--flow-purple);
@@ -214,8 +232,32 @@ button.flow-tile:hover { border-color: var(--flow-hover); }
   flex-direction: column;
 }
 
-.flow-question h1 { font-size: clamp(21px, 5vw, 26px); }
-.flow-question .flow-choices { margin: 12px 0 16px; }
+.flow-question-card,
+.flow-review-card {
+  padding: clamp(20px, 4vw, 28px);
+  border: 1px solid var(--flow-border);
+  border-radius: 22px;
+  background: var(--flow-card);
+  box-shadow: var(--flow-shadow);
+}
+
+.flow-question-kicker {
+  margin: 0 0 8px;
+  color: var(--flow-purple);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.flow-question h1 {
+  margin: 0;
+  font-size: clamp(25px, 5.5vw, 31px);
+  line-height: 1.15;
+}
+
+.flow-question .flow-choices { margin: 22px 0 18px; }
+.flow-question .flow-choice { background: var(--flow-question-option); }
 .flow-result > .flow-subtitle { margin-bottom: 18px; }
 
 .flow-progress {
@@ -318,6 +360,11 @@ button.flow-tile:hover { border-color: var(--flow-hover); }
 
 .flow-result .flow-primary { margin-top: 17px; }
 .flow-primary:not(:disabled):hover { background: var(--flow-primary-hover); }
+:root[data-theme=dark] .flow-reflect-page .flow-primary:disabled {
+  background: #554b75;
+  color: #f2efff;
+  opacity: 1;
+}
 
 .flow-answers {
   margin-top: 12px;
@@ -338,12 +385,12 @@ button.flow-tile:hover { border-color: var(--flow-hover); }
 .flow-screen-header { margin-bottom: 15px; }
 .flow-result + .flow-engine-card { margin-top: 23px; }
 
-:root[data-theme=light] .flow-shell .nav-button[aria-current="page"] {
+:root[data-theme=light] .flow-shell .sidebar .nav-button[aria-current="page"] {
   background: #f0ebff;
   color: #5942e6;
 }
 
-:root[data-theme=dark] .flow-shell .nav-button[aria-current="page"] {
+:root[data-theme=dark] .flow-shell .sidebar .nav-button[aria-current="page"] {
   background: #303030;
   color: #e2e2e2;
 }
