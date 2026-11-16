@@ -9,6 +9,7 @@ import './flow.css'
 
 export interface FlowEnginePageProps {
   language?: AppLanguage
+  timeFormat: '12' | '24'
   data: LifeOSData
   onUpdate: (change: (current: LifeOSData) => LifeOSData) => boolean
   onReturn: () => void
@@ -26,10 +27,10 @@ const tools = [
 ] as const
 
 const newId = () => crypto.randomUUID()
-export default function FlowEnginePage({ data, onUpdate, onReturn, returnLabel, onReflectionSaved, sessionsOnly = false, language = 'en' }: FlowEnginePageProps) {
+export default function FlowEnginePage({ data, onUpdate, onReturn, returnLabel, onReflectionSaved, sessionsOnly = false, timeFormat, language = 'en' }: FlowEnginePageProps) {
   const t = (text: string) => translate(language, text)
   const dateLabel = (date: string) => new Intl.DateTimeFormat(language, { month: 'short', day: 'numeric' }).format(new Date(date))
-  const timeLabel = (date: string) => new Intl.DateTimeFormat(language, { hour: 'numeric', minute: '2-digit' }).format(new Date(date))
+  const timeLabel = (date: string) => new Intl.DateTimeFormat(language, { hour: 'numeric', minute: '2-digit', hour12: timeFormat === '12' }).format(new Date(date))
   const durationLabel = (durationMs: number) => language === 'ru'
     ? durationMs < 60_000 ? 'Меньше минуты' : `${Math.round(durationMs / 60_000)} мин`
     : sessionMinutes(durationMs)

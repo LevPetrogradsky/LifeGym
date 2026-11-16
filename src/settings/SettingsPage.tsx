@@ -9,6 +9,8 @@ interface SettingsPageProps {
   account?: ReactNode
   theme: Theme
   language: 'en' | 'ru'
+  timeFormat: '12' | '24'
+  onTimeFormatChange: (format: '12' | '24') => void
   onLanguageChange: (language: 'en' | 'ru') => void
   onThemeChange: (theme: Theme) => void
   interactiveTips: boolean
@@ -116,7 +118,7 @@ function AboutLifeOS({ repoUrl, language }: { repoUrl: string; language: AppLang
 
 export default function SettingsPage({
   account,
-  theme, onThemeChange, language, onLanguageChange, interactiveTips, onInteractiveTipsChange, showHome, onHomeVisibilityChange, showAskLifeOS, onAskLifeOSVisibilityChange, shortcutVisible, onShortcutChange, onExport, onImport, repoUrl, focusCheckin, postFocusAction, onOpenPresets,
+  theme, onThemeChange, language, onLanguageChange, timeFormat, onTimeFormatChange, interactiveTips, onInteractiveTipsChange, showHome, onHomeVisibilityChange, showAskLifeOS, onAskLifeOSVisibilityChange, shortcutVisible, onShortcutChange, onExport, onImport, repoUrl, focusCheckin, postFocusAction, onOpenPresets,
   reminderMinutes, onReminderMinutesChange, displayName, onDisplayNameChange,
 }: SettingsPageProps) {
   const t = (text: string) => translate(language, text)
@@ -162,6 +164,15 @@ export default function SettingsPage({
                   <span><Icon size={17} aria-hidden="true" />{t(label)}</span>
                 </label>
               ))}
+            </div>
+          </fieldset>
+          <fieldset className="settings-page__themes">
+            <legend>{language === 'ru' ? 'Формат времени' : 'Time format'}</legend>
+            <div className="settings-page__theme-options">
+              {(['12', '24'] as const).map(value => <label className="settings-page__theme" key={value}>
+                <input type="radio" name="lifeos-time-format" checked={timeFormat === value} onChange={() => onTimeFormatChange(value)} />
+                <span>{value === '12' ? (language === 'ru' ? '12 часов' : '12-hour') : (language === 'ru' ? '24 часа' : '24-hour')}</span>
+              </label>)}
             </div>
           </fieldset>
           <fieldset className="settings-page__themes">

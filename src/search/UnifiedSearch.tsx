@@ -39,7 +39,7 @@ export default function UnifiedSearch({ open, journalOnly, tasksOnly, tasks, ent
   const taskMatches = terms.length && tasks ? tasks.filter(task => matches(task.title)) : []
   const now = new Date()
   const entryMatches = terms.length ? entries.filter(entry => matches(journalOnly
-    ? `${entry.text} ${journalDayLabel(new Date(entry.createdAt), now)} ${journalDate(entry.createdAt)}`
+    ? `${entry.text} ${journalDayLabel(new Date(entry.createdAt), now, language)} ${journalDate(entry.createdAt, language)}`
     : entry.text)) : []
   const resultCount = taskMatches.length + entryMatches.length
   const searchLabel = journalOnly ? 'Search journal entries' : tasksOnly ? 'Search tasks' : 'Search tasks and journal'
@@ -93,7 +93,7 @@ export default function UnifiedSearch({ open, journalOnly, tasksOnly, tasks, ent
           <h3 id={`${id}-journal`}><BookOpen size={17} aria-hidden="true" />{t('Journal')}</h3>
           <ul>{entryMatches.map(entry => <li key={entry.id}>
             <button type="button" onClick={() => select(entry.id, onSelectEntry)}>
-              <span><strong>{excerpt(entry.text, terms[0]) || t('Photo entry')}</strong><small>{journalDate(entry.createdAt)}</small></span>
+              <span><strong>{excerpt(entry.text, terms[0]) || t('Photo entry')}</strong><small>{journalDate(entry.createdAt, language)}</small></span>
               <ChevronRight size={18} aria-hidden="true" />
             </button>
           </li>)}</ul>

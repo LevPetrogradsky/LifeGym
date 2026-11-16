@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type Dispatch, type SetStateAction } from 'react'
-import { ArrowLeft, BookOpen, ChevronDown, Folder, ImagePlus, Mic, MoreHorizontal, Pencil, Search, Sparkles, Square, Trash2, X } from 'lucide-react'
+import { ArrowLeft, BookOpen, ChevronDown, Folder, ImagePlus, MapPin, Mic, MoreHorizontal, Pencil, Search, Sparkles, Square, Trash2, X } from 'lucide-react'
 import type { JournalEntry, JournalFolder, JournalFolderAppearance } from '../data'
 import JournalFolders from './JournalFolders'
 import EntryFolderDrag from './EntryFolderDrag'
@@ -8,6 +8,8 @@ import FolderPicker, { FolderSheet } from './FolderPicker'
 import { JournalSheet } from './JournalSheet'
 import UnifiedSearch from '../search/UnifiedSearch'
 import { prepareJournalPhoto } from './photo'
+import { clearJournalDraft, readJournalDraft, writeJournalDraft } from './drafts'
+import { locationLabel, requestApproximateLocation, type ApproximateLocation } from './location'
 import { groupJournalEntries, journalDate, journalTime } from './timeline'
 import { dictationLanguages, useJournalDictation } from './useJournalDictation'
 import { translate, type AppLanguage } from '../language'
@@ -16,20 +18,27 @@ import './journal.css'
 export interface JournalDraft {
   text: string
   photo?: string
+  location?: ApproximateLocation
 }
 
 interface JournalPageProps {
   language?: AppLanguage
+  timeFormat: '12' | '24'
   onReturn: () => void
   returnLabel: string
   entries: JournalEntry[]
   folders: JournalFolder[]
+  cloudStatus?: string
+  guestImportCount?: number
+  onImportGuest?: () => void
   onSaveFolder: (name: string, appearance: JournalFolderAppearance, id?: string) => boolean
   onReorderFolders: (from: string, to: string) => boolean
   onDeleteFolder: (id: string) => boolean
   onMoveEntry: (id: string, folderId?: string) => boolean
   draft: JournalDraft
   onDraftChange: Dispatch<SetStateAction<JournalDraft>>
+  draftStorageKey?: string
+  onDraftStorageError?: () => void
   linkedTaskTitle?: string
   onUnlinkTask?: () => void
   sessionPrompt: boolean
@@ -60,6 +69,8 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folders, folderId, on
   const [photoError, setPhotoError] = useState('')
   const [saveError, setSaveError] = useState(false)
   const [loadingPhoto, setLoadingPhoto] = useState(false)
+  const [locating, setLocating] = useState(false)
+  const [locationMessage, setLocationMessage] = useState('')
   const fileInput = useRef<HTMLInputElement>(null)
   const textArea = useRef<HTMLTextAreaElement>(null)
   const languageMenu = useRef<HTMLDetailsElement>(null)
@@ -109,6 +120,22 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folders, folderId, on
     }
   }
 
+  const addLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationMessage(language === 'ru' ? 'Геолокация недоступна. Запись можно сохранить без места.' : 'Location is unavailable. You can save without it.')
+      return
+    }
+    setLocating(true)
+    setLocationMessage('')
+    void requestApproximateLocation(navigator.geolocation).then(location => {
+      onDraftChange(current => ({ ...current, location }))
+      setLocating(false)
+    }).catch(() => {
+      setLocating(false)
+      setLocationMessage(language === 'ru' ? 'Доступ к месту не получен. Запись можно сохранить без него.' : 'Location permission was not granted. You can save without it.')
+    })
+  }
+
   return (
     <form className={onCancel ? 'journal-form journal-form-edit' : 'journal-form journal-form-new'} onSubmit={event => {
       event.preventDefault()
@@ -146,10 +173,19 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folders, folderId, on
       {draft.photo && (
         <div className="journal-photo-preview">
           <img src={draft.photo} alt={t('Attached photo preview')} />
-          <button type="button" className="journal-icon" disabled={loadingPhoto} onClick={() => onDraftChange(current => ({ text: current.text }))} aria-label={t('Remove attached photo')}><X size={17} /></button>
+          <button type="button" className="journal-icon" disabled={loadingPhoto} onClick={() => onDraftChange(current => ({ ...current, photo: undefined }))} aria-label={t('Remove attached photo')}><X size={17} /></button>
         </div>
       )}
       {photoError && <p className="journal-photo-error" role="alert">{t(photoError)}</p>}
+      <div className="journal-location">
+        {draft.location ? <span><MapPin size={15} aria-hidden="true" />{locationLabel(draft.location, language)}
+          <button type="button" className="journal-icon" aria-label={language === 'ru' ? 'Убрать место' : 'Remove location'}
+            onClick={() => onDraftChange(current => ({ ...current, location: undefined }))}><X size={15} /></button></span>
+          : <button type="button" className="journal-location-add" disabled={locating} onClick={addLocation}>
+            <MapPin size={15} aria-hidden="true" />{locating ? (language === 'ru' ? 'Определяем место…' : 'Finding location…') : (language === 'ru' ? 'Добавить место' : 'Add location')}
+          </button>}
+      </div>
+      {locationMessage && <p className="journal-local-note" role="status">{locationMessage}</p>}
       {dictation.message && <p className="journal-dictation-message" role="status">{t(dictation.message)}</p>}
       {saveError && <p className="journal-photo-error" role="alert">{t('Couldn’t save this entry. Your draft is still here.')}</p>}
       <div className="journal-form-actions">
@@ -198,19 +234,23 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folders, folderId, on
   )
 }
 
-function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult, language = 'en' }: {
+function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult, draftStorageKey, onDraftStorageError, timeFormat, language = 'en' }: {
   language?: AppLanguage
+  timeFormat: '12' | '24'
   entry: JournalEntry
   folders: JournalFolder[]
   onEdit: (draft: JournalDraft) => boolean
   onDelete: () => void
   onMove: (folderId?: string) => boolean
   isSearchResult: boolean
+  draftStorageKey?: string
+  onDraftStorageError?: () => void
 }) {
   const t = (text: string) => translate(language, text)
   const [action, setAction] = useState<'read' | 'edit' | 'delete'>('read')
   const folder = folders.find(folder => folder.id === entry.folderId)
-  const [draft, setDraft] = useState<JournalDraft>({ text: entry.text, photo: entry.photo })
+  const [draft, setDraft] = useState<JournalDraft>({ text: entry.text, photo: entry.photo, location: entry.location })
+  const draftRef = useRef(draft)
   const [expanded, setExpanded] = useState(false)
   const actionMenu = useRef<HTMLDetailsElement>(null)
   const editDialog = useRef<HTMLDialogElement>(null)
@@ -228,8 +268,17 @@ function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult,
       actionMenu.current.open = false
       actionMenu.current.querySelector('summary')?.focus()
     }
-    setDraft({ text: entry.text, photo: entry.photo })
+    const next = readJournalDraft(draftStorageKey, entry.id) ?? { text: entry.text, photo: entry.photo, location: entry.location }
+    draftRef.current = next
+    setDraft(next)
     setAction('edit')
+  }
+
+  const changeDraft: Dispatch<SetStateAction<JournalDraft>> = change => {
+    const next = typeof change === 'function' ? change(draftRef.current) : change
+    draftRef.current = next
+    if (!writeJournalDraft(next, draftStorageKey, entry.id)) onDraftStorageError?.()
+    setDraft(next)
   }
 
   const closeEditor = () => editDialog.current?.close()
@@ -244,8 +293,9 @@ function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult,
         </button>}
         <div className="journal-entry-copy">
           <div className="journal-entry-time">
-            <time dateTime={entry.createdAt}>{journalTime(entry.createdAt)}</time>
-            {entry.updatedAt && <span title={journalDate(entry.updatedAt)}>{t('Edited')}</span>}
+            <time dateTime={entry.createdAt}>{journalDate(entry.createdAt, language)} · {journalTime(entry.createdAt, language, timeFormat)}</time>
+            {entry.updatedAt && <span title={journalDate(entry.updatedAt, language)}>{t('Edited')}</span>}
+            {entry.location && <span className="journal-entry-location"><MapPin size={12} aria-hidden="true" />{locationLabel(entry.location, language)}</span>}
             {folder && <span className="journal-entry-folder"><FolderGlyph {...folder} size={12} />{folder.name}</span>}
           </div>
           {entry.text && <p>{entry.text}</p>}
@@ -298,10 +348,13 @@ function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult,
         </div>
       )}
       <JournalSheet dialog={editDialog} label={t('Edit entry')} closeLabel={t('Close entry editor')} onClose={() => setAction('read')}>
-        {action === 'edit' && <JournalForm language={language} id={`journal-edit-${entry.id}`} draft={draft} onDraftChange={setDraft}
+        {action === 'edit' && <JournalForm language={language} id={`journal-edit-${entry.id}`} draft={draft} onDraftChange={changeDraft}
           onSubmit={next => {
             const saved = onEdit(next)
-            if (saved) closeEditor()
+            if (saved) {
+              if (!clearJournalDraft(draftStorageKey, entry.id)) onDraftStorageError?.()
+              closeEditor()
+            }
             return saved
           }} onCancel={closeEditor} />}
       </JournalSheet>
@@ -310,9 +363,9 @@ function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult,
 }
 
 export default function JournalPage({
-  language = 'en',
+  language = 'en', timeFormat,
   onReturn, returnLabel,
-  entries, folders, onSaveFolder, onReorderFolders, onDeleteFolder, onMoveEntry, draft, onDraftChange, linkedTaskTitle, onUnlinkTask, sessionPrompt, onDismissPrompt, onCreate, onEdit, onDelete, searchResult, onSelectSearchEntry,
+  entries, folders, cloudStatus, guestImportCount = 0, onImportGuest, onSaveFolder, onReorderFolders, onDeleteFolder, onMoveEntry, draft, onDraftChange, draftStorageKey, onDraftStorageError, linkedTaskTitle, onUnlinkTask, sessionPrompt, onDismissPrompt, onCreate, onEdit, onDelete, searchResult, onSelectSearchEntry,
 }: JournalPageProps) {
   const t = (text: string) => translate(language, text)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -324,7 +377,7 @@ export default function JournalPage({
   const scopedEntries = folderFilter === 'unfiled'
     ? entries.filter(entry => !entry.folderId)
     : currentFolder ? entries.filter(entry => entry.folderId === currentFolder.id) : entries
-  const groups = groupJournalEntries(scopedEntries, '')
+  const groups = groupJournalEntries(scopedEntries, '', new Date(), language)
   const resultCount = scopedEntries.length
 
   useEffect(() => {
@@ -364,6 +417,11 @@ export default function JournalPage({
           <button className="journal-icon" type="button" onClick={onDismissPrompt} aria-label="Dismiss prompt"><X size={17} /></button>
         </div>
       )}
+      {cloudStatus && <p className="journal-cloud-status" role="status">{cloudStatus}</p>}
+      {guestImportCount > 0 && onImportGuest && <div className="journal-guest-import">
+        <span>{language === 'ru' ? `Гостевых записей на этом устройстве: ${guestImportCount}` : `Guest entries on this device: ${guestImportCount}`}</span>
+        <button type="button" onClick={onImportGuest}>{language === 'ru' ? 'Импортировать в аккаунт' : 'Import into account'}</button>
+      </div>}
       <JournalForm language={language} id="journal-entry" draft={draft} onDraftChange={onDraftChange}
         folders={folders} folderId={selectedFolderId} onFolderChange={setComposerFolderId}
         linkedTaskTitle={linkedTaskTitle} onUnlinkTask={onUnlinkTask} onSubmit={next => {
@@ -397,7 +455,8 @@ export default function JournalPage({
             <h3>{group.label}</h3>
             <div className="journal-day-entries">
               {group.entries.map(entry => (
-                <JournalCard language={language} key={entry.id} entry={entry} folders={folders} onMove={folderId => {
+                <JournalCard language={language} timeFormat={timeFormat} key={entry.id} entry={entry} folders={folders}
+                  draftStorageKey={draftStorageKey} onDraftStorageError={onDraftStorageError} onMove={folderId => {
                   const saved = onMoveEntry(entry.id, folderId)
                   if (saved) setNotice('Entry moved.')
                   return saved

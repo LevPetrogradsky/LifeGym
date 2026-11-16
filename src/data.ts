@@ -1,4 +1,6 @@
 import { isJournalPhoto } from './journal/photo.ts'
+import { validApproximateLocation, type ApproximateLocation } from './journal/location.ts'
+import type { CloudOperation } from './journal/cloud-model.ts'
 
 export type Theme = 'light' | 'dark' | 'system'
 export const navigationSections = [
@@ -87,6 +89,7 @@ export interface JournalFolderAppearance {
 export interface JournalFolder extends JournalFolderAppearance {
   id: string
   name: string
+  order?: number
 }
 
 export interface JournalEntry {
@@ -97,6 +100,7 @@ export interface JournalEntry {
   photo?: string
   taskId?: string
   folderId?: string
+  location?: ApproximateLocation
 }
 
 export type FlowSignal = Exclude<Factor, 'Other'>
@@ -173,6 +177,9 @@ export interface LifeOSData {
   sessions: FocusSession[]
   journal: JournalEntry[]
   journalFolders?: JournalFolder[]
+  timeFormat?: '12' | '24'
+  // Account-local sync queue. Saved with the Journal so a reload cannot lose pending edits.
+  journalCloud?: { version: 1; migrated: boolean; pending: CloudOperation[] }
   importedNotes: ImportedNote[]
   activeSession: ActiveSession | null
   pendingSession: PendingSession | null
@@ -271,6 +278,7 @@ export function validateLifeOSData(value: unknown): value is LifeOSData {
   if (value.breakReminderMinutes !== undefined && !breakReminderMinutes.some(minutes => minutes === value.breakReminderMinutes)) return false
   if (value.theme !== 'light' && value.theme !== 'dark' && value.theme !== 'system') return false
   if (value.language !== undefined && value.language !== 'en' && value.language !== 'ru') return false
+  if (value.timeFormat !== undefined && value.timeFormat !== '12' && value.timeFormat !== '24') return false
   if (value.interactiveTips !== undefined && typeof value.interactiveTips !== 'boolean') return false
   if (value.hiddenSections !== undefined && (!Array.isArray(value.hiddenSections) ||
     !value.hiddenSections.every(id => navigationSections.some(section => section.id === id)))) return false
@@ -296,6 +304,7 @@ export function validateLifeOSData(value: unknown): value is LifeOSData {
       if (!isRecord(folder) || !isString(folder.id) || !folder.id || folderIds.has(folder.id) ||
         !isString(folder.name) || !folder.name.trim() || folder.name !== folder.name.trim() ||
         folder.name.length > maxJournalFolderNameLength ||
+        (folder.order !== undefined && (!Number.isSafeInteger(folder.order) || (folder.order as number) < 0)) ||
         (folder.color !== undefined && !journalFolderColors.some(color => color === folder.color)) ||
         (folder.icon !== undefined && !journalFolderIcons.some(icon => icon === folder.icon))) return false
       const name = folder.name.toLowerCase()
@@ -307,6 +316,7 @@ export function validateLifeOSData(value: unknown): value is LifeOSData {
   const validJournal = (item: unknown) => isRecord(item) && isString(item.id) && isString(item.text) && isTimestamp(item.createdAt) &&
     (item.updatedAt === undefined || isTimestamp(item.updatedAt)) && (item.photo === undefined || isJournalPhoto(item.photo)) &&
     (item.taskId === undefined || isString(item.taskId)) &&
+    (item.location === undefined || validApproximateLocation(item.location)) &&
     (item.folderId === undefined || (isString(item.folderId) && folderIds.has(item.folderId)))
   const flowEngine = value.flowEngine
   let validFlowEngine = flowEngine === undefined
@@ -331,7 +341,7 @@ export function validateLifeOSData(value: unknown): value is LifeOSData {
   return value.tasks.every(validTask) && value.sessions.every(validSession) && value.journal.every(validJournal) && value.importedNotes.every(validImportedNote) && validFlowEngine
 }
 
-export function parseBackup(raw: string): LifeOSData {
+export function parseBackup(raw: string, preserveSync = false): LifeOSData {
   let parsed: unknown
   try { parsed = JSON.parse(raw) } catch { throw new Error('This file is not valid JSON.') }
   if (isRecord(parsed) && Array.isArray(parsed.tasks)) {
@@ -341,6 +351,8 @@ export function parseBackup(raw: string): LifeOSData {
       : task)
   }
   if (!validateLifeOSData(parsed)) throw new Error('This file does not have a valid LifeOS backup structure.')
+  // A backup can move between accounts; never carry its original account's sync queue.
+  if (!preserveSync) delete (parsed as LifeOSData).journalCloud
   return parsed
 }
 
@@ -368,8 +380,11 @@ export async function restoreBackup(
   storage: Pick<Storage, 'getItem' | 'setItem'>,
   confirmReplacement: () => boolean,
   storageKey = STORAGE_KEY,
+  transform?: (next: LifeOSData) => LifeOSData,
 ): Promise<LifeOSData | null> {
-  const next = await prepareBackupRestore(raw, current)
+  const prepared = await prepareBackupRestore(raw, current)
+  const next = transform ? transform(prepared) : prepared
+  if (!validateLifeOSData(next)) throw new Error('This backup could not be prepared for this account.')
   if (!confirmReplacement()) return null
 
   let previousRaw: string | null
@@ -407,7 +422,7 @@ export function loadData(storageKey = STORAGE_KEY): LoadResult {
     const raw = localStorage.getItem(storageKey)
     if (!raw) return { data: emptyData(), error: null }
     try {
-      return { data: resolvePendingSession(parseBackup(raw)), error: null }
+      return { data: resolvePendingSession(parseBackup(raw, true)), error: null }
     } catch (error) {
       return { data: emptyData(), error: error instanceof Error ? error.message : 'Saved LifeOS data could not be read.' }
     }

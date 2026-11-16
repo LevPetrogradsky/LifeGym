@@ -18,6 +18,8 @@ interface MainDashboardProps {
   repoUrl: string
   tasks: Task[]
   pausedTaskTitle?: string
+  pausedActiveTime?: string
+  showPausedTime?: boolean
   displayName?: string
   language?: 'en' | 'ru'
   interactiveTips: boolean
@@ -40,8 +42,10 @@ const taskList = (task: Task): TaskList => task.list ?? 'today'
 
 type TaskEditor = { id: string | null; title: string; list: TaskList }
 
-function BreakCard({ taskTitle, language, interactiveTips, onResume, onFinish }: {
+function BreakCard({ taskTitle, activeTime, showTime, language, interactiveTips, onResume, onFinish }: {
   taskTitle: string
+  activeTime: string
+  showTime: boolean
   language: 'en' | 'ru'
   interactiveTips: boolean
   onResume: () => void
@@ -54,6 +58,10 @@ function BreakCard({ taskTitle, language, interactiveTips, onResume, onFinish }:
       <div>
         <h2 id="life-main-break-title">{t('On a break')}</h2>
         <p>{taskTitle}</p>
+        <p className="life-main-break-time">
+          <span>{language === 'ru' ? 'Активное время до паузы' : 'Active time before break'}</span>
+          <strong>{showTime ? activeTime : t('Time hidden')}</strong>
+        </p>
       </div>
       <button type="button" className="life-main-break-resume" aria-label={t('Resume focus')} title={t('Resume focus')} onClick={onResume}>
         <span><Play size={15} fill="currentColor" aria-hidden="true" /></span>
@@ -65,7 +73,7 @@ function BreakCard({ taskTitle, language, interactiveTips, onResume, onFinish }:
   </section>
 }
 
-export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, repoUrl, tasks, pausedTaskTitle, displayName, language = 'en', interactiveTips, onResume, onFinishPaused, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onPresets, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
+export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, repoUrl, tasks, pausedTaskTitle, pausedActiveTime, showPausedTime = true, displayName, language = 'en', interactiveTips, onResume, onFinishPaused, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onPresets, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
   const t = (text: string) => translate(language, text)
   const [screen, setScreen] = useState(initialScreen)
   const [filter, setFilter] = useState<TaskList | 'completed'>('today')
@@ -194,7 +202,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
     if (onDeleteTask(id)) setDeleting(null)
   }
 
-  const breakCard = pausedTaskTitle !== undefined && <BreakCard taskTitle={pausedTaskTitle} language={language}
+  const breakCard = pausedTaskTitle !== undefined && <BreakCard taskTitle={pausedTaskTitle} activeTime={pausedActiveTime ?? '00:00:00'} showTime={showPausedTime} language={language}
     interactiveTips={interactiveTips} onResume={onResume} onFinish={onFinishPaused} />
   const addTaskButton = <button type="button" className={`life-main-add-task${!nextTask && !breakCard ? ' life-main-add-task-inline' : ''}`} onClick={() => openTasks(true)}>
     <span className="life-main-shortcut-icon add"><Plus size={21} aria-hidden="true" /></span>

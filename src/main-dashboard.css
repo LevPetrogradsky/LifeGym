@@ -918,6 +918,19 @@
   overflow-wrap: anywhere;
 }
 
+.life-main-break-heading .life-main-break-time {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 9px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.life-main-break-time strong {
+  color: var(--main-ink);
+  font-variant-numeric: tabular-nums;
+}
+
 .life-main-break .life-main-text {
   justify-self: center;
 }

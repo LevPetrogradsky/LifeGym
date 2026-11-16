@@ -7,6 +7,7 @@ import './task-history.css'
 
 interface TaskHistoryProps {
   language?: AppLanguage
+  timeFormat: '12' | '24'
   task: Task
   sessions: FocusSession[]
   entries: JournalEntry[]
@@ -20,7 +21,7 @@ interface TaskHistoryProps {
   onWriteReflection?: () => void
 }
 
-export default function TaskHistory({ task, sessions, entries, availableEntries, linksExistingDraft, focusAction, focusMessage, onClose, onFocus, onLinkNote, onWriteReflection, language = 'en' }: TaskHistoryProps) {
+export default function TaskHistory({ task, sessions, entries, availableEntries, linksExistingDraft, focusAction, focusMessage, onClose, onFocus, onLinkNote, onWriteReflection, timeFormat, language = 'en' }: TaskHistoryProps) {
   const t = (text: string) => translate(language, text)
   const dialog = useRef<HTMLDialogElement>(null)
   const [choosingNote, setChoosingNote] = useState(false)
@@ -50,7 +51,7 @@ export default function TaskHistory({ task, sessions, entries, availableEntries,
           <h3 id={sessionHeadingId}><Clock size={17} aria-hidden="true" /> {t('Focus sessions')}</h3>
           {sessions.length ? <ul>
             {sessions.map(session => <li className="task-history__session" key={session.id}>
-              <time dateTime={session.endedAt}>{journalDate(session.endedAt)} · {journalTime(session.endedAt)}</time>
+              <time dateTime={session.endedAt}>{journalDate(session.endedAt, language)} · {journalTime(session.endedAt, language, timeFormat)}</time>
               <span>{sessionMinutes(session.durationMs)}</span>
             </li>)}
           </ul> : <p>{t('No focus sessions for this task yet.')}</p>}
@@ -64,7 +65,7 @@ export default function TaskHistory({ task, sessions, entries, availableEntries,
           <h3 id={journalHeadingId}><BookOpen size={17} aria-hidden="true" /> {t('Linked Journal notes')}</h3>
           {entries.length ? <ul>
             {entries.map(entry => <li className="task-history__note" key={entry.id}>
-              <time dateTime={entry.createdAt}>{journalDate(entry.createdAt)} · {journalTime(entry.createdAt)}</time>
+              <time dateTime={entry.createdAt}>{journalDate(entry.createdAt, language)} · {journalTime(entry.createdAt, language, timeFormat)}</time>
               {entry.text && <p>{entry.text}</p>}
               {entry.photo && <img src={entry.photo} alt={t('Photo attached to this entry')} loading="lazy" />}
             </li>)}
@@ -78,7 +79,7 @@ export default function TaskHistory({ task, sessions, entries, availableEntries,
               {availableEntries.length ? <ul aria-label={t('Unlinked Journal notes')}>
                 {availableEntries.map(entry => <li key={entry.id}>
                   <button type="button" onClick={() => { if (onLinkNote(entry.id)) setChoosingNote(false) }}>
-                    <time dateTime={entry.createdAt}>{journalDate(entry.createdAt)} · {journalTime(entry.createdAt)}</time>
+                    <time dateTime={entry.createdAt}>{journalDate(entry.createdAt, language)} · {journalTime(entry.createdAt, language, timeFormat)}</time>
                     <span>{entry.text.trim() || t(entry.photo ? 'Photo note' : 'Empty note')}</span>
                   </button>
                 </li>)}

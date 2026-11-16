@@ -2,11 +2,13 @@ import MainDashboard from './MainDashboard'
 import MainFocus from './MainFocus'
 import TaskHistory from './TaskHistory'
 import AskLifeOS from './home/AskLifeOS'
-import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode, type SetStateAction } from 'react'
 import { ArrowRight, BookOpen, ClipboardList, House, Leaf, MessageCircle, Play, Settings2, Sparkles } from 'lucide-react'
-import { focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, visibleShortcuts, type Factor, type JournalFolderAppearance, type LifeOSData, type Shortcut, type ShortcutLocation, type Task } from './data'
+import { elapsedClock, focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, visibleShortcuts, STORAGE_KEY, type Factor, type JournalFolderAppearance, type LifeOSData, type Shortcut, type ShortcutLocation, type Task } from './data'
 import { base64ToBytes, buildNoteBlocks, makeImportedNote, type SourceIndex } from './notes'
 import JournalPage, { type JournalDraft } from './journal/JournalPage'
+import { clearJournalDraft, readJournalDraft, writeJournalDraft } from './journal/drafts'
+import { JournalCloudSync, guestJournalCount, withJournalChanges } from './journal/cloud-sync'
 import FlowEnginePage from './flow/FlowEnginePage'
 import BreakReminder from './settings/BreakReminder'
 import SettingsPage from './settings/SettingsPage'
@@ -27,11 +29,12 @@ const shortcutIcons = { tasks: ClipboardList, journal: BookOpen, focus: Play, fl
 const factors: Factor[] = ['Meaningful Goal', 'Personal Control', 'Fast Feedback', 'Other']
 const repoUrl = 'https://github.com/ProgrammerLevpetrogradsky/LifeOS-Public'
 
-function App({ storageKey, account, existingAccount = false }: { storageKey?: string; account?: (language: AppLanguage, initialMode?: AccountEntryMode) => ReactNode; existingAccount?: boolean }) {
+function App({ storageKey, account, existingAccount = false, journalCloudToken }: { storageKey?: string; account?: (language: AppLanguage, initialMode?: AccountEntryMode) => ReactNode; existingAccount?: boolean; journalCloudToken?: () => Promise<string | null> }) {
   const [loadResult, setLoadResult] = useState(() => loadData(storageKey))
   const [onboardingMode, setOnboardingMode] = useState(() => initialOnboardingMode(storageKey, localStorage, window.location.search, existingAccount))
   const data = loadResult.data
   const language = data.language ?? 'en'
+  const timeFormat = data.timeFormat ?? (language === 'ru' ? '24' : '12')
   const t = (text: string) => translate(language, text)
   const accountContent = account?.(language)
   const dataRef = useRef(data)
@@ -41,7 +44,10 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
   const onHome = (id: Shortcut) => shortcutVisible(data, id, 'home')
   const inBar = (id: Shortcut) => shortcutVisible(data, id, 'bar')
   const defaultView = showHome ? 'main' : (['journal', 'tasks'] as const).find(inBar) ?? 'settings'
-  const [requestedView, setView] = useState<View>(defaultView)
+  const [requestedView, setView] = useState<View>(() => {
+    try { return localStorage.getItem(`${storageKey ?? STORAGE_KEY}.last-view`) === 'journal' ? 'journal' : defaultView }
+    catch { return defaultView }
+  })
   const [homeNavigationKey, setHomeNavigationKey] = useState(0)
   const [presetsReturnView, setPresetsReturnView] = useState<View>(defaultView)
   const [reflectionReturnView, setReflectionReturnView] = useState<View>(defaultView)
@@ -55,7 +61,10 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
   const [searchOpen, setSearchOpen] = useState(false)
   const [journalSearchResult, setJournalSearchResult] = useState<{ id: string }>()
   const [storageError, setStorageError] = useState(false)
-  const [showTime, setShowTime] = useState(true)
+  const [showTime, setShowTime] = useState(() => {
+    try { return localStorage.getItem(`${storageKey ?? STORAGE_KEY}.focus-time`) !== 'hidden' }
+    catch { return true }
+  })
   const [pausedFocusScreen, setPausedFocusScreen] = useState<string>()
   const [now, setNow] = useState(Date.now())
   const [interest, setInterest] = useState(0)
@@ -65,11 +74,23 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
   const [selectedFactors, setSelectedFactors] = useState<Factor[]>([])
   const [taskHistoryId, setTaskHistoryId] = useState<string | null>(null)
   const [journalTaskId, setJournalTaskId] = useState<string | undefined>()
-  const [journalDraft, setJournalDraft] = useState<JournalDraft>({ text: '' })
+  const [journalDraft, setJournalDraft] = useState<JournalDraft>(() => readJournalDraft(storageKey) ?? { text: '' })
+  const journalDraftRef = useRef(journalDraft)
+  const journalCloud = useRef<JournalCloudSync | null>(null)
+  const [journalCloudStatus, setJournalCloudStatus] = useState('')
+  const [guestNotesAvailable, setGuestNotesAvailable] = useState(() => journalCloudToken ? guestJournalCount(loadResult.data) : 0)
   const [journalPrompt, setJournalPrompt] = useState(false)
   const [backupMessage, setBackupMessage] = useState('')
 
+  useEffect(() => {
+    if (journalCloudToken) setGuestNotesAvailable(guestJournalCount(data))
+  }, [journalCloudToken, data.journal])
+
   useEffect(() => { document.documentElement.lang = language }, [language])
+  useEffect(() => {
+    try { localStorage.setItem(`${storageKey ?? STORAGE_KEY}.last-view`, view === 'journal' ? 'journal' : 'other') }
+    catch { /* Navigation still works when browser storage is unavailable. */ }
+  }, [storageKey, view])
 
   useEffect(() => {
     const selected = data.theme === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : data.theme
@@ -82,8 +103,30 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
   useEffect(() => {
     if (!data.activeSession || data.activeSession.pausedAt) return
     const interval = window.setInterval(() => setNow(Date.now()), 1000)
-    return () => window.clearInterval(interval)
+    const refresh = () => setNow(Date.now())
+    window.addEventListener('focus', refresh)
+    window.addEventListener('pageshow', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    refresh()
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener('focus', refresh)
+      window.removeEventListener('pageshow', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
   }, [data.activeSession])
+  const changeJournalDraft = (change: SetStateAction<JournalDraft>) => {
+    const next = typeof change === 'function' ? change(journalDraftRef.current) : change
+    journalDraftRef.current = next
+    if (!writeJournalDraft(next, storageKey)) setStorageError(true)
+    setJournalDraft(next)
+  }
+  const toggleFocusTime = () => {
+    const next = !showTime
+    setShowTime(next)
+    try { localStorage.setItem(`${storageKey ?? STORAGE_KEY}.focus-time`, next ? 'visible' : 'hidden') }
+    catch { setStorageError(true) }
+  }
   useEffect(() => {
     if (!reflectionNotice) return
     const timeout = window.setTimeout(() => setReflectionNotice(''), 4000)
@@ -92,14 +135,53 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
 
   const update = (change: (current: LifeOSData) => LifeOSData) => {
     if (loadResult.error) { setStorageError(true); return false }
-    const next = change(dataRef.current)
+    let next = change(dataRef.current)
+    try {
+      if (journalCloudToken) next = withJournalChanges(dataRef.current, next)
+    } catch {
+      setStorageError(true)
+      return false
+    }
     const persisted = saveData(next, storageKey)
     setStorageError(!persisted)
     if (persisted) {
       dataRef.current = next
       setLoadResult({ data: next, error: null })
+      if (journalCloudToken && next.journalCloud?.pending.length) void journalCloud.current?.sync()
     }
     return persisted
+  }
+
+  useEffect(() => {
+    if (!journalCloudToken || !storageKey || loadResult.error) return
+    const sync = new JournalCloudSync({
+      getData: () => dataRef.current,
+      save: next => {
+        if (!saveData(next, storageKey)) return false
+        dataRef.current = next
+        setLoadResult({ data: next, error: null })
+        return true
+      },
+      token: journalCloudToken,
+      status: setJournalCloudStatus,
+    })
+    journalCloud.current = sync
+    sync.start()
+    return () => {
+      sync.stop()
+      if (journalCloud.current === sync) journalCloud.current = null
+    }
+  }, [storageKey, loadResult.error])
+
+  const importGuestJournal = async () => {
+    if (!window.confirm('Copy guest Journal entries and folders into this account? The guest copy will stay on this device.')) return
+    try {
+      await journalCloud.current?.importGuest()
+      setGuestNotesAvailable(0)
+      setJournalCloudStatus('Guest Journal copied into this account. The guest copy is still on this device.')
+    } catch (error) {
+      setJournalCloudStatus(error instanceof Error ? error.message : 'Guest Journal could not be copied. Its local copy was kept.')
+    }
   }
 
   const { deleteTask, deleteJournalEntry, clearUndo, undoNotice } = useDeleteUndo(dataRef, update)
@@ -144,12 +226,14 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
     if (!file) return
     try {
       const backupText = await file.text()
-      const next = await restoreBackup(backupText, dataRef.current, localStorage, () => window.confirm('Replace your current tasks, sessions, journal, and settings with this backup? Any readable imported Notes will be kept. Unreadable saved data will be preserved for recovery.'), storageKey)
+      const next = await restoreBackup(backupText, dataRef.current, localStorage, () => window.confirm('Replace your current tasks, sessions, journal, and settings with this backup? Any readable imported Notes will be kept. Unreadable saved data will be preserved for recovery.'), storageKey,
+        journalCloudToken ? restored => withJournalChanges(dataRef.current, { ...restored, journalCloud: dataRef.current.journalCloud }) : undefined)
       if (!next) return
       clearUndo()
       dataRef.current = next
       setLoadResult({ data: next, error: null })
       setStorageError(false)
+      void journalCloud.current?.sync()
       setBackupMessage('Backup restored. Readable imported Notes were kept; previous unreadable data was preserved for recovery.')
     } catch (error) {
       setBackupMessage(error instanceof Error ? error.message : 'Backup could not be restored.')
@@ -173,7 +257,6 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
     }))
     if (started) {
       setNow(now)
-      setShowTime(true)
     }
     return started
   }
@@ -285,6 +368,8 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
       }, ...current.journal],
     }))
     if (saved) {
+      if (!clearJournalDraft(storageKey)) setStorageError(true)
+      journalDraftRef.current = { text: '' }
       setJournalDraft({ text: '' })
       setJournalTaskId(undefined)
       setJournalPrompt(false)
@@ -294,7 +379,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
 
   const editJournalEntry = (id: string, draft: JournalDraft) => update(current => ({
     ...current,
-    journal: current.journal.map(entry => entry.id === id ? { ...entry, text: draft.text, photo: draft.photo, updatedAt: new Date().toISOString() } : entry),
+    journal: current.journal.map(entry => entry.id === id ? { ...entry, text: draft.text, photo: draft.photo, location: draft.location, updatedAt: new Date().toISOString() } : entry),
   }))
 
   const saveJournalFolder = (name: string, appearance: JournalFolderAppearance, id?: string) => {
@@ -333,7 +418,8 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
   }
 
   const exportData = () => {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const { journalCloud: _sync, ...exportable } = data
+    const blob = new Blob([JSON.stringify(exportable, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -380,7 +466,6 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
     })
     if (saved && idle) {
       setNow(startedAt)
-      setShowTime(true)
     }
     return saved
   }
@@ -484,7 +569,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
       checkinEnabled={data.focusCheckinEnabled !== false}
       showCheckinToggle={!data.postFocusAction}
       onToggleCheckin={() => update(current => ({ ...current, focusCheckinEnabled: current.focusCheckinEnabled === false }))}
-      onToggleTime={() => setShowTime(current => !current)}
+      onToggleTime={toggleFocusTime}
       onToggleSilence={toggleFocusSilence}
       onPause={() => pauseSession(true)}
       onResume={resumeSession}
@@ -553,6 +638,8 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
           repoUrl={repoUrl}
           tasks={data.tasks}
           pausedTaskTitle={pausedSession?.taskTitle}
+          pausedActiveTime={pausedSession ? elapsedClock(focusedDuration(pausedSession, Date.parse(pausedSession.pausedAt!))) : undefined}
+          showPausedTime={showTime}
           displayName={data.displayName}
           language={data.language ?? 'en'}
           interactiveTips={data.interactiveTips !== false}
@@ -589,6 +676,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
         />}
 
         {(view === 'flow' || view === 'focus-history') && <FlowEnginePage key={view}
+          timeFormat={timeFormat}
           language={language}
           data={data} onUpdate={update}
           onReturn={view === 'flow' ? () => navigate(reflectionReturnView) : returnFromSection}
@@ -600,7 +688,10 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
           sessionsOnly={view === 'focus-history'} />}
 
         {view === 'journal' && (
-          <JournalPage language={language} entries={data.journal} folders={data.journalFolders ?? []} draft={journalDraft} onDraftChange={setJournalDraft}
+          <JournalPage language={language} timeFormat={timeFormat} entries={data.journal} folders={data.journalFolders ?? []} draft={journalDraft} onDraftChange={changeJournalDraft}
+            draftStorageKey={storageKey} onDraftStorageError={() => setStorageError(true)}
+            cloudStatus={journalCloudToken ? journalCloudStatus : undefined}
+            guestImportCount={guestNotesAvailable} onImportGuest={journalCloudToken ? importGuestJournal : undefined}
             onReturn={returnFromSection} returnLabel={returnLabel}
             onSaveFolder={saveJournalFolder} onReorderFolders={reorderJournalFolders} onDeleteFolder={deleteJournalFolder} onMoveEntry={moveJournalEntry}
             linkedTaskTitle={linkedTaskTitle} onUnlinkTask={() => setJournalTaskId(undefined)}
@@ -614,6 +705,8 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
             account={accountContent}
             theme={data.theme}
             language={data.language ?? 'en'}
+            timeFormat={timeFormat}
+            onTimeFormatChange={timeFormat => update(current => ({ ...current, timeFormat }))}
             onLanguageChange={language => update(current => ({ ...current, language }))}
             onThemeChange={theme => update(current => ({ ...current, theme }))}
             interactiveTips={data.interactiveTips !== false}
@@ -644,6 +737,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
         )}
       </div>
       {historyTask && <TaskHistory
+        timeFormat={timeFormat}
         language={language}
         key={historyTask.id}
         task={historyTask}

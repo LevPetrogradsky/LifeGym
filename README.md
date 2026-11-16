@@ -23,6 +23,8 @@ Set `VITE_NEON_AUTH_URL` to the branch's public Auth Base URL (the Vercel integr
 
 **Settings → Account** offers registration, sign-in, password reset, and sign-out. Each account gets a separate workspace in the current browser. Guest data remains available after signing out. To copy it to an account workspace or another browser, export and restore a backup. Accounts authenticate across devices, while workspace data is stored locally.
 
+Journal cloud sync is disabled in the public demo. Its preview-only API is gated until a separate Neon preview branch is verified and configured; the public demo continues to keep Journal data in this browser.
+
 ## MVP features
 
 - **Home and Tasks:** Keep up to five active tasks in Today and later ideas in Someday. Task history shows focus sessions and linked Journal notes, with actions to start focus or link a note.
@@ -30,8 +32,8 @@ Set `VITE_NEON_AUTH_URL` to the branch's public Auth Base URL (the Vercel integr
 - **Focus Mode:** An open-ended session with an optional elapsed-time display. An active session survives a page reload.
 - **Flow check-in:** Finish a session by rating interest, desire to continue, and progress from 1–5; optionally select factors that helped.
 - **Reflect:** Review focus check-ins and patterns from past sessions.
-- **Journal:** Write, edit, and search timestamped notes, organize them in folders, and attach photos.
-- **Settings:** Choose Light, Dark, or System theme, customize navigation, export data as JSON, and restore a validated JSON backup after confirming replacement.
+- **Journal:** Write, edit, and search dated notes, organize them in folders, attach photos, and optionally add an approximate location. Drafts are kept locally until Save.
+- **Settings:** Choose Light, Dark, or System theme, a 12- or 24-hour clock, customize navigation, export data as JSON, and restore a validated JSON backup after confirming replacement.
 
 ## Data and privacy
 
