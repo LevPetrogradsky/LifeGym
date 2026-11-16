@@ -63,6 +63,8 @@ const russian: Record<string, string> = {
   'Quick rating': 'Быстрая оценка',
   'Rate how the session went.': 'Оцените, как прошла сессия.',
   'More focus options': 'Дополнительные настройки фокуса',
+  'Collapse All': 'Свернуть всё',
+  'Expand All': 'Развернуть всё',
   'Offer a quick rating': 'Предлагать быструю оценку',
   'Break reminder': 'Напоминание о перерыве',
   'Interactive tips': 'Интерактивные подсказки',

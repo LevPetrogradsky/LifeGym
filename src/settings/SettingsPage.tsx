@@ -36,17 +36,19 @@ const themes = [
   { value: 'system', label: 'System', Icon: Monitor },
 ] as const
 
-function SettingsGroup({ title, icon, summary, defaultOpen, children }: {
+type SettingsSection = 'account' | 'profile' | 'focus' | 'focusOptions' | 'backups' | 'more' | 'navigation' | 'about'
+
+function SettingsGroup({ title, icon, summary, open, onOpenChange, children }: {
   title: string
   icon: ReactNode
   summary?: string
-  defaultOpen?: boolean
+  open: boolean
+  onOpenChange: (open: boolean) => void
   children: ReactNode
 }) {
-  const [expanded, setExpanded] = useState(defaultOpen ?? false)
   return (
-    <details className="settings-page__group" open={expanded} onToggle={event => setExpanded(event.currentTarget.open)}>
-      <summary className="settings-page__row">
+    <details className="settings-page__group" open={open}>
+      <summary className="settings-page__row" onClick={event => { event.preventDefault(); onOpenChange(!open) }}>
         <span className="settings-page__icon" aria-hidden="true">{icon}</span>
         <span className="settings-page__label">{title}</span>
         {summary && <span className="settings-page__value">{summary}</span>}
@@ -117,13 +119,33 @@ export default function SettingsPage({
   reminderMinutes, onReminderMinutesChange, displayName, onDisplayNameChange,
 }: SettingsPageProps) {
   const t = (text: string) => translate(language, text)
+  const [openSections, setOpenSections] = useState<Record<SettingsSection, boolean>>({
+    account: true, profile: true, focus: true, focusOptions: false,
+    backups: true, more: false, navigation: false, about: false,
+  })
+  const sectionIds: SettingsSection[] = [
+    ...(account ? ['account' as const] : []), 'profile', 'focus',
+    ...(focusCheckin && !postFocusAction?.value ? ['focusOptions' as const] : []),
+    'backups', 'more', 'navigation', 'about',
+  ]
+  const anyOpen = sectionIds.some(id => openSections[id])
+  const setSection = (id: SettingsSection, open: boolean) =>
+    setOpenSections(current => current[id] === open ? current : { ...current, [id]: open })
+  const toggleAll = () => setOpenSections(current => ({ ...current,
+    ...Object.fromEntries(sectionIds.map(id => [id, !anyOpen])),
+  }))
   return (
     <main className="settings-page" aria-labelledby="settings-page-title">
-      <h1 id="settings-page-title">{t('Settings')}</h1>
+      <div className="settings-page__header">
+        <h1 id="settings-page-title">{t('Settings')}</h1>
+        <button type="button" className="settings-page__toggle-all" onClick={toggleAll}>
+          {t(anyOpen ? 'Collapse All' : 'Expand All')}
+        </button>
+      </div>
 
       <div className="settings-page__groups">
-        {account && <SettingsGroup title={t('Account')} icon={<UserRound size={18} />} defaultOpen>{account}</SettingsGroup>}
-        <SettingsGroup title={t('Profile & appearance')} icon={<Palette size={18} />} defaultOpen
+        {account && <SettingsGroup title={t('Account')} icon={<UserRound size={18} />} open={openSections.account} onOpenChange={open => setSection('account', open)}>{account}</SettingsGroup>}
+        <SettingsGroup title={t('Profile & appearance')} icon={<Palette size={18} />} open={openSections.profile} onOpenChange={open => setSection('profile', open)}
           summary={t(themes.find(option => option.value === theme)?.label ?? '')}>
           <fieldset className="settings-page__themes">
             <legend>{t('Theme')}</legend>
@@ -149,7 +171,7 @@ export default function SettingsPage({
           <DisplayNameForm key={displayName} name={displayName} onSave={onDisplayNameChange} language={language} />
         </SettingsGroup>
 
-        <SettingsGroup title={t('Focus')} icon={<Timer size={18} />} defaultOpen>
+        <SettingsGroup title={t('Focus')} icon={<Timer size={18} />} open={openSections.focus} onOpenChange={open => setSection('focus', open)}>
           <label className="settings-page__toggle">
             <span className="settings-page__toggle-copy"><strong>{t('Interactive tips')}</strong><span>{t('Show hints for focus actions on Home.')}</span></span>
             <input type="checkbox" role="switch" aria-label={t('Interactive tips')} checked={interactiveTips}
@@ -170,8 +192,8 @@ export default function SettingsPage({
               <span><strong>{t(option.title)}</strong><small>{t(option.description)}</small></span>
             </label>)}
           </fieldset>}
-          {focusCheckin && !postFocusAction?.value && <details className="settings-page__submore">
-            <summary>{t('More focus options')}</summary>
+          {focusCheckin && !postFocusAction?.value && <details className="settings-page__submore" open={openSections.focusOptions}>
+            <summary onClick={event => { event.preventDefault(); setSection('focusOptions', !openSections.focusOptions) }}>{t('More focus options')}</summary>
             <label className="settings-page__toggle">
               <span className="settings-page__toggle-copy"><strong>{t('Offer a quick rating')}</strong></span>
               <input type="checkbox" role="switch" aria-label={t('Offer a quick rating')} checked={focusCheckin.enabled}
@@ -191,7 +213,7 @@ export default function SettingsPage({
           </label>
         </SettingsGroup>
 
-        <SettingsGroup title={t('Backups')} icon={<HardDrive size={18} />} defaultOpen>
+        <SettingsGroup title={t('Backups')} icon={<HardDrive size={18} />} open={openSections.backups} onOpenChange={open => setSection('backups', open)}>
           <div className="settings-page__actions">
             <button type="button" className="settings-page__action" onClick={onExport}>
               <Download size={17} aria-hidden="true" />{t('Save a copy')}
@@ -203,10 +225,10 @@ export default function SettingsPage({
           </div>
         </SettingsGroup>
 
-        <details className="settings-page__more">
-          <summary>{t('More options')} <ChevronRight size={18} aria-hidden="true" /></summary>
+        <details className="settings-page__more" open={openSections.more}>
+          <summary onClick={event => { event.preventDefault(); setSection('more', !openSections.more) }}>{t('More options')} <ChevronRight size={18} aria-hidden="true" /></summary>
           <div className="settings-page__more-content">
-        <SettingsGroup title={t('Home & navigation')} icon={<Compass size={18} />}>
+        <SettingsGroup title={t('Home & navigation')} icon={<Compass size={18} />} open={openSections.navigation} onOpenChange={open => setSection('navigation', open)}>
           <label className="settings-page__toggle settings-page__navigation-toggle">
             <span className="settings-page__toggle-copy"><strong>{t('Home in bottom bar')}</strong></span>
             <input type="checkbox" role="switch" aria-label={t('Home in navigation bar')} checked={showHome}
@@ -229,7 +251,7 @@ export default function SettingsPage({
           </fieldset>)}
         </SettingsGroup>
 
-        <SettingsGroup title={t('About')} icon={<Info size={18} />} summary="v0.1">
+        <SettingsGroup title={t('About')} icon={<Info size={18} />} summary="v0.1" open={openSections.about} onOpenChange={open => setSection('about', open)}>
           <AboutLifeOS repoUrl={repoUrl} language={language} />
         </SettingsGroup>
           </div>

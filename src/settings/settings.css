@@ -31,6 +31,30 @@
   line-height: 1.08;
 }
 
+.settings-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.settings-page__header h1 { margin: 0; }
+
+.settings-page__toggle-all {
+  flex: none;
+  min-height: 44px;
+  padding: 8px 11px;
+  border: 1px solid var(--settings-line);
+  border-radius: 11px;
+  background: var(--settings-surface);
+  color: var(--settings-accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .settings-page__groups {
   display: grid;
   gap: 14px;
