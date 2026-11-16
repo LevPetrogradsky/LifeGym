@@ -1,6 +1,37 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { emptyData, loadData, parseBackup, validateLifeOSData } from '../src/data.ts'
+import { emptyData, loadData, parseBackup, recordUnratedSession, shortcutVisible, validateLifeOSData } from '../src/data.ts'
+
+test('new navigation defaults preserve explicit shortcut choices', () => {
+  const fresh = emptyData()
+  assert.equal(shortcutVisible(fresh, 'journal', 'bar'), true)
+  assert.equal(shortcutVisible(fresh, 'tasks', 'bar'), true)
+  assert.equal(shortcutVisible(fresh, 'focus', 'bar'), false)
+  const existing = { ...fresh, shortcutPreferences: { journal: { bar: false }, focus: { bar: true } } }
+  assert.equal(shortcutVisible(existing, 'journal', 'bar'), false)
+  assert.equal(shortcutVisible(existing, 'focus', 'bar'), true)
+})
+
+test('finished focus is saved once and its choices remain after reload', () => {
+  const pendingSession = {
+    id: 'finished', taskId: null, taskTitle: 'Work',
+    startedAt: '2026-11-13T10:00:00.000Z',
+    endedAt: '2026-11-13T10:01:00.000Z',
+  }
+  const saved = recordUnratedSession(emptyData(), pendingSession)
+  assert.equal(saved.sessions.length, 1)
+  const choosing = { ...saved, pendingSession, focusCheckinEnabled: false }
+  const previousStorage = globalThis.localStorage
+  globalThis.localStorage = { getItem: () => JSON.stringify(choosing) }
+  try {
+    const loaded = loadData().data
+    assert.equal(loaded.pendingSession?.id, pendingSession.id)
+    assert.equal(loaded.sessions.length, 1)
+    assert.equal(recordUnratedSession(loaded, pendingSession).sessions.length, 1)
+  } finally {
+    globalThis.localStorage = previousStorage
+  }
+})
 
 test('older LifeOS backups remain valid without post-focus or preset choices', () => {
   const legacy = emptyData()

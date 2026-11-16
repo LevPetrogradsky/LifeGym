@@ -8,8 +8,8 @@ export const navigationSections = [
 ] as const
 export type NavigationSection = typeof navigationSections[number]['id']
 export const shortcuts = [
-  { id: 'tasks', label: 'Tasks' },
   { id: 'journal', label: 'Journal' },
+  { id: 'tasks', label: 'Tasks' },
   { id: 'focus', label: 'Focus' },
   { id: 'flow', label: '3 questions' },
 ] as const
@@ -21,7 +21,7 @@ export function shortcutVisible(data: LifeOSData, shortcut: Shortcut, location: 
   return data.shortcutPreferences?.[shortcut]?.[location] ?? (
     location === 'home'
       ? !((shortcut === 'journal' || shortcut === 'flow') && data.hiddenSections?.includes(shortcut))
-      : false
+      : shortcut === 'journal' || shortcut === 'tasks'
   )
 }
 export const breakReminderMinutes = [0, 5, 10, 15, 20] as const
@@ -447,6 +447,7 @@ function resolvePendingSession(data: LifeOSData): LifeOSData {
   // Preserve the first-session choice after reload; keep legacy auto-save for
   // established users who disabled check-ins before this preference existed.
   return data.postFocusAction === undefined && data.sessions.length > 0 &&
+    !data.sessions.some(session => session.id === data.pendingSession?.id) &&
     data.focusCheckinEnabled === false && data.pendingSession
     ? recordUnratedSession(data, data.pendingSession)
     : data

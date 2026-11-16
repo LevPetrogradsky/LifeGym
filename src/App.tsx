@@ -32,7 +32,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
   const dataRef = useRef(data)
   const hiddenSections = data.hiddenSections ?? []
   const showHome = !hiddenSections.includes('main')
-  const showAskLifeOS = data.askLifeOSInBar !== false
+  const showAskLifeOS = data.askLifeOSInBar === true
   const onHome = (id: Shortcut) => shortcutVisible(data, id, 'home')
   const inBar = (id: Shortcut) => shortcutVisible(data, id, 'bar')
   const defaultView = showHome ? 'main' : (['journal', 'tasks', 'flow'] as const).find(inBar) ?? 'settings'
@@ -40,9 +40,10 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
   const [presetsReturnView, setPresetsReturnView] = useState<View>(defaultView)
   const [reflectionReturnView, setReflectionReturnView] = useState<View>(defaultView)
   const [reflectionNotice, setReflectionNotice] = useState('')
+  const [postFocusReflection, setPostFocusReflection] = useState(false)
   const isHidden = (page: View) => page === 'main' ? !showHome
     : (page === 'flow' || page === 'journal') && !inBar(page) && !(showHome && onHome(page))
-      && !(page === 'flow' && data.postFocusAction === 'reflection')
+      && !(page === 'flow' && (data.postFocusAction === 'reflection' || postFocusReflection))
   const view = isHidden(requestedView) ? defaultView : requestedView
   const showJournal = !isHidden('journal')
   const [searchOpen, setSearchOpen] = useState(false)
@@ -54,6 +55,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
   const [interest, setInterest] = useState(0)
   const [continueDesire, setContinueDesire] = useState(0)
   const [progress, setProgress] = useState(0)
+  const [checkingIn, setCheckingIn] = useState(false)
   const [selectedFactors, setSelectedFactors] = useState<Factor[]>([])
   const [taskHistoryId, setTaskHistoryId] = useState<string | null>(null)
   const [journalTaskId, setJournalTaskId] = useState<string | undefined>()
@@ -215,18 +217,8 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
     const current = dataRef.current
     if (!current.activeSession) return
     const finished = { ...current.activeSession, endedAt: new Date().toISOString() }
-    if (current.postFocusAction === 'reflection') {
-      if (update(data => recordUnratedSession({ ...data, activeSession: null }, finished))) {
-        setReflectionReturnView(showHome ? 'main' : defaultView)
-        setView('flow')
-      }
-      return
-    }
-    if (!current.postFocusAction && current.sessions.length > 0 && current.focusCheckinEnabled === false) {
-      if (update(data => recordUnratedSession({ ...data, activeSession: null }, finished))) navigate('main')
-      return
-    }
-    if (!update(data => ({ ...data, activeSession: null, pendingSession: finished }))) return
+    if (!update(data => ({ ...recordUnratedSession({ ...data, activeSession: null }, finished), pendingSession: finished }))) return
+    setCheckingIn(false)
     setInterest(0)
     setContinueDesire(0)
     setProgress(0)
@@ -234,14 +226,15 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
   }
 
   const choosePostFocusAction = (action: 'reflection' | 'check-in') => {
-    if (!dataRef.current.pendingSession) return
-    const saved = update(current => {
-      const withChoice = { ...current, postFocusAction: action }
-      return action === 'reflection'
-        ? recordUnratedSession(withChoice, current.pendingSession!)
-        : withChoice
-    })
-    if (saved && action === 'reflection') {
+    const pending = dataRef.current.pendingSession
+    if (!pending) return
+    if (action === 'check-in') {
+      setCheckingIn(true)
+      return
+    }
+    if (update(current => recordUnratedSession(current, pending))) {
+      setCheckingIn(false)
+      setPostFocusReflection(true)
       setReflectionReturnView(showHome ? 'main' : defaultView)
       setView('flow')
     }
@@ -249,44 +242,29 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
 
   const saveCheckin = (event: FormEvent) => {
     event.preventDefault()
-    if (!interest || !continueDesire || !progress || !data.pendingSession) return
-    const pending = data.pendingSession
-    const saved = update(current => ({
-      ...current,
-      pendingSession: null,
-      sessions: [{
-        id: pending.id,
-        taskId: pending.taskId,
-        taskTitle: pending.taskTitle,
-        startedAt: pending.startedAt,
-        endedAt: pending.endedAt,
+    const pending = dataRef.current.pendingSession
+    if (!interest || !continueDesire || !progress || !pending) return
+    const saved = update(current => {
+      const ratedSession = {
+        id: pending.id, taskId: pending.taskId, taskTitle: pending.taskTitle,
+        startedAt: pending.startedAt, endedAt: pending.endedAt,
         durationMs: focusedDuration(pending, Date.parse(pending.endedAt)),
         interest, continueDesire, progress, factors: selectedFactors,
-      }, ...current.sessions],
-    }))
+      }
+      return {
+        ...current,
+        pendingSession: null,
+        sessions: current.sessions.some(session => session.id === pending.id)
+          ? current.sessions.map(session => session.id === pending.id ? ratedSession : session)
+          : [ratedSession, ...current.sessions],
+      }
+    })
     if (!saved) return
     if (showJournal) {
       setJournalPrompt(true)
       setView('journal')
     } else {
       navigate(defaultView)
-    }
-  }
-
-  const disableFocusCheckins = () => {
-    const pending = dataRef.current.pendingSession
-    if (!pending) return
-    if (update(current => recordUnratedSession({
-      ...current,
-      ...(current.postFocusAction === 'check-in'
-        ? { postFocusAction: 'reflection' as const }
-        : { focusCheckinEnabled: false }),
-    }, pending))) {
-      if (dataRef.current.postFocusAction === 'reflection') {
-        setReflectionReturnView(showHome ? 'main' : defaultView)
-        setView('flow')
-      }
-      else navigate('main')
     }
   }
 
@@ -358,6 +336,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
 
   const navigate = (next: View) => {
     setJournalSearchResult(undefined)
+    if (next !== 'flow') setPostFocusReflection(false)
     if (next === 'flow' && view !== 'flow') {
       setReflectionReturnView(view)
       setReflectionNotice('')
@@ -427,7 +406,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
 
   const renderNavigation = (iconSize: number) => <>
     {showHome && <NavButton icon={<House size={iconSize} />} label="Home" selected={view === 'main'} onClick={() => navigate('main')} />}
-    {showAskLifeOS && <NavButton icon={<MessageCircle size={iconSize} />} label="Ask LifeOS" selected={view === 'ask'} onClick={() => navigate('ask')} />}
+    <NavButton icon={<Settings2 size={iconSize} />} label="Settings" selected={view === 'settings'} onClick={() => navigate('settings')} />
     {shortcuts.filter(({ id }) => inBar(id)).map(({ id, label }) => {
       const Icon = shortcutIcons[id]
       return <NavButton key={id} icon={<Icon size={iconSize} />} label={label} selected={view === id}
@@ -437,7 +416,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
           else startFocus()
         }} />
     })}
-    <NavButton icon={<Settings2 size={iconSize} />} label="Settings" selected={view === 'settings'} onClick={() => navigate('settings')} />
+    {showAskLifeOS && <NavButton icon={<MessageCircle size={iconSize} />} label="Ask LifeOS" selected={view === 'ask'} onClick={() => navigate('ask')} />}
   </>
 
   const renderBrand = (size: number) => {
@@ -504,9 +483,10 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
     {undoNotice}
   </>
 
-  if (data.pendingSession && data.sessions.length === 0 && !data.postFocusAction) return <PostFocusChoice
+  if (data.pendingSession && !checkingIn) return <PostFocusChoice
     taskTitle={data.pendingSession.taskTitle}
     storageError={storageError}
+    preferred={data.postFocusAction}
     onChoose={choosePostFocusAction}
   />
 
@@ -521,9 +501,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
         <p className="muted">{data.pendingSession.taskId === null
           ? 'Your focus session is complete.'
           : `Your time with “${data.pendingSession.taskTitle}” is complete.`} A few quick answers help you notice what works.</p>
-        <button type="button" className="checkin-turn-off" onClick={disableFocusCheckins}>
-          {data.postFocusAction === 'check-in' ? 'Skip check-in and open Reflection' : 'Skip and turn off check-ins'}
-        </button>
+        <button type="button" className="checkin-turn-off" onClick={() => setCheckingIn(false)}>Back to choices</button>
         <form onSubmit={saveCheckin}>
           <Rating label="Interest in the process" value={interest} onChange={setInterest} />
           <Rating label="Desire to continue" value={continueDesire} onChange={setContinueDesire} />
