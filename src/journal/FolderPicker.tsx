@@ -7,11 +7,12 @@ import { JournalSheet } from './JournalSheet'
 
 type FolderOption = { value: string; label: string; icon?: LucideIcon; folder?: JournalFolder }
 
-export default function FolderPicker({ label, value, options, onChange }: {
+export default function FolderPicker({ label, value, options, onChange, dialogClassName }: {
   label: string
   value: string
   options: FolderOption[]
   onChange: (value: string) => void
+  dialogClassName?: string
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const selected = options.find(option => option.value === value)
@@ -24,20 +25,21 @@ export default function FolderPicker({ label, value, options, onChange }: {
       <span>{selected?.label ?? 'Choose a folder'}</span>
       <ChevronDown size={16} aria-hidden="true" />
     </button>
-    <FolderSheet dialog={dialog} label={label} value={value} options={options} onChange={onChange} />
+    <FolderSheet dialog={dialog} label={label} value={value} options={options} onChange={onChange} className={dialogClassName} />
   </div>
 }
 
-export function FolderSheet({ dialog, label, value, options, onChange }: {
+export function FolderSheet({ dialog, label, value, options, onChange, className }: {
   dialog: RefObject<HTMLDialogElement | null>
   label: string
   value: string
   options: FolderOption[]
   onChange: (value: string) => boolean | void
+  className?: string
 }) {
   const [saveFailed, setSaveFailed] = useState(false)
 
-  return <JournalSheet dialog={dialog} label={label} closeLabel="Close folder picker" onClose={() => setSaveFailed(false)}>
+  return <JournalSheet dialog={dialog} label={label} closeLabel="Close folder picker" className={className} onClose={() => setSaveFailed(false)}>
     <ul>{options.map(option => <li key={option.value}>
       <button type="button" aria-pressed={option.value === value} onClick={() => {
         if (option.value !== value && onChange(option.value) === false) {

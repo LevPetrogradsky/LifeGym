@@ -31,14 +31,16 @@ const themes = [
   { value: 'system', label: 'System', Icon: Monitor },
 ] as const
 
-function SettingsGroup({ title, icon, summary, children }: {
+function SettingsGroup({ title, icon, summary, defaultOpen, children }: {
   title: string
   icon: ReactNode
   summary?: string
+  defaultOpen?: boolean
   children: ReactNode
 }) {
+  const [expanded, setExpanded] = useState(defaultOpen ?? false)
   return (
-    <details className="settings-page__group">
+    <details className="settings-page__group" open={expanded} onToggle={event => setExpanded(event.currentTarget.open)}>
       <summary className="settings-page__row">
         <span className="settings-page__icon" aria-hidden="true">{icon}</span>
         <span className="settings-page__label">{title}</span>
@@ -112,11 +114,11 @@ export default function SettingsPage({
       <h1 id="settings-page-title">Settings</h1>
 
       <div className="settings-page__groups">
-        {account && <SettingsGroup title="Account" icon={<UserRound size={18} />}>{account}</SettingsGroup>}
-        <SettingsGroup title="Appearance & name" icon={<Palette size={18} />}
+        {account && <SettingsGroup title="Account" icon={<UserRound size={18} />} defaultOpen>{account}</SettingsGroup>}
+        <SettingsGroup title="Profile & appearance" icon={<Palette size={18} />} defaultOpen
           summary={themes.find(option => option.value === theme)?.label}>
           <fieldset className="settings-page__themes">
-            <legend>Color theme</legend>
+            <legend>Theme</legend>
             <div className="settings-page__theme-options">
               {themes.map(({ value, label, Icon }) => (
                 <label className="settings-page__theme" key={value}>
@@ -130,14 +132,67 @@ export default function SettingsPage({
           <DisplayNameForm key={displayName} name={displayName} onSave={onDisplayNameChange} />
         </SettingsGroup>
 
+        <SettingsGroup title="Focus" icon={<Timer size={18} />} defaultOpen>
+          {onOpenPresets && <button type="button" className="settings-page__action" onClick={onOpenPresets}>
+            Presets <ChevronRight size={17} aria-hidden="true" />
+          </button>}
+          {postFocusAction && <fieldset className="settings-page__post-focus">
+            <legend>After focus</legend>
+            {([
+              { value: 'reflection', title: 'Reflection', description: 'Think about what helped.' },
+              { value: 'check-in', title: 'Quick rating', description: 'Rate how the session went.' },
+            ] as const).map(option => <label key={option.value} className="settings-page__post-focus-option">
+              <input type="radio" name="lifeos-post-focus" value={option.value}
+                checked={postFocusAction.value === option.value}
+                onChange={() => postFocusAction.onChange(option.value)} />
+              <span><strong>{option.title}</strong><small>{option.description}</small></span>
+            </label>)}
+          </fieldset>}
+          {focusCheckin && !postFocusAction?.value && <details className="settings-page__submore">
+            <summary>More focus options</summary>
+            <label className="settings-page__toggle">
+              <span className="settings-page__toggle-copy"><strong>Offer a quick rating</strong></span>
+              <input type="checkbox" role="switch" aria-label="Offer a quick rating" checked={focusCheckin.enabled}
+                onChange={event => focusCheckin.onChange(event.currentTarget.checked)} />
+            </label>
+          </details>}
+          <label className="settings-page__field">
+            <strong>Break reminder</strong>
+            <select value={reminderMinutes} onChange={event => {
+              const selected = breakReminderMinutes.find(minutes => String(minutes) === event.currentTarget.value)
+              if (selected !== undefined) onReminderMinutesChange(selected)
+            }}>
+              {breakReminderMinutes.map(minutes => (
+                <option key={minutes} value={minutes}>{minutes ? `${minutes} min` : 'Off'}</option>
+              ))}
+            </select>
+          </label>
+        </SettingsGroup>
+
+        <SettingsGroup title="Backups" icon={<HardDrive size={18} />} defaultOpen>
+          <p className="settings-page__description">Your data stays in this browser. Save a copy to move it to another device.</p>
+          <div className="settings-page__actions">
+            <button type="button" className="settings-page__action" onClick={onExport}>
+              <Download size={17} aria-hidden="true" />Save a copy
+            </button>
+            <label className="settings-page__action settings-page__upload">
+              <Upload size={17} aria-hidden="true" />Restore from a copy
+              <input type="file" accept="application/json,.json" onChange={onImport} />
+            </label>
+          </div>
+        </SettingsGroup>
+
+        <details className="settings-page__more">
+          <summary>More options <ChevronRight size={18} aria-hidden="true" /></summary>
+          <div className="settings-page__more-content">
         <SettingsGroup title="Home & navigation" icon={<Compass size={18} />}>
           <label className="settings-page__toggle settings-page__navigation-toggle">
-            <span className="settings-page__toggle-copy"><strong>Home</strong><span>In the navigation bar</span></span>
+            <span className="settings-page__toggle-copy"><strong>Home in bottom bar</strong></span>
             <input type="checkbox" role="switch" aria-label="Home in navigation bar" checked={showHome}
               onChange={event => onHomeVisibilityChange(event.currentTarget.checked)} />
           </label>
           <label className="settings-page__toggle settings-page__navigation-toggle">
-            <span className="settings-page__toggle-copy"><strong>Ask LifeOS</strong><span>In the navigation bar</span></span>
+            <span className="settings-page__toggle-copy"><strong>Ask LifeOS in bottom bar</strong></span>
             <input type="checkbox" role="switch" aria-label="Ask LifeOS in navigation bar" checked={showAskLifeOS}
               onChange={event => onAskLifeOSVisibilityChange(event.currentTarget.checked)} />
           </label>
@@ -153,64 +208,11 @@ export default function SettingsPage({
           </fieldset>)}
         </SettingsGroup>
 
-        <SettingsGroup title="Focus & reminders" icon={<Timer size={18} />}>
-          {onOpenPresets && <button type="button" className="settings-page__action" onClick={onOpenPresets}>
-            Presets <ChevronRight size={17} aria-hidden="true" />
-          </button>}
-          {postFocusAction && <fieldset className="settings-page__post-focus">
-            <legend>After a focus session</legend>
-            <p className="settings-page__description">Choose what opens after you finish. You can change this at any time.</p>
-            {([
-              { value: 'reflection', title: 'Reflection', description: 'Recommended · Reflect on what helped.' },
-              { value: 'check-in', title: 'Automatic check-in', description: 'Rate interest, desire to continue, and progress.' },
-            ] as const).map(option => <label key={option.value} className="settings-page__post-focus-option">
-              <input type="radio" name="lifeos-post-focus" value={option.value}
-                checked={postFocusAction.value === option.value}
-                onChange={() => postFocusAction.onChange(option.value)} />
-              <span><strong>{option.title}</strong><small>{option.description}</small></span>
-            </label>)}
-            {!postFocusAction.value && <p className="settings-page__description">No preference saved yet. You can choose now or after finishing a focus session.</p>}
-          </fieldset>}
-          {focusCheckin && !postFocusAction?.value && <label className="settings-page__toggle">
-            <span className="settings-page__toggle-copy">
-              <strong>Focus check-in</strong>
-              <span id="settings-page-focus-help">Ask how the session felt when I finish.</span>
-            </span>
-            <input type="checkbox" role="switch" aria-label="Focus check-in"
-              aria-describedby="settings-page-focus-help" checked={focusCheckin.enabled}
-              onChange={event => focusCheckin.onChange(event.currentTarget.checked)} />
-          </label>}
-          <label className="settings-page__field">
-            <strong>Break reminder</strong>
-            <select value={reminderMinutes} onChange={event => {
-              const selected = breakReminderMinutes.find(minutes => String(minutes) === event.currentTarget.value)
-              if (selected !== undefined) onReminderMinutesChange(selected)
-            }}>
-              {breakReminderMinutes.map(minutes => (
-                <option key={minutes} value={minutes}>{minutes ? `After ${minutes} minutes` : 'Off'}</option>
-              ))}
-            </select>
-          </label>
-        </SettingsGroup>
-
-        <SettingsGroup title="Backup & restore" icon={<HardDrive size={18} />}>
-          <p className="settings-page__description">
-            Your data stays in this browser. Use a backup to move it to another device.
-          </p>
-          <div className="settings-page__actions">
-            <button type="button" className="settings-page__action" onClick={onExport}>
-              <Download size={17} aria-hidden="true" />Export backup
-            </button>
-            <label className="settings-page__action settings-page__upload">
-              <Upload size={17} aria-hidden="true" />Restore backup
-              <input type="file" accept="application/json,.json" onChange={onImport} />
-            </label>
-          </div>
-        </SettingsGroup>
-
         <SettingsGroup title="About" icon={<Info size={18} />} summary="v0.1">
           <AboutLifeOS repoUrl={repoUrl} />
         </SettingsGroup>
+          </div>
+        </details>
       </div>
     </main>
   )

@@ -1,17 +1,18 @@
 import { X } from 'lucide-react'
 import { useId, type ReactNode, type RefObject } from 'react'
 
-export function JournalSheet({ dialog, label, closeLabel, onClose, children }: {
+export function JournalSheet({ dialog, label, closeLabel, onClose, className, children }: {
   dialog: RefObject<HTMLDialogElement | null>
   label: string
   closeLabel: string
   onClose?: () => void
+  className?: string
   children: ReactNode
 }) {
   const titleId = useId()
   const close = () => dialog.current?.close()
 
-  return <dialog ref={dialog} className="journal-sheet" aria-labelledby={titleId}
+  return <dialog ref={dialog} className={`journal-sheet${className ? ` ${className}` : ''}`} aria-labelledby={titleId}
     onClose={onClose} onClick={event => { if (event.target === event.currentTarget) close() }}>
     <div className="journal-sheet-body">
       <header>

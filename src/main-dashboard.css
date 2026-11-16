@@ -769,7 +769,7 @@
 
   .life-main-stack {
     margin-block: auto;
-    transform: translateY(clamp(8px, 1.4dvh, 16px));
+    transform: translateY(clamp(24px, 3.5dvh, 44px));
   }
 
   .life-main-tasks {

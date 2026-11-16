@@ -1077,4 +1077,20 @@
     width: auto;
     margin: 0;
   }
+
+  .journal-sheet--centered {
+    inset: 55% 12px auto;
+    max-height: min(70dvh, 520px);
+    margin: 0;
+    transform: translateY(-50%);
+    overflow-y: auto;
+  }
+
+  .journal-sheet--centered .journal-sheet-body > header,
+  .journal-sheet--centered .journal-folder-manager-body > header {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    background: var(--journal-card);
+  }
 }

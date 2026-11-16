@@ -36,6 +36,35 @@
   gap: 14px;
 }
 
+.settings-page__more > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 8px 4px;
+  color: var(--settings-accent);
+  font-weight: 700;
+  list-style: none;
+  cursor: pointer;
+}
+
+.settings-page__more > summary::-webkit-details-marker { display: none; }
+.settings-page__more > summary::marker { content: ''; }
+.settings-page__more[open] > summary svg { transform: rotate(90deg); }
+.settings-page__more-content { display: grid; gap: 14px; padding-top: 8px; }
+.settings-page__more > summary:focus-visible { outline: 2px solid var(--settings-accent); outline-offset: 2px; }
+
+.settings-page__submore > summary {
+  min-height: 44px;
+  padding: 11px 2px;
+  color: var(--settings-accent);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.settings-page__submore[open] > .settings-page__toggle { margin-top: 2px; }
+
 .settings-page__group {
   overflow: hidden;
   border: 1px solid var(--settings-line);
@@ -484,6 +513,19 @@
 }
 
 @media (max-width: 760px) {
+  .settings-page {
+    width: calc(100% - 32px);
+    padding-block: 28px calc(96px + env(safe-area-inset-bottom));
+  }
+
+  .settings-page h1 {
+    margin-bottom: 20px;
+    font-size: 34px;
+  }
+
+  .settings-page__row { min-height: 58px; }
+  .settings-page__icon { flex-basis: 36px; width: 36px; height: 36px; }
+
   .focus-break-reminder {
     bottom: calc(72px + env(safe-area-inset-bottom));
   }

@@ -98,7 +98,7 @@ export default function JournalFolders({ folders, entries, filter, onFilterChang
 
   return <section className="journal-folders" aria-label="Journal folders">
     <div className="journal-folder-toolbar">
-      <FolderPicker label="Show entries" value={filter} onChange={onFilterChange} options={[
+      <FolderPicker label="Show entries" value={filter} onChange={onFilterChange} dialogClassName="journal-sheet--centered" options={[
         { value: 'all', label: 'All entries', icon: Archive },
         { value: 'unfiled', label: 'No folder', icon: FolderOpen },
         ...folders.map(folder => ({ value: `folder:${folder.id}`, label: folder.name, folder })),
@@ -109,7 +109,7 @@ export default function JournalFolders({ folders, entries, filter, onFilterChang
       </button>
     </div>
 
-    <dialog ref={dialog} className="journal-sheet journal-folder-manager" aria-labelledby="journal-folder-manager-title"
+    <dialog ref={dialog} className="journal-sheet journal-folder-manager journal-sheet--centered" aria-labelledby="journal-folder-manager-title"
       onClose={reset} onClick={event => { if (event.target === event.currentTarget) dialog.current?.close() }}>
       <div className="journal-folder-manager-body">
         <header>
