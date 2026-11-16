@@ -404,10 +404,10 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
     },
   }))
 
-  const renderNavigation = (iconSize: number) => <>
+  const renderNavigation = (iconSize: number, bottom = false) => <>
     {showHome && <NavButton icon={<House size={iconSize} />} label="Home" selected={view === 'main'} onClick={() => navigate('main')} />}
-    <NavButton icon={<Settings2 size={iconSize} />} label="Settings" selected={view === 'settings'} onClick={() => navigate('settings')} />
-    {shortcuts.filter(({ id }) => inBar(id)).map(({ id, label }) => {
+    {!bottom && <NavButton icon={<Settings2 size={iconSize} />} label="Settings" selected={view === 'settings'} onClick={() => navigate('settings')} />}
+    {shortcuts.filter(({ id }) => inBar(id)).sort((a, b) => bottom ? Number(b.id === 'tasks') - Number(a.id === 'tasks') : 0).map(({ id, label }) => {
       const Icon = shortcutIcons[id]
       return <NavButton key={id} icon={<Icon size={iconSize} />} label={label} selected={view === id}
         onClick={() => {
@@ -417,6 +417,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
         }} />
     })}
     {showAskLifeOS && <NavButton icon={<MessageCircle size={iconSize} />} label="Ask LifeOS" selected={view === 'ask'} onClick={() => navigate('ask')} />}
+    {bottom && <NavButton icon={<Settings2 size={iconSize} />} label="Settings" selected={view === 'settings'} onClick={() => navigate('settings')} />}
   </>
 
   const renderBrand = (size: number) => {
@@ -656,7 +657,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
       />}
       <UnifiedSearch open={searchOpen} tasks={data.tasks} tasksOnly={!showJournal} entries={showJournal ? data.journal : []}
         onClose={() => setSearchOpen(false)} onSelectTask={openTaskHistory} onSelectEntry={openSearchEntry} />
-      <nav className="mobile-nav" aria-label="Main navigation">{renderNavigation(21)}</nav>
+      <nav className="mobile-nav" aria-label="Main navigation">{renderNavigation(21, true)}</nav>
       {undoNotice}
     </div>
   )
