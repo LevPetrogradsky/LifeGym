@@ -189,8 +189,20 @@
 }
 
 @media (max-width: 520px) {
-  .life-presets-page { padding: 29px 0 120px; }
+  .life-presets-page { padding: 18px 0 120px; }
   .life-presets-content { width: min(100% - 36px, 420px); }
-  .life-presets-grid { grid-template-columns: 1fr; }
-  .life-presets-card { min-height: 108px; }
+  .life-presets-header { gap: 12px; }
+  .life-presets-header h1 { font-size: 31px; }
+  .life-presets-intro { margin: 12px 0 15px; }
+  .life-presets-section-title { margin-bottom: 10px; }
+  .life-presets-grid { grid-template-columns: 1fr; gap: 8px; }
+  .life-presets-card { min-height: 92px; gap: 5px; padding: 10px 13px; border-radius: 15px; }
+  .life-presets-icon { width: 30px; height: 30px; border-radius: 9px; }
+  .life-presets-icon svg { width: 18px; height: 18px; }
+  .life-presets-card strong { font-size: 16px; }
+  .life-presets-card-description { line-height: 1.35; }
+  .life-presets-summary { margin: 12px 0 10px; padding: 13px 15px; }
+  .life-presets-summary h2 { margin-bottom: 7px; }
+  .life-presets-summary-detail { line-height: 1.4; }
+  .life-presets-apply { min-height: 46px; }
 }
