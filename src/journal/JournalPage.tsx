@@ -137,7 +137,8 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folders, folderId, on
           onDraftChange(current => ({ ...current, text }))
         }}
       />
-      {!onCancel && folders && folders.length > 0 && onFolderChange && <div className="journal-form-folder">
+      {!onCancel && folders && onFolderChange && <div className="journal-form-folder">
+        <span className="journal-form-folder-label">{t('Save in folder')}</span>
         <FolderPicker label={t('Save in folder')} value={folderId ?? ''}
           options={[{ value: '', label: t('No folder') }, ...folders.map(folder => ({ value: folder.id, label: folder.name, folder }))]}
           onChange={onFolderChange} />
