@@ -393,6 +393,8 @@
   margin-bottom: 13px;
 }
 
+.life-main-tasks > .life-main-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
 .life-main-filters button {
   min-height: 44px;
   padding: 8px 3px;

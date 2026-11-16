@@ -272,11 +272,11 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
 
     <div className="life-main-filters" role="group" aria-label="Filter tasks">
       {taskLists.map(list => <button type="button" key={list} aria-pressed={filter === list} onClick={() => showList(list)}>{listLabels[list]}</button>)}
+      <button type="button" aria-pressed={filter === 'completed'} onClick={() => showList('completed')}>Done</button>
     </div>
 
-    {filter === 'completed' && <h2 className="life-main-completed-title">Completed tasks</h2>}
-
     <JournalSheet dialog={editorDialog} label={editor?.id ? 'Edit task' : 'New task'} closeLabel="Close task editor"
+      className="journal-sheet--centered"
       onClose={() => { if (!editorDialog.current?.open) setEditor(null) }}>
     {editor && <form className="life-main-editor" onSubmit={saveTask}>
       <label htmlFor="life-main-task-title" className="journal-sr-only">Task name</label>
@@ -372,7 +372,6 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
     {filter === 'today' && todayIsFull && <p className="life-main-limit">Today has five active tasks. Complete or move one to make space.</p>}
     {filter !== 'completed' && <div className="life-main-tasks-footer">
       {canAdd && <button type="button" className="life-main-text" aria-haspopup="dialog" onClick={() => addTo(filter)}><Plus size={18} /> Add a task <ArrowRight size={16} /></button>}
-      <button type="button" className="life-main-text life-main-completed-link" onClick={() => showList('completed')}>Completed <span>{completed.length}</span></button>
     </div>}
   </main>
 }
