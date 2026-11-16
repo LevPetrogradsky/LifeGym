@@ -42,6 +42,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
   const inBar = (id: Shortcut) => shortcutVisible(data, id, 'bar')
   const defaultView = showHome ? 'main' : (['journal', 'tasks'] as const).find(inBar) ?? 'settings'
   const [requestedView, setView] = useState<View>(defaultView)
+  const [homeNavigationKey, setHomeNavigationKey] = useState(0)
   const [presetsReturnView, setPresetsReturnView] = useState<View>(defaultView)
   const [reflectionReturnView, setReflectionReturnView] = useState<View>(defaultView)
   const [reflectionNotice, setReflectionNotice] = useState('')
@@ -412,7 +413,10 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
   }))
 
   const renderNavigation = (iconSize: number, bottom = false) => <>
-    {showHome && <NavButton icon={<House size={iconSize} />} label={t('Home')} selected={view === 'main'} onClick={() => navigate('main')} />}
+    {showHome && <NavButton icon={<House size={iconSize} />} label={t('Home')} selected={view === 'main'} onClick={() => {
+      if (view === 'main') setHomeNavigationKey(key => key + 1)
+      navigate('main')
+    }} />}
     {!bottom && <NavButton icon={<Settings2 size={iconSize} />} label={t('Settings')} selected={view === 'settings'} onClick={() => navigate('settings')} />}
     {visibleShortcuts.filter(({ id }) => inBar(id)).sort((a, b) => bottom ? Number(b.id === 'tasks') - Number(a.id === 'tasks') : 0).map(({ id, label }) => {
       const Icon = shortcutIcons[id]
@@ -539,7 +543,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
         {backupMessage && <div className="storage-error" role="status">{backupMessage}</div>}
         {reflectionNotice && <div className="lifeos-reflection-confirmation" role="status">{reflectionNotice}</div>}
         {breakReminder}
-        {(view === 'main' || view === 'tasks') && <MainDashboard key={view}
+        {(view === 'main' || view === 'tasks') && <MainDashboard key={`${view}:${homeNavigationKey}`}
           initialScreen={view === 'tasks' ? 'tasks' : 'home'}
           onReturnHome={view === 'tasks' ? returnFromSection : undefined}
           returnLabel={returnLabel}

@@ -6,6 +6,7 @@ import { translate } from './language'
 import { JournalSheet } from './journal/JournalSheet'
 import InteractiveTip from './InteractiveTip'
 import './main-dashboard.css'
+import './home-tips.css'
 
 interface MainDashboardProps {
   initialScreen?: 'home' | 'tasks'
@@ -195,7 +196,6 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
 
   const breakCard = pausedTaskTitle !== undefined && <BreakCard taskTitle={pausedTaskTitle} language={language}
     interactiveTips={interactiveTips} onResume={onResume} onFinish={onFinishPaused} />
-
   const addTaskButton = <button type="button" className={`life-main-add-task${!nextTask && !breakCard ? ' life-main-add-task-inline' : ''}`} onClick={() => openTasks(true)}>
     <span className="life-main-shortcut-icon add"><Plus size={21} aria-hidden="true" /></span>
     <strong>{t('Add a task')}</strong>
@@ -213,9 +213,13 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
         </a>
       </div>
       <div className="life-main-hero-actions">
-        <button type="button" className="life-main-icon life-main-settings" aria-label={t(searchIncludesJournal ? 'Search tasks and journal' : 'Search tasks')}
-          aria-haspopup="dialog" onClick={onSearch}><Search size={20} aria-hidden="true" /></button>
-        <button type="button" className="life-main-icon life-main-settings" aria-label={t('Open settings')} onClick={onSettings}><Settings2 size={20} /></button>
+        <span className="home-icon-action">
+          <button type="button" className="life-main-icon life-main-settings" aria-label={t(searchIncludesJournal ? 'Search tasks and journal' : 'Search tasks')}
+            aria-haspopup="dialog" onClick={onSearch}><Search size={20} aria-hidden="true" /></button>
+        </span>
+        <span className="home-icon-action">
+          <button type="button" className="life-main-icon life-main-settings" aria-label={t('Open settings')} onClick={onSettings}><Settings2 size={20} /></button>
+        </span>
       </div>
     </header>
 
@@ -226,7 +230,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
           {totalToday > 0 && <span>{doneToday.length} / {totalToday} {language === 'ru' ? 'выполнено' : 'done'}</span>}
         </div>
         {totalToday > 0 && <progress max={totalToday} value={doneToday.length} aria-label="Today’s task progress" />}
-        {nextTask ? (
+        {nextTask ? <>
           <div className="life-main-next">
             <button type="button" className="life-main-complete" aria-label={`Complete ${nextTask.title}`} onClick={() => toggleTask(nextTask)}><Circle size={22} /></button>
             <div>
@@ -239,7 +243,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
               <Play size={17} fill="currentColor" aria-hidden="true" />
             </button>
           </div>
-        ) : <div className="life-main-today-empty-state">
+        </> : <div className="life-main-today-empty-state">
           <p className="life-main-today-empty">{t(doneToday.length ? 'You’re all caught up' : 'No tasks for today')}</p>
           {addTaskButton}
         </div>}

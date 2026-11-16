@@ -37,7 +37,7 @@ const themes = [
   { value: 'system', label: 'System', Icon: Monitor },
 ] as const
 
-type SettingsSection = 'account' | 'profile' | 'focus' | 'focusOptions' | 'backups' | 'more' | 'navigation' | 'about'
+type SettingsSection = 'account' | 'profile' | 'focus' | 'focusOptions' | 'backups' | 'more' | 'navigation' | 'about' | 'advanced'
 
 function SettingsGroup({ title, icon, summary, open, onOpenChange, children }: {
   title: string
@@ -122,12 +122,12 @@ export default function SettingsPage({
   const t = (text: string) => translate(language, text)
   const [openSections, setOpenSections] = useState<Record<SettingsSection, boolean>>({
     account: true, profile: true, focus: true, focusOptions: false,
-    backups: true, more: false, navigation: false, about: false,
+    backups: false, more: false, navigation: false, about: false, advanced: false,
   })
   const sectionIds: SettingsSection[] = [
     ...(account ? ['account' as const] : []), 'profile', 'focus',
     ...(focusCheckin && !postFocusAction?.value ? ['focusOptions' as const] : []),
-    'backups', 'more', 'navigation', 'about',
+    'more', 'backups', 'navigation', 'about', 'advanced',
   ]
   const anyOpen = sectionIds.some(id => openSections[id])
   const setSection = (id: SettingsSection, open: boolean) =>
@@ -218,6 +218,9 @@ export default function SettingsPage({
           </label>
         </SettingsGroup>
 
+        <details className="settings-page__more" open={openSections.more}>
+          <summary onClick={event => { event.preventDefault(); setSection('more', !openSections.more) }}>{t('More options')} <ChevronRight size={18} aria-hidden="true" /></summary>
+          <div className="settings-page__more-content">
         <SettingsGroup title={t('Backups')} icon={<HardDrive size={18} />} open={openSections.backups} onOpenChange={open => setSection('backups', open)}>
           <div className="settings-page__actions">
             <button type="button" className="settings-page__action" onClick={onExport}>
@@ -229,10 +232,6 @@ export default function SettingsPage({
             </label>
           </div>
         </SettingsGroup>
-
-        <details className="settings-page__more" open={openSections.more}>
-          <summary onClick={event => { event.preventDefault(); setSection('more', !openSections.more) }}>{t('More options')} <ChevronRight size={18} aria-hidden="true" /></summary>
-          <div className="settings-page__more-content">
         <SettingsGroup title={t('Home & navigation')} icon={<Compass size={18} />} open={openSections.navigation} onOpenChange={open => setSection('navigation', open)}>
           <label className="settings-page__toggle settings-page__navigation-toggle">
             <span className="settings-page__toggle-copy"><strong>{t('Home in bottom bar')}</strong></span>
@@ -261,6 +260,13 @@ export default function SettingsPage({
         </SettingsGroup>
           </div>
         </details>
+        <SettingsGroup title={t('Advanced Options')} icon={<Github size={18} />} open={openSections.advanced} onOpenChange={open => setSection('advanced', open)}>
+          <a className="settings-page__action" href="https://github.com/ProgrammerLevpetrogradsky/LifeOS-Public/fork"
+            target="_blank" rel="noopener noreferrer">
+            <Github size={17} aria-hidden="true" />{t('Fork on GitHub')}
+            <ExternalLink className="settings-page__external" size={16} aria-hidden="true" />
+          </a>
+        </SettingsGroup>
       </div>
     </main>
   )
