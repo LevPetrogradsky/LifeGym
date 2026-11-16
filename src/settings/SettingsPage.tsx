@@ -6,6 +6,8 @@ import './settings.css'
 interface SettingsPageProps {
   account?: ReactNode
   theme: Theme
+  language: 'en' | 'ru'
+  onLanguageChange: (language: 'en' | 'ru') => void
   onThemeChange: (theme: Theme) => void
   showHome: boolean
   onHomeVisibilityChange: (visible: boolean) => void
@@ -106,7 +108,7 @@ function AboutLifeOS({ repoUrl }: { repoUrl: string }) {
 
 export default function SettingsPage({
   account,
-  theme, onThemeChange, showHome, onHomeVisibilityChange, showAskLifeOS, onAskLifeOSVisibilityChange, shortcutVisible, onShortcutChange, onExport, onImport, repoUrl, focusCheckin, postFocusAction, onOpenPresets,
+  theme, onThemeChange, language, onLanguageChange, showHome, onHomeVisibilityChange, showAskLifeOS, onAskLifeOSVisibilityChange, shortcutVisible, onShortcutChange, onExport, onImport, repoUrl, focusCheckin, postFocusAction, onOpenPresets,
   reminderMinutes, onReminderMinutesChange, displayName, onDisplayNameChange,
 }: SettingsPageProps) {
   return (
@@ -127,6 +129,15 @@ export default function SettingsPage({
                   <span><Icon size={17} aria-hidden="true" />{label}</span>
                 </label>
               ))}
+            </div>
+          </fieldset>
+          <fieldset className="settings-page__themes">
+            <legend>Language / Язык</legend>
+            <div className="settings-page__theme-options">
+              {(['en', 'ru'] as const).map(value => <label className="settings-page__theme" key={value}>
+                <input type="radio" name="lifeos-language" checked={language === value} onChange={() => onLanguageChange(value)} />
+                <span>{value === 'en' ? 'English' : 'Русский'}</span>
+              </label>)}
             </div>
           </fieldset>
           <DisplayNameForm key={displayName} name={displayName} onSave={onDisplayNameChange} />

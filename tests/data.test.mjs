@@ -26,6 +26,18 @@ test('tasks, sessions, journal, and active focus survive a save and reload', () 
   assert.deepEqual(loadData().data, data)
 })
 
+test('language preference survives reload without changing saved task titles', () => {
+  const memory = new Map()
+  globalThis.localStorage = {
+    getItem: key => memory.get(key) ?? null,
+    setItem: (key, value) => memory.set(key, value),
+  }
+  const data = { ...emptyData(), language: 'ru', tasks: [{ id: 'custom', title: 'My own preset', createdAt: '2026-10-21T10:00:00.000Z', completedAt: null }] }
+  assert.equal(saveData(data), true)
+  assert.equal(loadData().data.language, 'ru')
+  assert.equal(loadData().data.tasks[0].title, 'My own preset')
+})
+
 test('account saves and backup restores leave the guest workspace untouched', async () => {
   const guest = { ...emptyData(), displayName: 'Guest' }
   const account = { ...emptyData(), displayName: 'Account' }

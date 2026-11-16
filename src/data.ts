@@ -175,6 +175,7 @@ export interface LifeOSData {
   activeSession: ActiveSession | null
   pendingSession: PendingSession | null
   theme: Theme
+  language?: 'en' | 'ru'
   hiddenSections?: NavigationSection[]
   askLifeOSInBar?: boolean
   shortcutPreferences?: ShortcutPreferences
@@ -201,6 +202,7 @@ export const emptyData = (): LifeOSData => ({
   activeSession: null,
   pendingSession: null,
   theme: 'system',
+  language: 'en',
 })
 
 export const emptyFlowEngineData = (): FlowEngineData => ({ discoveries: [], hypotheses: [], experiments: [], principles: [] })
@@ -265,6 +267,7 @@ export function validateLifeOSData(value: unknown): value is LifeOSData {
   if (value.displayName !== undefined && (!isString(value.displayName) || value.displayName.length > maxDisplayNameLength)) return false
   if (value.breakReminderMinutes !== undefined && !breakReminderMinutes.some(minutes => minutes === value.breakReminderMinutes)) return false
   if (value.theme !== 'light' && value.theme !== 'dark' && value.theme !== 'system') return false
+  if (value.language !== undefined && value.language !== 'en' && value.language !== 'ru') return false
   if (value.hiddenSections !== undefined && (!Array.isArray(value.hiddenSections) ||
     !value.hiddenSections.every(id => navigationSections.some(section => section.id === id)))) return false
   if (value.askLifeOSInBar !== undefined && typeof value.askLifeOSInBar !== 'boolean') return false

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BookOpen, Check, ChevronRight, Circle, ClipboardList, GripHorizontal, History, ListTodo, MessageCircle, Pause, Pencil, Play, Plus, Search, Settings2, Trash2, X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BookOpen, Check, ChevronRight, Circle, ClipboardList, GripHorizontal, Heart, History, ListTodo, MessageCircle, Pause, Pencil, Play, Plus, Search, Settings2, Trash2, X } from 'lucide-react'
 import { taskLists, type LifeOSData, type Task, type TaskList } from './data'
 import { todayTaskLimit } from './task-rules'
 import { JournalSheet } from './journal/JournalSheet'
@@ -15,6 +15,7 @@ interface MainDashboardProps {
   tasks: Task[]
   pausedTaskTitle?: string
   displayName?: string
+  language?: 'en' | 'ru'
   onResume: () => void
   onFinishPaused: () => void
   onUpdate: (change: (current: LifeOSData) => LifeOSData) => boolean
@@ -35,13 +36,7 @@ const taskList = (task: Task): TaskList => task.list ?? 'today'
 
 type TaskEditor = { id: string | null; title: string; list: TaskList }
 
-function greeting(hour: number) {
-  if (hour < 12) return 'Good morning'
-  if (hour < 18) return 'Good afternoon'
-  return 'Good evening'
-}
-
-export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, tasks, pausedTaskTitle, displayName, onResume, onFinishPaused, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onReflect, onPresets, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
+export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, tasks, pausedTaskTitle, displayName, language = 'en', onResume, onFinishPaused, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onReflect, onPresets, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
   const [screen, setScreen] = useState(initialScreen)
   const [filter, setFilter] = useState<TaskList | 'completed'>('today')
   const [editor, setEditor] = useState<TaskEditor | null>(null)
@@ -190,7 +185,8 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
 
   if (screen === 'home') return <main className="life-main life-main-home">
     <header className="life-main-hero">
-      <h1 ref={heading} tabIndex={-1}>{displayName?.trim() ? `Hey ${displayName.trim()}!` : greeting(now.getHours())}</h1>
+      <div><h1 ref={heading} tabIndex={-1}>{language === 'ru' ? 'Добро пожаловать' : 'Welcome'}{displayName?.trim() ? `, ${displayName.trim()}` : ''}!</h1>
+        <p className="life-main-thanks">{language === 'ru' ? 'Спасибо' : 'Thank you'} <Heart size={13} fill="currentColor" aria-hidden="true" /></p></div>
       <div className="life-main-hero-actions">
         <button type="button" className="life-main-icon life-main-settings" aria-label={searchIncludesJournal ? 'Search tasks and journal' : 'Search tasks'}
           aria-haspopup="dialog" onClick={onSearch}><Search size={20} aria-hidden="true" /></button>

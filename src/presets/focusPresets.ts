@@ -13,33 +13,44 @@ export interface FocusPreset {
 export const focusPresets: readonly FocusPreset[] = [
   {
     id: 'work',
-    label: 'Работа',
-    description: 'Сосредоточьтесь на одной задаче.',
+    label: 'Work',
+    description: 'Focus on one task.',
     reminderMinutes: 20,
     silenceBreakReminders: false,
   },
   {
     id: 'creativity',
-    label: 'Творчество',
-    description: 'Оставьте больше пространства для идей.',
+    label: 'Creativity',
+    description: 'Leave more room for ideas.',
     reminderMinutes: 0,
     silenceBreakReminders: true,
   },
   {
     id: 'grounding',
-    label: 'Заземление',
-    description: 'Короткая пауза и внимание к себе.',
+    label: 'Grounding',
+    description: 'Take a short pause and check in with yourself.',
     reminderMinutes: 5,
     silenceBreakReminders: false,
   },
   {
     id: 'bible-reading',
-    label: 'Чтение Библии',
-    description: 'Спокойное время для внимательного чтения.',
+    label: 'Bible reading',
+    description: 'Make time for quiet, attentive reading.',
     reminderMinutes: 15,
     silenceBreakReminders: false,
   },
 ]
+
+const russianPresetCopy: Record<FocusPresetId, Pick<FocusPreset, 'label' | 'description'>> = {
+  work: { label: 'Работа', description: 'Сосредоточься на одной задаче.' },
+  creativity: { label: 'Творчество', description: 'Оставь больше пространства для идей.' },
+  grounding: { label: 'Заземление', description: 'Сделай короткую паузу и обрати внимание на себя.' },
+  'bible-reading': { label: 'Чтение Библии', description: 'Выдели время на спокойное, внимательное чтение.' },
+}
+
+export function focusPresetCopy(id: FocusPresetId, language: 'en' | 'ru' = 'en') {
+  return language === 'ru' ? russianPresetCopy[id] : findFocusPreset(id)!
+}
 
 export function findFocusPreset(id: FocusPresetId | undefined): FocusPreset | undefined {
   return focusPresets.find(preset => preset.id === id)

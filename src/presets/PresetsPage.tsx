@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, BellOff, BookOpen, BriefcaseBusiness, Check, Leaf, Lightbulb, Timer } from 'lucide-react'
-import { findFocusPreset, focusPresets, type FocusPresetId } from './focusPresets'
+import { findFocusPreset, focusPresetCopy, focusPresets, type FocusPresetId } from './focusPresets'
 import './presets.css'
 
 interface FocusPresetsProps {
+  language?: 'en' | 'ru'
   appliedPresetId?: FocusPresetId
   sessionState: 'idle' | 'active' | 'pending'
   onApply: (id: FocusPresetId) => boolean
@@ -17,7 +18,7 @@ const icons = {
   'bible-reading': BookOpen,
 } as const
 
-export default function FocusPresets({ appliedPresetId, sessionState, onApply, onBack }: FocusPresetsProps) {
+export default function FocusPresets({ language = 'en', appliedPresetId, sessionState, onApply, onBack }: FocusPresetsProps) {
   const [selectedId, setSelectedId] = useState<FocusPresetId>(appliedPresetId ?? 'work')
   const [message, setMessage] = useState('')
   const selected = findFocusPreset(selectedId)!
@@ -28,12 +29,12 @@ export default function FocusPresets({ appliedPresetId, sessionState, onApply, o
 
   const apply = () => {
     const saved = onApply(selectedId)
-    setMessage(saved ? `${selected.label} applied.` : 'Could not save preset. Please try again.')
+    setMessage(saved ? `${focusPresetCopy(selectedId, language).label} ${language === 'ru' ? 'применён' : 'applied'}.` : language === 'ru' ? 'Не удалось сохранить пресет. Повторите попытку.' : 'Could not save preset. Please try again.')
   }
 
-  const actionLabel = sessionState === 'idle' ? 'Apply and start focus'
-    : sessionState === 'active' ? 'Apply to current focus'
-      : 'Save for next focus'
+  const actionLabel = language === 'ru'
+    ? sessionState === 'idle' ? 'Применить и начать фокус' : sessionState === 'active' ? 'Применить к текущему фокусу' : 'Сохранить для следующего фокуса'
+    : sessionState === 'idle' ? 'Apply and start focus' : sessionState === 'active' ? 'Apply to current focus' : 'Save for next focus'
 
   return <main className="life-presets-page">
     <div className="life-presets-content">
@@ -42,16 +43,16 @@ export default function FocusPresets({ appliedPresetId, sessionState, onApply, o
           <ArrowLeft size={22} aria-hidden="true" />
         </button>
         <div>
-          <p className="life-presets-eyebrow">FOCUS MODE</p>
-          <h1>Presets</h1>
+          <p className="life-presets-eyebrow">{language === 'ru' ? 'РЕЖИМ ФОКУСА' : 'FOCUS MODE'}</p>
+          <h1>{language === 'ru' ? 'Пресеты' : 'Presets'}</h1>
         </div>
       </header>
 
-      <p className="life-presets-intro">Choose a setup for your focus time.</p>
+      <p className="life-presets-intro">{language === 'ru' ? 'Выберите настройку для времени фокуса.' : 'Choose a setup for your focus time.'}</p>
 
       <section aria-labelledby="life-presets-list-title">
-        <h2 id="life-presets-list-title" className="life-presets-section-title">Choose a preset</h2>
-        <div className="life-presets-grid" role="group" aria-label="Focus presets">
+        <h2 id="life-presets-list-title" className="life-presets-section-title">{language === 'ru' ? 'Выберите пресет' : 'Choose a preset'}</h2>
+        <div className="life-presets-grid" role="group" aria-label={language === 'ru' ? 'Пресеты фокуса' : 'Focus presets'}>
           {focusPresets.map(preset => {
             const Icon = icons[preset.id]
             const isSelected = selectedId === preset.id
@@ -60,24 +61,24 @@ export default function FocusPresets({ appliedPresetId, sessionState, onApply, o
               aria-pressed={isSelected} onClick={() => { setSelectedId(preset.id); setMessage('') }}>
               <span className="life-presets-card-top">
                 <span className="life-presets-icon"><Icon size={20} aria-hidden="true" /></span>
-                {isApplied && <span className="life-presets-applied"><Check size={13} aria-hidden="true" /> Applied</span>}
+                {isApplied && <span className="life-presets-applied"><Check size={13} aria-hidden="true" /> {language === 'ru' ? 'Применён' : 'Applied'}</span>}
               </span>
-              <strong>{preset.label}</strong>
-              <span className="life-presets-card-description">{preset.description}</span>
+              <strong>{focusPresetCopy(preset.id, language).label}</strong>
+              <span className="life-presets-card-description">{focusPresetCopy(preset.id, language).description}</span>
             </button>
           })}
         </div>
       </section>
 
-      <section className="life-presets-summary" aria-live="polite" aria-label="Selected preset settings">
-        <h2>{selected.label}</h2>
+      <section className="life-presets-summary" aria-live="polite" aria-label={language === 'ru' ? 'Настройки выбранного пресета' : 'Selected preset settings'}>
+        <h2>{focusPresetCopy(selectedId, language).label}</h2>
         <div className="life-presets-summary-detail">
           <Timer size={17} aria-hidden="true" />
-          <span>{selected.reminderMinutes ? `Break reminder after ${selected.reminderMinutes} minutes` : 'Break reminders off'}</span>
+          <span>{selected.reminderMinutes ? language === 'ru' ? `Напоминание о перерыве через ${selected.reminderMinutes} мин` : `Break reminder after ${selected.reminderMinutes} minutes` : language === 'ru' ? 'Напоминания о перерыве выключены' : 'Break reminders off'}</span>
         </div>
         <div className="life-presets-summary-detail">
           <BellOff size={17} aria-hidden="true" />
-          <span>{selected.silenceBreakReminders ? 'LifeOS reminders silenced' : 'LifeOS reminders on'}</span>
+          <span>{selected.silenceBreakReminders ? language === 'ru' ? 'Напоминания LifeOS отключены' : 'LifeOS reminders silenced' : language === 'ru' ? 'Напоминания LifeOS включены' : 'LifeOS reminders on'}</span>
         </div>
       </section>
 

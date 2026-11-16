@@ -51,11 +51,11 @@ function ConnectedApp({ auth }: { auth: AccountAuth }) {
   if (error) return <App account={<div className="settings-page__account">
     <p className="settings-page__description" role="alert">Could not connect to your account. You can use LifeOS as a guest.</p>
     <button type="button" className="settings-page__action" onClick={() => void refetch()}>Try again</button>
-  </div>} />
+  </div>} existingAccount />
 
   const user = data?.user
   const storageKey = user ? `${STORAGE_KEY}.neon.${user.id}` : undefined
-  return <App key={storageKey ?? STORAGE_KEY} storageKey={storageKey}
+  return <App key={storageKey ?? STORAGE_KEY} storageKey={storageKey} existingAccount={Boolean(user)}
     account={<AccountPanel auth={auth} user={user} refreshSession={refetch} />} />
 }
 

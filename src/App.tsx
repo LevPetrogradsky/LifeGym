@@ -15,6 +15,8 @@ import FocusPresets from './presets/PresetsPage'
 import { applyFocusPreset, findFocusPreset, type FocusPresetId } from './presets/focusPresets'
 import { useDeleteUndo } from './delete-undo'
 import UnifiedSearch from './search/UnifiedSearch'
+import WebOnboarding, { type OnboardingDestination } from './onboarding/WebOnboarding'
+import { completionKey, initialOnboardingMode } from './onboarding/state'
 import './reflection-confirmation.css'
 import './mobile-navigation.css'
 
@@ -23,8 +25,9 @@ const shortcutIcons = { tasks: ClipboardList, journal: BookOpen, focus: Play, fl
 const factors: Factor[] = ['Meaningful Goal', 'Personal Control', 'Fast Feedback', 'Other']
 const repoUrl = 'https://github.com/ProgrammerLevpetrogradsky/LifeOS-Public'
 
-function App({ storageKey, account }: { storageKey?: string; account?: ReactNode }) {
+function App({ storageKey, account, existingAccount = false }: { storageKey?: string; account?: ReactNode; existingAccount?: boolean }) {
   const [loadResult, setLoadResult] = useState(() => loadData(storageKey))
+  const [onboardingMode, setOnboardingMode] = useState(() => initialOnboardingMode(storageKey, localStorage, window.location.search, existingAccount))
   const data = loadResult.data
   const dataRef = useRef(data)
   const hiddenSections = data.hiddenSections ?? []
@@ -458,6 +461,27 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
   const breakReminder = reminderDueAt !== null && <BreakReminder dueAt={reminderDueAt}
     onResume={resumeSession} onDismiss={dismissBreakReminder} />
 
+  const clearOnboardingPreviewUrl = () => {
+    const url = new URL(window.location.href)
+    if (!url.searchParams.has('onboarding')) return
+    url.searchParams.delete('onboarding')
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash)
+  }
+
+  const finishOnboarding = (name: string, destination: OnboardingDestination) => {
+    if (onboardingMode === 'first-run') {
+      if (!update(current => ({ ...current, displayName: name || undefined }))) return false
+      try { localStorage.setItem(completionKey(storageKey), 'done') } catch { /* Saved data itself marks an existing user. */ }
+    }
+    clearOnboardingPreviewUrl()
+    setOnboardingMode(null)
+    navigate(destination === 'focus' ? 'presets' : destination)
+    return true
+  }
+
+  if (onboardingMode) return <WebOnboarding mode={onboardingMode} displayName={data.displayName ?? ''} account={existingAccount ? undefined : account}
+    onComplete={finishOnboarding} onClose={() => { clearOnboardingPreviewUrl(); setOnboardingMode(null) }} />
+
   if (data.activeSession && (!pausedSession || pausedFocusScreen === pausedSession.id)) return <>
     <MainFocus
       session={data.activeSession}
@@ -536,6 +560,7 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
           tasks={data.tasks}
           pausedTaskTitle={pausedSession?.taskTitle}
           displayName={data.displayName}
+          language={data.language ?? 'en'}
           onResume={resumeSession}
           onFinishPaused={endSession}
           onUpdate={update}
@@ -563,6 +588,7 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
         </main>}
 
         {view === 'presets' && <FocusPresets
+          language={data.language ?? 'en'}
           appliedPresetId={data.focusPresetId}
           sessionState={data.pendingSession ? 'pending' : data.activeSession ? 'active' : 'idle'}
           onApply={applyPreset}
@@ -593,6 +619,8 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
           <SettingsPage
             account={account}
             theme={data.theme}
+            language={data.language ?? 'en'}
+            onLanguageChange={language => update(current => ({ ...current, language }))}
             onThemeChange={theme => update(current => ({ ...current, theme }))}
             showHome={showHome}
             onHomeVisibilityChange={changeHomeVisibility}

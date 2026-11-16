@@ -66,6 +66,7 @@
   font-weight: 750;
   overflow-wrap: anywhere;
 }
+.life-main-thanks { display: flex; align-items: center; gap: 5px; margin: 7px 0 0; color: var(--main-muted); font-size: 13px; }
 
 .life-main-icon {
   display: grid;
