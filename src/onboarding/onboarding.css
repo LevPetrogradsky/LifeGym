@@ -96,7 +96,24 @@
 .lifeos-onboarding__primary { display: block; width: min(100%, 472px); min-height: 56px; margin: 0 auto; border: 0; border-radius: 18px; background: var(--onboarding-accent); color: #fff; font-size: 17px; font-weight: 700; }
 [data-theme='dark'] .lifeos-onboarding__primary { color: #102033; }
 .lifeos-onboarding__error { width: min(100%, 472px); margin: 0 auto 8px; color: #b33b30; font-size: 13px; }
-.lifeos-onboarding__sign-in { display: block; margin: 22px auto 0; padding: 12px; border: 0; background: transparent; color: var(--onboarding-accent); font-size: 15px; font-weight: 700; text-decoration: underline; }
+.lifeos-onboarding__account-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 22px auto 0;
+}
+.lifeos-onboarding__account-options button {
+  min-height: 44px;
+  padding: 8px 6px;
+  border: 1px solid var(--onboarding-accent);
+  border-radius: 12px;
+  background: var(--onboarding-surface);
+  color: var(--onboarding-accent);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.lifeos-onboarding__account-options + .lifeos-onboarding__items { margin-top: 16px; gap: 8px; }
 .lifeos-onboarding__account { margin-top: 22px; }
 .lifeos-onboarding__account .settings-page__account { color: var(--onboarding-ink); }
 .lifeos-onboarding__account .settings-page__description { color: var(--onboarding-muted); }

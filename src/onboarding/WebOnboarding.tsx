@@ -2,6 +2,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { ArrowLeft, BookOpen, Check, ClipboardList, Timer, X } from 'lucide-react'
 import { maxDisplayNameLength } from '../data'
 import { requestOnboardingFeedback, type OnboardingMode } from './state'
+import { translate, type AppLanguage } from '../language'
+import type { AccountEntryMode } from '../settings/AccountPanel'
 import './onboarding.css'
 
 export type OnboardingDestination = 'tasks' | 'journal' | 'focus'
@@ -9,7 +11,8 @@ export type OnboardingDestination = 'tasks' | 'journal' | 'focus'
 interface Props {
   mode: Exclude<OnboardingMode, null>
   displayName: string
-  account?: ReactNode
+  account?: (mode: AccountEntryMode) => ReactNode
+  language: AppLanguage
   onComplete: (name: string, destination: OnboardingDestination) => boolean
   onClose: () => void
 }
@@ -33,9 +36,10 @@ const descriptions = [
   'Pick a starting point. Everything else stays one tap away.',
 ]
 
-export default function WebOnboarding({ mode, displayName, account, onComplete, onClose }: Props) {
+export default function WebOnboarding({ mode, displayName, account, language, onComplete, onClose }: Props) {
   const [step, setStep] = useState(1)
-  const [showSignIn, setShowSignIn] = useState(false)
+  const [accountMode, setAccountMode] = useState<AccountEntryMode>()
+  const t = (text: string) => translate(language, text)
   const [name, setName] = useState(displayName)
   const [destination, setDestination] = useState<OnboardingDestination>('tasks')
   const [error, setError] = useState('')
@@ -69,7 +73,7 @@ export default function WebOnboarding({ mode, displayName, account, onComplete, 
   return <div className="lifeos-onboarding" role="dialog" aria-modal="true" aria-label="Welcome to LifeOS"
     style={{ height: visibleViewport.height ? `${visibleViewport.height}px` : '100dvh', top: visibleViewport.top }}>
     <div className="lifeos-onboarding__header">
-      {step > 1 || showSignIn ? <button type="button" className="lifeos-onboarding__back" onClick={showSignIn ? () => setShowSignIn(false) : back}>
+      {step > 1 || accountMode ? <button type="button" className="lifeos-onboarding__back" onClick={accountMode ? () => setAccountMode(undefined) : back}>
         <ArrowLeft size={17} aria-hidden="true" /> Back
       </button> : <span />}
       <span className="lifeos-onboarding__progress" aria-label={`Step ${step} of 3`}>{step} of 3</span>
@@ -80,25 +84,27 @@ export default function WebOnboarding({ mode, displayName, account, onComplete, 
 
     <main className="lifeos-onboarding__content" key={step}>
       <p className="lifeos-onboarding__eyebrow">LifeOS</p>
-      <h1>{showSignIn ? 'Sign in to LifeOS' : titles[step - 1]}</h1>
-      {!showSignIn && <p className="lifeos-onboarding__description">{descriptions[step - 1]}</p>}
+      <h1>{accountMode ? t('Account') : titles[step - 1]}</h1>
+      {!accountMode && <p className="lifeos-onboarding__description">{descriptions[step - 1]}</p>}
 
-      {showSignIn && <div className="lifeos-onboarding__account">{account}</div>}
-      {step === 1 && !showSignIn && <div className="lifeos-onboarding__items">
+      {accountMode && <div className="lifeos-onboarding__account">{account?.(accountMode)}</div>}
+      {step === 1 && !accountMode && account && <div className="lifeos-onboarding__account-options">
+        <button type="button" onClick={() => setAccountMode('sign-up')}>{t('Create account')}</button>
+        <button type="button" onClick={() => setAccountMode('sign-in')}>{t('Sign in')}</button>
+      </div>}
+      {step === 1 && !accountMode && <div className="lifeos-onboarding__items">
         {features.map(({ Icon, title, detail }) => <div className="lifeos-onboarding__feature" key={title}>
           <span className="lifeos-onboarding__icon"><Icon size={22} aria-hidden="true" /></span>
           <span><strong>{title}</strong><small>{detail}</small></span>
         </div>)}
       </div>}
-
-      {step === 1 && !showSignIn && account && <button type="button" className="lifeos-onboarding__sign-in" onClick={() => setShowSignIn(true)}>Already have an account? Sign in</button>}
-      {step === 2 && !showSignIn && <label className="lifeos-onboarding__name">
+      {step === 2 && !accountMode && <label className="lifeos-onboarding__name">
         <strong>What should we call you?</strong>
         <input type="text" autoComplete="nickname" maxLength={maxDisplayNameLength} value={name}
           placeholder="Your name (optional)" onChange={event => setName(event.currentTarget.value)} />
       </label>}
 
-      {step === 3 && !showSignIn && <div className="lifeos-onboarding__items" role="radiogroup" aria-label="First section">
+      {step === 3 && !accountMode && <div className="lifeos-onboarding__items" role="radiogroup" aria-label="First section">
         {destinations.map(option => <button type="button" role="radio" aria-checked={destination === option.id}
           className={`lifeos-onboarding__destination${destination === option.id ? ' is-selected' : ''}`}
           key={option.id} onClick={() => { requestOnboardingFeedback(); setDestination(option.id) }}>
@@ -108,10 +114,10 @@ export default function WebOnboarding({ mode, displayName, account, onComplete, 
       </div>}
     </main>
 
-    {!showSignIn && <div className="lifeos-onboarding__footer">
+    {!accountMode && <div className="lifeos-onboarding__footer">
       {error && <p role="alert" className="lifeos-onboarding__error">{error}</p>}
       <button type="button" className="lifeos-onboarding__primary" onClick={advance}>
-        {step === 3 ? 'Open LifeOS' : 'Continue'}
+        {step === 1 ? t('Continue as a guest') : step === 3 ? 'Open LifeOS' : 'Continue'}
       </button>
     </div>}
   </div>

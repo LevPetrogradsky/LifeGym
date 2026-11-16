@@ -15,6 +15,7 @@ import FocusPresets from './presets/PresetsPage'
 import { applyFocusPreset, findFocusPreset, type FocusPresetId } from './presets/focusPresets'
 import { useDeleteUndo } from './delete-undo'
 import UnifiedSearch from './search/UnifiedSearch'
+import type { AccountEntryMode } from './settings/AccountPanel'
 import WebOnboarding, { type OnboardingDestination } from './onboarding/WebOnboarding'
 import { completionKey, initialOnboardingMode } from './onboarding/state'
 import { translate, type AppLanguage } from './language'
@@ -26,13 +27,13 @@ const shortcutIcons = { tasks: ClipboardList, journal: BookOpen, focus: Play, fl
 const factors: Factor[] = ['Meaningful Goal', 'Personal Control', 'Fast Feedback', 'Other']
 const repoUrl = 'https://github.com/ProgrammerLevpetrogradsky/LifeOS-Public'
 
-function App({ storageKey, account, existingAccount = false }: { storageKey?: string; account?: ReactNode | ((language: AppLanguage) => ReactNode); existingAccount?: boolean }) {
+function App({ storageKey, account, existingAccount = false }: { storageKey?: string; account?: (language: AppLanguage, initialMode?: AccountEntryMode) => ReactNode; existingAccount?: boolean }) {
   const [loadResult, setLoadResult] = useState(() => loadData(storageKey))
   const [onboardingMode, setOnboardingMode] = useState(() => initialOnboardingMode(storageKey, localStorage, window.location.search, existingAccount))
   const data = loadResult.data
   const language = data.language ?? 'en'
   const t = (text: string) => translate(language, text)
-  const accountContent = typeof account === 'function' ? account(language) : account
+  const accountContent = account?.(language)
   const dataRef = useRef(data)
   const hiddenSections = data.hiddenSections ?? []
   const showHome = !hiddenSections.includes('main')
@@ -465,7 +466,8 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
     return true
   }
 
-  if (onboardingMode) return <WebOnboarding mode={onboardingMode} displayName={data.displayName ?? ''} account={existingAccount ? undefined : accountContent}
+  if (onboardingMode) return <WebOnboarding mode={onboardingMode} displayName={data.displayName ?? ''} language={language}
+    account={account && !existingAccount ? mode => account(language, mode) : undefined}
     onComplete={finishOnboarding} onClose={() => { clearOnboardingPreviewUrl(); setOnboardingMode(null) }} />
 
   if (data.activeSession && (!pausedSession || pausedFocusScreen === pausedSession.id)) return <>

@@ -57,7 +57,7 @@ function ConnectedApp({ auth }: { auth: AccountAuth }) {
   const user = data?.user
   const storageKey = user ? `${STORAGE_KEY}.neon.${user.id}` : undefined
   return <App key={storageKey ?? STORAGE_KEY} storageKey={storageKey} existingAccount={Boolean(user)}
-    account={language => <AccountPanel auth={auth} user={user} refreshSession={refetch} language={language} />} />
+    account={(language, initialMode) => <AccountPanel auth={auth} user={user} refreshSession={refetch} language={language} initialMode={initialMode} />} />
 }
 
 export default function AccountApp() {

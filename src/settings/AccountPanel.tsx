@@ -2,14 +2,15 @@ import { useState, type FormEvent } from 'react'
 import type { AccountAuth } from '../accounts'
 import { translate, type AppLanguage } from '../language'
 
-type Mode = 'sign-in' | 'sign-up' | 'reset'
+export type AccountEntryMode = 'sign-in' | 'sign-up'
+type Mode = AccountEntryMode | 'reset'
 type AccountUser = { email: string }
 
-export default function AccountPanel({ auth, user, refreshSession, language }: {
-  auth: AccountAuth; user?: AccountUser; refreshSession: () => Promise<unknown>; language: AppLanguage
+export default function AccountPanel({ auth, user, refreshSession, language, initialMode = 'sign-in' }: {
+  auth: AccountAuth; user?: AccountUser; refreshSession: () => Promise<unknown>; language: AppLanguage; initialMode?: AccountEntryMode
 }) {
   const t = (text: string) => translate(language, text)
-  const [mode, setMode] = useState<Mode>('sign-in')
+  const [mode, setMode] = useState<Mode>(initialMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -67,7 +68,7 @@ export default function AccountPanel({ auth, user, refreshSession, language }: {
     })
   }
 
-  return <div className="settings-page__account">
+  return <div className="settings-page__account settings-page__account-card">
     {user ? <>
       <p className="settings-page__description settings-page__email">{user.email}</p>
       <button className="settings-page__action" disabled={busy} onClick={() => void run(async () => {
@@ -77,6 +78,10 @@ export default function AccountPanel({ auth, user, refreshSession, language }: {
         changeMode('sign-in')
       })}>{t('Sign out')}</button>
     </> : <form className="settings-page__account" onSubmit={submit}>
+      {mode !== 'reset' && <div className="settings-page__account-modes" aria-label={t('Account')}>
+        <button type="button" aria-pressed={mode === 'sign-in'} disabled={busy} onClick={() => changeMode('sign-in')}>{t('Sign in')}</button>
+        <button type="button" aria-pressed={mode === 'sign-up'} disabled={busy} onClick={() => changeMode('sign-up')}>{t('Create account')}</button>
+      </div>}
       <label className="settings-page__field">{t('Email')}
         <input type="email" autoComplete="username" required value={email} onChange={event => setEmail(event.currentTarget.value)} />
       </label>
@@ -84,15 +89,12 @@ export default function AccountPanel({ auth, user, refreshSession, language }: {
         <input type="password" autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'}
           required minLength={mode === 'sign-up' ? 8 : undefined} value={password} onChange={event => setPassword(event.currentTarget.value)} />
       </label>}
-      <button className="settings-page__action" type="submit" disabled={busy}>
+      <button className="settings-page__action settings-page__account-submit" type="submit" disabled={busy}>
         {t(mode === 'sign-up' ? 'Create account' : mode === 'reset' ? 'Send reset link' : 'Sign in')}
       </button>
       <div className="settings-page__account-links">
-        {mode !== 'sign-in' && <button type="button" disabled={busy} onClick={() => changeMode('sign-in')}>{t('Sign in')}</button>}
-        {mode === 'sign-in' && <>
-          <button type="button" disabled={busy} onClick={() => changeMode('sign-up')}>{t('Create account')}</button>
-          <button type="button" disabled={busy} onClick={() => changeMode('reset')}>{t('Forgot password?')}</button>
-        </>}
+        {mode === 'reset' && <button type="button" disabled={busy} onClick={() => changeMode('sign-in')}>{t('Sign in')}</button>}
+        {mode === 'sign-in' && <button type="button" disabled={busy} onClick={() => changeMode('reset')}>{t('Forgot password?')}</button>}
       </div>
     </form>}
     {notice && <p className="settings-page__description" role="status">{t(notice)}</p>}

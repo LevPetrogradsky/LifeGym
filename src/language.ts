@@ -45,6 +45,7 @@ const russian: Record<string, string> = {
   'Email': 'Эл. почта',
   'Password': 'Пароль',
   'Sign in': 'Войти',
+  'Continue as a guest': 'Продолжить как гость',
   'Create account': 'Создать аккаунт',
   'Forgot password?': 'Забыли пароль?',
   'Sign out': 'Выйти',
