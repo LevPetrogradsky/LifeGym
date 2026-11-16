@@ -66,6 +66,12 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
     catch { return true }
   })
   const [pausedFocusScreen, setPausedFocusScreen] = useState<string>()
+  const [minimizedFocusScreen, setMinimizedFocusScreen] = useState<string | undefined>(() => {
+    try {
+      const id = loadResult.data.activeSession?.id
+      return id && localStorage.getItem(`${storageKey ?? STORAGE_KEY}.focus-minimized`) === id ? id : undefined
+    } catch { return undefined }
+  })
   const [now, setNow] = useState(Date.now())
   const [interest, setInterest] = useState(0)
   const [continueDesire, setContinueDesire] = useState(0)
@@ -75,6 +81,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
   const [taskHistoryId, setTaskHistoryId] = useState<string | null>(null)
   const [journalTaskId, setJournalTaskId] = useState<string | undefined>()
   const [journalDraft, setJournalDraft] = useState<JournalDraft>(() => readJournalDraft(storageKey) ?? { text: '' })
+  const [journalDraftError, setJournalDraftError] = useState(false)
   const journalDraftRef = useRef(journalDraft)
   const journalCloud = useRef<JournalCloudSync | null>(null)
   const [journalCloudStatus, setJournalCloudStatus] = useState('')
@@ -118,7 +125,9 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
   const changeJournalDraft = (change: SetStateAction<JournalDraft>) => {
     const next = typeof change === 'function' ? change(journalDraftRef.current) : change
     journalDraftRef.current = next
-    if (!writeJournalDraft(next, storageKey)) setStorageError(true)
+    const persisted = writeJournalDraft(next, storageKey)
+    setJournalDraftError(!persisted)
+    if (!persisted) setStorageError(true)
     setJournalDraft(next)
   }
   const toggleFocusTime = () => {
@@ -256,6 +265,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
       },
     }))
     if (started) {
+      setMinimizedFocusScreen(undefined)
       setNow(now)
     }
     return started
@@ -282,10 +292,28 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
       ...current,
       activeSession: { ...session, pausedAt: undefined, pausedDurationMs, breakReminderDismissed: undefined },
     }))) {
+      setMinimizedFocusScreen(undefined)
+      try { localStorage.removeItem(`${storageKey ?? STORAGE_KEY}.focus-minimized`) } catch { /* Focus still opens. */ }
       setPausedFocusScreen(undefined)
       setNow(now)
       window.scrollTo({ top: 0, behavior: 'instant' })
     }
+  }
+
+  const returnToFocus = () => {
+    setMinimizedFocusScreen(undefined)
+    try { localStorage.removeItem(`${storageKey ?? STORAGE_KEY}.focus-minimized`) } catch { /* Focus still opens. */ }
+    setNow(Date.now())
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }
+
+  const minimizeFocus = () => {
+    const session = dataRef.current.activeSession
+    if (!session || session.pausedAt) return
+    try { localStorage.setItem(`${storageKey ?? STORAGE_KEY}.focus-minimized`, session.id) }
+    catch { setStorageError(true) }
+    setMinimizedFocusScreen(session.id)
+    navigate(showHome ? 'main' : defaultView)
   }
 
   const toggleFocusSilence = () => {
@@ -309,6 +337,8 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
     if (!current.activeSession) return
     const finished = { ...current.activeSession, endedAt: new Date().toISOString() }
     if (!update(data => ({ ...recordUnratedSession({ ...data, activeSession: null }, finished), pendingSession: finished }))) return
+    setMinimizedFocusScreen(undefined)
+    try { localStorage.removeItem(`${storageKey ?? STORAGE_KEY}.focus-minimized`) } catch { /* Session is already saved. */ }
     setCheckingIn(false)
     setInterest(0)
     setContinueDesire(0)
@@ -369,6 +399,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
     }))
     if (saved) {
       if (!clearJournalDraft(storageKey)) setStorageError(true)
+      setJournalDraftError(false)
       journalDraftRef.current = { text: '' }
       setJournalDraft({ text: '' })
       setJournalTaskId(undefined)
@@ -509,6 +540,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
         onClick={() => {
           if (id !== 'focus') navigate(id)
           else if (data.activeSession?.pausedAt) resumeSession()
+          else if (data.activeSession) returnToFocus()
           else startFocus()
         }} />
     })}
@@ -559,7 +591,8 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
     account={account && !existingAccount ? mode => account(language, mode) : undefined}
     onComplete={finishOnboarding} onClose={() => { clearOnboardingPreviewUrl(); setOnboardingMode(null) }} />
 
-  if (data.activeSession && (!pausedSession || pausedFocusScreen === pausedSession.id)) return <>
+  if (data.activeSession && ((!pausedSession && minimizedFocusScreen !== data.activeSession.id) ||
+    (pausedSession !== null && pausedFocusScreen === pausedSession.id))) return <>
     <MainFocus
       language={language}
       session={data.activeSession}
@@ -574,6 +607,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
       onPause={() => pauseSession(true)}
       onResume={resumeSession}
       onLeave={() => pauseSession(false)}
+      onMinimize={minimizeFocus}
       returnDestination={showHome ? 'Home' : shortcuts.find(({ id }) => id === defaultView)?.label ?? 'Settings'}
       onFinish={endSession}
     >
@@ -637,13 +671,14 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
           searchIncludesJournal={showJournal}
           repoUrl={repoUrl}
           tasks={data.tasks}
-          pausedTaskTitle={pausedSession?.taskTitle}
-          pausedActiveTime={pausedSession ? elapsedClock(focusedDuration(pausedSession, Date.parse(pausedSession.pausedAt!))) : undefined}
+          focusTaskTitle={data.activeSession?.taskTitle}
+          focusRunning={Boolean(data.activeSession && !pausedSession)}
+          pausedActiveTime={data.activeSession ? elapsedClock(focusedDuration(data.activeSession, now)) : undefined}
           showPausedTime={showTime}
           displayName={data.displayName}
           language={data.language ?? 'en'}
           interactiveTips={data.interactiveTips !== false}
-          onResume={resumeSession}
+          onResume={pausedSession ? resumeSession : returnToFocus}
           onFinishPaused={endSession}
           onUpdate={update}
           onOpenTask={openTaskHistory}
@@ -689,6 +724,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
 
         {view === 'journal' && (
           <JournalPage language={language} timeFormat={timeFormat} entries={data.journal} folders={data.journalFolders ?? []} draft={journalDraft} onDraftChange={changeJournalDraft}
+            draftSaveError={journalDraftError}
             draftStorageKey={storageKey} onDraftStorageError={() => setStorageError(true)}
             cloudStatus={journalCloudToken ? journalCloudStatus : undefined}
             guestImportCount={guestNotesAvailable} onImportGuest={journalCloudToken ? importGuestJournal : undefined}

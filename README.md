@@ -29,10 +29,10 @@ Journal cloud sync is disabled in the public demo. Its preview-only API is gated
 
 - **Home and Tasks:** Keep up to five active tasks in Today and later ideas in Someday. Task history shows focus sessions and linked Journal notes, with actions to start focus or link a note.
 - **Ask LifeOS:** A local guide in the navigation bar answers common app questions with steps and follow-up suggestions. It does not read workspace data or send questions to a service.
-- **Focus Mode:** An open-ended session with an optional elapsed-time display. An active session survives a page reload.
+- **Focus Mode:** An open-ended session with an optional elapsed-time display. Minimize the timer to use Home, Tasks, and Journal while it keeps counting; an active session survives a page reload.
 - **Flow check-in:** Finish a session by rating interest, desire to continue, and progress from 1–5; optionally select factors that helped.
 - **Reflect:** Review focus check-ins and patterns from past sessions.
-- **Journal:** Write, edit, and search dated notes, organize them in folders, attach photos, and optionally add an approximate location. Drafts are kept locally until Save.
+- **Journal:** Write, edit, and search dated notes, organize them in folders, attach photos, and optionally add an approximate location. Drafts are kept locally until Save and the open editor is restored after a page reload.
 - **Settings:** Choose Light, Dark, or System theme, a 12- or 24-hour clock, customize navigation, export data as JSON, and restore a validated JSON backup after confirming replacement.
 
 ## Data and privacy

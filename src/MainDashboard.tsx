@@ -17,7 +17,8 @@ interface MainDashboardProps {
   searchIncludesJournal: boolean
   repoUrl: string
   tasks: Task[]
-  pausedTaskTitle?: string
+  focusTaskTitle?: string
+  focusRunning?: boolean
   pausedActiveTime?: string
   showPausedTime?: boolean
   displayName?: string
@@ -42,10 +43,11 @@ const taskList = (task: Task): TaskList => task.list ?? 'today'
 
 type TaskEditor = { id: string | null; title: string; list: TaskList }
 
-function BreakCard({ taskTitle, activeTime, showTime, language, interactiveTips, onResume, onFinish }: {
+function BreakCard({ taskTitle, activeTime, showTime, running, language, interactiveTips, onResume, onFinish }: {
   taskTitle: string
   activeTime: string
   showTime: boolean
+  running: boolean
   language: 'en' | 'ru'
   interactiveTips: boolean
   onResume: () => void
@@ -56,14 +58,15 @@ function BreakCard({ taskTitle, activeTime, showTime, language, interactiveTips,
     <div className="life-main-break-heading">
       <Pause size={20} aria-hidden="true" />
       <div>
-        <h2 id="life-main-break-title">{t('On a break')}</h2>
+        <h2 id="life-main-break-title">{running ? (language === 'ru' ? 'Фокус идёт' : 'Focus running') : t('On a break')}</h2>
         <p>{taskTitle}</p>
         <p className="life-main-break-time">
-          <span>{language === 'ru' ? 'Активное время до паузы' : 'Active time before break'}</span>
+          <span>{running ? (language === 'ru' ? 'Активное время' : 'Active time') : (language === 'ru' ? 'Активное время до паузы' : 'Active time before break')}</span>
           <strong>{showTime ? activeTime : t('Time hidden')}</strong>
         </p>
       </div>
-      <button type="button" className="life-main-break-resume" aria-label={t('Resume focus')} title={t('Resume focus')} onClick={onResume}>
+      <button type="button" className="life-main-break-resume" aria-label={running ? (language === 'ru' ? 'Вернуться к таймеру' : 'Return to timer') : t('Resume focus')}
+        title={running ? (language === 'ru' ? 'Вернуться к таймеру' : 'Return to timer') : t('Resume focus')} onClick={onResume}>
         <span><Play size={15} fill="currentColor" aria-hidden="true" /></span>
       </button>
     </div>
@@ -73,7 +76,7 @@ function BreakCard({ taskTitle, activeTime, showTime, language, interactiveTips,
   </section>
 }
 
-export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, repoUrl, tasks, pausedTaskTitle, pausedActiveTime, showPausedTime = true, displayName, language = 'en', interactiveTips, onResume, onFinishPaused, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onPresets, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
+export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, repoUrl, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, displayName, language = 'en', interactiveTips, onResume, onFinishPaused, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onPresets, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
   const t = (text: string) => translate(language, text)
   const [screen, setScreen] = useState(initialScreen)
   const [filter, setFilter] = useState<TaskList | 'completed'>('today')
@@ -202,7 +205,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
     if (onDeleteTask(id)) setDeleting(null)
   }
 
-  const breakCard = pausedTaskTitle !== undefined && <BreakCard taskTitle={pausedTaskTitle} activeTime={pausedActiveTime ?? '00:00:00'} showTime={showPausedTime} language={language}
+  const breakCard = focusTaskTitle !== undefined && <BreakCard taskTitle={focusTaskTitle} activeTime={pausedActiveTime ?? '00:00:00'} showTime={showPausedTime} running={focusRunning} language={language}
     interactiveTips={interactiveTips} onResume={onResume} onFinish={onFinishPaused} />
   const addTaskButton = <button type="button" className={`life-main-add-task${!nextTask && !breakCard ? ' life-main-add-task-inline' : ''}`} onClick={() => openTasks(true)}>
     <span className="life-main-shortcut-icon add"><Plus size={21} aria-hidden="true" /></span>
@@ -270,7 +273,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
         </button>}
         {showFocusShortcut && <button type="button" onClick={breakCard ? onResume : onStartOpenFocus}>
           <span className="life-main-shortcut-icon focus"><Play size={21} aria-hidden="true" /></span>
-          <strong>{t(breakCard ? 'Resume Focus' : 'Start Focus')}</strong>
+          <strong>{focusRunning ? (language === 'ru' ? 'К таймеру' : 'Return to timer') : t(breakCard ? 'Resume Focus' : 'Start Focus')}</strong>
         </button>}
         <button type="button" onClick={onPresets}>
           <span className="life-main-shortcut-icon focus"><Settings2 size={21} aria-hidden="true" /></span>

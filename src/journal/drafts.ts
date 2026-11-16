@@ -8,6 +8,26 @@ export function draftStorageKey(storageKey = STORAGE_KEY, id = 'new') {
   return `${storageKey}.journal-draft.v1.${id}`
 }
 
+export function openEditorStorageKey(storageKey = STORAGE_KEY) {
+  return `${storageKey}.journal-open-editor.v1`
+}
+
+export function readOpenJournalEditor(storageKey?: string): string | null {
+  try {
+    const id = localStorage.getItem(openEditorStorageKey(storageKey))
+    return id && id.length <= 200 ? id : null
+  } catch { return null }
+}
+
+export function writeOpenJournalEditor(id: string | null, storageKey?: string): boolean {
+  try {
+    const key = openEditorStorageKey(storageKey)
+    if (id) localStorage.setItem(key, id)
+    else localStorage.removeItem(key)
+    return true
+  } catch { return false }
+}
+
 export function readJournalDraft(storageKey?: string, id?: string): SavedDraft | null {
   try {
     const raw = localStorage.getItem(draftStorageKey(storageKey, id))

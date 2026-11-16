@@ -1,4 +1,4 @@
-import { ArrowLeft, BellOff, Ellipsis, ExternalLink, Eye, EyeOff, Globe, Pause, Play, Smartphone, Trees, X } from 'lucide-react'
+import { ArrowLeft, BellOff, Ellipsis, ExternalLink, Eye, EyeOff, Globe, Minimize2, Pause, Play, Smartphone, Trees, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { elapsedClock, focusedDuration, type ActiveSession } from './data'
 import { translate, type AppLanguage } from './language'
@@ -18,6 +18,7 @@ interface MainFocusProps {
   onPause: () => void
   onResume: () => void
   onLeave: () => void
+  onMinimize: () => void
   returnDestination: string
   onFinish: () => void
   children?: ReactNode
@@ -62,7 +63,7 @@ function closeAudio(context: AudioContext | null) {
 export default function MainFocus({
   language = 'en',
   session, showTime, now, storageError, checkinEnabled, showCheckinToggle, onToggleCheckin, onToggleTime, onToggleSilence,
-  onPause, onResume, onLeave, returnDestination, onFinish, children,
+  onPause, onResume, onLeave, onMinimize, returnDestination, onFinish, children,
 }: MainFocusProps) {
   const t = (text: string) => translate(language, text)
   const [panel, setPanel] = useState<'options' | keyof typeof deviceHelp>('options')
@@ -146,6 +147,9 @@ export default function MainFocus({
         <button type="button" className="life-main-focus-pause" onClick={paused ? onResume : onPause}>
           {paused ? <><Play size={18} aria-hidden="true" /> {t('Resume focus')}</> : <><Pause size={18} aria-hidden="true" /> {t('Take a break')}</>}
         </button>
+        {!paused && <button type="button" className="life-main-focus-minimize" onClick={onMinimize}>
+          <Minimize2 size={17} aria-hidden="true" /> {language === 'ru' ? 'Свернуть таймер' : 'Minimize timer'}
+        </button>}
         <button type="button" className="life-main-focus-finish" onClick={onFinish}>{t('Finish session')}</button>
       </div>
     </div>

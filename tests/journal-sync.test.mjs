@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { emptyData, focusedDuration, loadData, parseBackup, restoreBackup, saveData, STORAGE_KEY } from '../src/data.ts'
 import { JournalCloudSync, withJournalChanges } from '../src/journal/cloud-sync.ts'
-import { clearJournalDraft, readJournalDraft, writeJournalDraft } from '../src/journal/drafts.ts'
+import { clearJournalDraft, readJournalDraft, readOpenJournalEditor, writeJournalDraft, writeOpenJournalEditor } from '../src/journal/drafts.ts'
 import { createJournalHandler } from '../server/journal-handler.ts'
 import { approximateLocation, locationLabel, requestApproximateLocation, validApproximateLocation } from '../src/journal/location.ts'
 import { journalDate, journalTime, groupJournalEntries } from '../src/journal/timeline.ts'
@@ -174,6 +174,11 @@ test('drafts survive reload and remain separate for guest and each account', () 
     assert.deepEqual(readJournalDraft(), { text: 'Guest draft' })
     assert.deepEqual(readJournalDraft(accountA, 'entry-1'), { text: 'Account A edit' })
     assert.equal(readJournalDraft(accountB, 'entry-1'), null)
+    assert.equal(writeOpenJournalEditor('entry-1', accountA), true)
+    assert.equal(readOpenJournalEditor(accountA), 'entry-1')
+    assert.equal(readOpenJournalEditor(accountB), null)
+    assert.equal(writeOpenJournalEditor(null, accountA), true)
+    assert.equal(readOpenJournalEditor(accountA), null)
     assert.equal(clearJournalDraft(accountA, 'entry-1'), true)
     assert.equal(readJournalDraft(accountA, 'entry-1'), null)
     assert.deepEqual(readJournalDraft(), { text: 'Guest draft' })

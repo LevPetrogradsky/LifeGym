@@ -948,6 +948,7 @@
 }
 
 .life-main-focus-pause,
+.life-main-focus-minimize,
 .life-main-focus-finish {
   display: inline-flex;
   align-items: center;
@@ -992,6 +993,7 @@
 }
 
 .life-main-focus-pause:hover,
+.life-main-focus-minimize:hover,
 .life-main-focus-finish:hover,
 .life-main-focus-preferences button:hover,
 .life-main-focus-top button:hover,

@@ -8,7 +8,7 @@ import FolderPicker, { FolderSheet } from './FolderPicker'
 import { JournalSheet } from './JournalSheet'
 import UnifiedSearch from '../search/UnifiedSearch'
 import { prepareJournalPhoto } from './photo'
-import { clearJournalDraft, readJournalDraft, writeJournalDraft } from './drafts'
+import { clearJournalDraft, readJournalDraft, readOpenJournalEditor, writeJournalDraft, writeOpenJournalEditor } from './drafts'
 import { locationLabel, requestApproximateLocation, type ApproximateLocation } from './location'
 import { groupJournalEntries, journalDate, journalTime } from './timeline'
 import { dictationLanguages, useJournalDictation } from './useJournalDictation'
@@ -36,6 +36,7 @@ interface JournalPageProps {
   onDeleteFolder: (id: string) => boolean
   onMoveEntry: (id: string, folderId?: string) => boolean
   draft: JournalDraft
+  draftSaveError?: boolean
   onDraftChange: Dispatch<SetStateAction<JournalDraft>>
   draftStorageKey?: string
   onDraftStorageError?: () => void
@@ -54,6 +55,7 @@ interface JournalFormProps {
   language?: AppLanguage
   id: string
   draft: JournalDraft
+  draftSaveError?: boolean
   onDraftChange: Dispatch<SetStateAction<JournalDraft>>
   onSubmit: (draft: JournalDraft) => boolean
   folders?: JournalFolder[]
@@ -64,11 +66,12 @@ interface JournalFormProps {
   onCancel?: () => void
 }
 
-function JournalForm({ id, draft, onDraftChange, onSubmit, folders, folderId, onFolderChange, linkedTaskTitle, onUnlinkTask, onCancel, language = 'en' }: JournalFormProps) {
+function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folders, folderId, onFolderChange, linkedTaskTitle, onUnlinkTask, onCancel, language = 'en' }: JournalFormProps) {
   const t = (text: string) => translate(language, text)
   const [photoError, setPhotoError] = useState('')
   const [saveError, setSaveError] = useState(false)
   const [loadingPhoto, setLoadingPhoto] = useState(false)
+  const submitted = useRef(false)
   const [locating, setLocating] = useState(false)
   const [locationMessage, setLocationMessage] = useState('')
   const fileInput = useRef<HTMLInputElement>(null)
@@ -103,6 +106,21 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folders, folderId, on
       window.removeEventListener('resize', resize)
     }
   }, [draft.text, onCancel])
+
+  useEffect(() => {
+    const flush = () => {
+      if (submitted.current || !textArea.current) return
+      const text = textArea.current.value
+      onDraftChange(current => current.text === text ? current : { ...current, text })
+    }
+    const hidden = () => { if (document.visibilityState === 'hidden') flush() }
+    document.addEventListener('visibilitychange', hidden)
+    window.addEventListener('pagehide', flush)
+    return () => {
+      document.removeEventListener('visibilitychange', hidden)
+      window.removeEventListener('pagehide', flush)
+    }
+  }, [onDraftChange])
 
   const attachPhoto = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0]
@@ -143,6 +161,7 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folders, folderId, on
       const saved = onSubmit({ ...draft, text: draft.text.trim() })
       setSaveError(!saved)
       if (saved) {
+        submitted.current = true
         dictation.reset()
         setPhotoError('')
       }
@@ -159,6 +178,21 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folders, folderId, on
         placeholder={t('What’s on your mind?')}
         rows={onCancel ? 3 : 2}
         value={draft.text}
+        onInput={event => {
+          submitted.current = false
+          const text = event.currentTarget.value
+          onDraftChange(current => current.text === text ? current : { ...current, text })
+        }}
+        onBlur={event => {
+          if (submitted.current) return
+          const text = event.currentTarget.value
+          onDraftChange(current => current.text === text ? current : { ...current, text })
+        }}
+        onCompositionEnd={event => {
+          submitted.current = false
+          const text = event.currentTarget.value
+          onDraftChange(current => current.text === text ? current : { ...current, text })
+        }}
         onChange={event => {
           const text = event.currentTarget.value
           onDraftChange(current => ({ ...current, text }))
@@ -188,6 +222,9 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folders, folderId, on
       {locationMessage && <p className="journal-local-note" role="status">{locationMessage}</p>}
       {dictation.message && <p className="journal-dictation-message" role="status">{t(dictation.message)}</p>}
       {saveError && <p className="journal-photo-error" role="alert">{t('Couldn’t save this entry. Your draft is still here.')}</p>}
+      {draftSaveError && <p className="journal-photo-error" role="alert">{language === 'ru'
+        ? 'Черновик не удалось сохранить на устройстве. Сохраните запись сейчас или скопируйте текст.'
+        : 'This device could not keep the draft. Save now or copy your text.'}</p>}
       <div className="journal-form-actions">
         <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" onChange={attachPhoto} hidden />
         <button type="button" className="journal-icon journal-photo-action" aria-label={t(draft.photo ? 'Replace photo' : 'Attach photo')} disabled={loadingPhoto} onClick={() => fileInput.current?.click()}><ImagePlus size={19} /></button>
@@ -247,10 +284,13 @@ function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult,
   onDraftStorageError?: () => void
 }) {
   const t = (text: string) => translate(language, text)
-  const [action, setAction] = useState<'read' | 'edit' | 'delete'>('read')
+  const [action, setAction] = useState<'read' | 'edit' | 'delete'>(() => readOpenJournalEditor(draftStorageKey) === entry.id ? 'edit' : 'read')
   const folder = folders.find(folder => folder.id === entry.folderId)
-  const [draft, setDraft] = useState<JournalDraft>({ text: entry.text, photo: entry.photo, location: entry.location })
+  const [draft, setDraft] = useState<JournalDraft>(() => readOpenJournalEditor(draftStorageKey) === entry.id
+    ? readJournalDraft(draftStorageKey, entry.id) ?? { text: entry.text, photo: entry.photo, location: entry.location }
+    : { text: entry.text, photo: entry.photo, location: entry.location })
   const draftRef = useRef(draft)
+  const [draftSaveError, setDraftSaveError] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const actionMenu = useRef<HTMLDetailsElement>(null)
   const editDialog = useRef<HTMLDialogElement>(null)
@@ -263,6 +303,19 @@ function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult,
     editDialog.current?.querySelector('textarea')?.focus()
   }, [action])
 
+  useEffect(() => {
+    if (action !== 'edit') return
+    const restore = () => {
+      if (document.visibilityState === 'visible' && !editDialog.current?.open) editDialog.current?.showModal()
+    }
+    document.addEventListener('visibilitychange', restore)
+    window.addEventListener('pageshow', restore)
+    return () => {
+      document.removeEventListener('visibilitychange', restore)
+      window.removeEventListener('pageshow', restore)
+    }
+  }, [action])
+
   const startEditing = () => {
     if (actionMenu.current) {
       actionMenu.current.open = false
@@ -271,17 +324,24 @@ function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult,
     const next = readJournalDraft(draftStorageKey, entry.id) ?? { text: entry.text, photo: entry.photo, location: entry.location }
     draftRef.current = next
     setDraft(next)
+    if (!writeOpenJournalEditor(entry.id, draftStorageKey)) onDraftStorageError?.()
     setAction('edit')
   }
 
   const changeDraft: Dispatch<SetStateAction<JournalDraft>> = change => {
     const next = typeof change === 'function' ? change(draftRef.current) : change
     draftRef.current = next
-    if (!writeJournalDraft(next, draftStorageKey, entry.id)) onDraftStorageError?.()
+    const persisted = writeJournalDraft(next, draftStorageKey, entry.id)
+    setDraftSaveError(!persisted)
+    if (!persisted) onDraftStorageError?.()
     setDraft(next)
   }
 
-  const closeEditor = () => editDialog.current?.close()
+  const closeEditor = () => {
+    if (!writeOpenJournalEditor(null, draftStorageKey)) onDraftStorageError?.()
+    editDialog.current?.close()
+    setAction('read')
+  }
 
   return (
     <article className="journal-entry" id={`journal-entry-${entry.id}`}
@@ -347,8 +407,8 @@ function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult,
           <button type="button" onClick={onDelete}>{t('Delete')}</button>
         </div>
       )}
-      <JournalSheet dialog={editDialog} label={t('Edit entry')} closeLabel={t('Close entry editor')} onClose={() => setAction('read')}>
-        {action === 'edit' && <JournalForm language={language} id={`journal-edit-${entry.id}`} draft={draft} onDraftChange={changeDraft}
+      <JournalSheet dialog={editDialog} label={t('Edit entry')} closeLabel={t('Close entry editor')} onRequestClose={closeEditor}>
+        {action === 'edit' && <JournalForm language={language} id={`journal-edit-${entry.id}`} draft={draft} draftSaveError={draftSaveError} onDraftChange={changeDraft}
           onSubmit={next => {
             const saved = onEdit(next)
             if (saved) {
@@ -365,7 +425,7 @@ function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult,
 export default function JournalPage({
   language = 'en', timeFormat,
   onReturn, returnLabel,
-  entries, folders, cloudStatus, guestImportCount = 0, onImportGuest, onSaveFolder, onReorderFolders, onDeleteFolder, onMoveEntry, draft, onDraftChange, draftStorageKey, onDraftStorageError, linkedTaskTitle, onUnlinkTask, sessionPrompt, onDismissPrompt, onCreate, onEdit, onDelete, searchResult, onSelectSearchEntry,
+  entries, folders, cloudStatus, guestImportCount = 0, onImportGuest, onSaveFolder, onReorderFolders, onDeleteFolder, onMoveEntry, draft, draftSaveError, onDraftChange, draftStorageKey, onDraftStorageError, linkedTaskTitle, onUnlinkTask, sessionPrompt, onDismissPrompt, onCreate, onEdit, onDelete, searchResult, onSelectSearchEntry,
 }: JournalPageProps) {
   const t = (text: string) => translate(language, text)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -422,7 +482,7 @@ export default function JournalPage({
         <span>{language === 'ru' ? `Гостевых записей на этом устройстве: ${guestImportCount}` : `Guest entries on this device: ${guestImportCount}`}</span>
         <button type="button" onClick={onImportGuest}>{language === 'ru' ? 'Импортировать в аккаунт' : 'Import into account'}</button>
       </div>}
-      <JournalForm language={language} id="journal-entry" draft={draft} onDraftChange={onDraftChange}
+      <JournalForm language={language} id="journal-entry" draft={draft} draftSaveError={draftSaveError} onDraftChange={onDraftChange}
         folders={folders} folderId={selectedFolderId} onFolderChange={setComposerFolderId}
         linkedTaskTitle={linkedTaskTitle} onUnlinkTask={onUnlinkTask} onSubmit={next => {
         const saved = onCreate(next, selectedFolderId || undefined)
