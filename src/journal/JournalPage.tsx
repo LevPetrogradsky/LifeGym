@@ -71,11 +71,24 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folder, linkedTaskTit
   const canSave = !loadingPhoto && (draft.text.trim().length > 0 || !!draft.photo)
   const selectedLanguage = dictationLanguages.find(([code]) => code === dictation.language) ?? dictationLanguages[0]
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!onCancel || !textArea.current) return
     const field = textArea.current
-    field.style.height = 'auto'
-    field.style.height = `${field.scrollHeight + field.offsetHeight - field.clientHeight}px`
+    let active = true
+    const resize = () => {
+      if (!active || !field.getClientRects().length) return
+      field.style.height = 'auto'
+      field.style.height = `${field.scrollHeight + field.offsetHeight - field.clientHeight}px`
+    }
+    resize()
+    void document.fonts.ready.then(resize)
+    document.fonts.addEventListener('loadingdone', resize)
+    window.addEventListener('resize', resize)
+    return () => {
+      active = false
+      document.fonts.removeEventListener('loadingdone', resize)
+      window.removeEventListener('resize', resize)
+    }
   }, [draft.text, onCancel])
 
   const attachPhoto = async (event: ChangeEvent<HTMLInputElement>) => {
