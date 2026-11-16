@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 're
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BookOpen, Check, ChevronRight, Circle, ClipboardList, GripHorizontal, Heart, History, ListTodo, MessageCircle, Pause, Pencil, Play, Plus, Search, Settings2, Trash2, X } from 'lucide-react'
 import { taskLists, type LifeOSData, type Task, type TaskList } from './data'
 import { todayTaskLimit } from './task-rules'
+import { translate } from './language'
 import { JournalSheet } from './journal/JournalSheet'
 import './main-dashboard.css'
 
@@ -37,6 +38,7 @@ const taskList = (task: Task): TaskList => task.list ?? 'today'
 type TaskEditor = { id: string | null; title: string; list: TaskList }
 
 export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, tasks, pausedTaskTitle, displayName, language = 'en', onResume, onFinishPaused, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onReflect, onPresets, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
+  const t = (text: string) => translate(language, text)
   const [screen, setScreen] = useState(initialScreen)
   const [filter, setFilter] = useState<TaskList | 'completed'>('today')
   const [editor, setEditor] = useState<TaskEditor | null>(null)
@@ -169,18 +171,18 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
       <div className="life-main-break-heading">
         <Pause size={20} aria-hidden="true" />
         <div>
-          <h2 id="life-main-break-title">On a break</h2>
+          <h2 id="life-main-break-title">{t('On a break')}</h2>
           <p>{pausedTaskTitle}</p>
         </div>
       </div>
-      <button type="button" className="life-main-primary" onClick={onResume}><Play size={16} fill="currentColor" /> Resume focus</button>
-      <button type="button" className="life-main-text" onClick={onFinishPaused}>Finish session</button>
+      <button type="button" className="life-main-primary" onClick={onResume}><Play size={16} fill="currentColor" /> {t('Resume focus')}</button>
+      <button type="button" className="life-main-text" onClick={onFinishPaused}>{t('Finish session')}</button>
     </section>
   )
 
   const addTaskButton = <button type="button" className={`life-main-add-task${!nextTask && !breakCard ? ' life-main-add-task-inline' : ''}`} onClick={() => openTasks(true)}>
     <span className="life-main-shortcut-icon add"><Plus size={21} aria-hidden="true" /></span>
-    <strong>Add a task</strong>
+    <strong>{t('Add a task')}</strong>
   </button>
 
   if (screen === 'home') return <main className="life-main life-main-home">
@@ -191,17 +193,17 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
           {language === 'ru' ? 'Вступить в Discord' : 'Join Discord'} <ArrowRight size={15} aria-hidden="true" />
         </a></div>
       <div className="life-main-hero-actions">
-        <button type="button" className="life-main-icon life-main-settings" aria-label={searchIncludesJournal ? 'Search tasks and journal' : 'Search tasks'}
+        <button type="button" className="life-main-icon life-main-settings" aria-label={t(searchIncludesJournal ? 'Search tasks and journal' : 'Search tasks')}
           aria-haspopup="dialog" onClick={onSearch}><Search size={20} aria-hidden="true" /></button>
-        <button type="button" className="life-main-icon life-main-settings" aria-label="Open settings" onClick={onSettings}><Settings2 size={20} /></button>
+        <button type="button" className="life-main-icon life-main-settings" aria-label={t('Open settings')} onClick={onSettings}><Settings2 size={20} /></button>
       </div>
     </header>
 
     <div className="life-main-stack">
       {breakCard || <section className="life-main-today" aria-labelledby="life-main-today">
         <div className="life-main-today-heading">
-          <h2 id="life-main-today">Today</h2>
-          {totalToday > 0 && <span>{doneToday.length} / {totalToday} done</span>}
+          <h2 id="life-main-today">{t('Today')}</h2>
+          {totalToday > 0 && <span>{doneToday.length} / {totalToday} {language === 'ru' ? 'выполнено' : 'done'}</span>}
         </div>
         {totalToday > 0 && <progress max={totalToday} value={doneToday.length} aria-label="Today’s task progress" />}
         {nextTask ? (
@@ -211,14 +213,14 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
               <button type="button" className="life-main-task-link" aria-haspopup="dialog" onClick={() => onOpenTask(nextTask.id)}>
                 <span>{nextTask.title}</span><ChevronRight size={16} aria-hidden="true" />
               </button>
-              <p>Next up</p>
+              <p>{t('Next up')}</p>
             </div>
             <button type="button" className="life-main-icon life-main-start-small" aria-label={`Start ${nextTask.title}`} onClick={() => onStart(nextTask)}>
               <Play size={17} fill="currentColor" aria-hidden="true" />
             </button>
           </div>
         ) : <div className="life-main-today-empty-state">
-          <p className="life-main-today-empty">{doneToday.length ? 'You’re all caught up' : 'No tasks for today'}</p>
+          <p className="life-main-today-empty">{t(doneToday.length ? 'You’re all caught up' : 'No tasks for today')}</p>
           {addTaskButton}
         </div>}
       </section>}
@@ -228,27 +230,27 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
       <nav className="life-main-shortcuts" aria-label="Home shortcuts">
         {showTasksShortcut && <button type="button" onClick={() => openTasks()}>
           <span className="life-main-shortcut-icon tasks"><ClipboardList size={21} aria-hidden="true" /></span>
-          <strong>Tasks</strong>
+          <strong>{t('Tasks')}</strong>
         </button>}
         {onJournal && <button type="button" onClick={onJournal}>
           <span className="life-main-shortcut-icon journal"><BookOpen size={21} aria-hidden="true" /></span>
-          <strong>Journal</strong>
+          <strong>{t('Journal')}</strong>
         </button>}
         {showFocusShortcut && <button type="button" onClick={breakCard ? onResume : onStartOpenFocus}>
           <span className="life-main-shortcut-icon focus"><Play size={21} aria-hidden="true" /></span>
-          <strong>{breakCard ? 'Resume Focus' : 'Start Focus'}</strong>
+          <strong>{t(breakCard ? 'Resume Focus' : 'Start Focus')}</strong>
         </button>}
         {onReflect && <button type="button" onClick={onReflect}>
           <span className="life-main-shortcut-icon reflect"><MessageCircle size={21} aria-hidden="true" /></span>
-          <strong>Answer 3 questions</strong>
+          <strong>{t('Answer 3 questions')}</strong>
         </button>}
         <button type="button" onClick={onPresets}>
           <span className="life-main-shortcut-icon focus"><Settings2 size={21} aria-hidden="true" /></span>
-          <strong>Presets</strong>
+          <strong>{t('Presets')}</strong>
         </button>
       </nav>
       <button type="button" className="life-main-text life-main-history-link" onClick={onFocusHistory}>
-        <History size={17} aria-hidden="true" /> Focus history <ChevronRight size={15} aria-hidden="true" />
+        <History size={17} aria-hidden="true" /> {t('Focus history')} <ChevronRight size={15} aria-hidden="true" />
       </button>
     </div>
   </main>
@@ -260,40 +262,40 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
 
   return <main className="life-main life-main-tasks">
     <header className="life-main-tasks-header">
-      <button type="button" className="life-main-icon" aria-label={returnLabel} onClick={() => {
+      <button type="button" className="life-main-icon" aria-label={t(returnLabel)} onClick={() => {
         if (onReturnHome) onReturnHome()
         else { setScreen('home'); showList('today') }
       }}><ArrowLeft size={21} /></button>
-      <h1 ref={heading} tabIndex={-1}>Tasks</h1>
-      <button type="button" className="life-main-icon" aria-label="Add task" aria-haspopup="dialog" disabled={!canAdd} onClick={() => addTo(addList)}><Plus size={23} /></button>
+      <h1 ref={heading} tabIndex={-1}>{t('Tasks')}</h1>
+      <button type="button" className="life-main-icon" aria-label={t('Add task')} aria-haspopup="dialog" disabled={!canAdd} onClick={() => addTo(addList)}><Plus size={23} /></button>
     </header>
 
     {breakCard}
 
     <div className="life-main-filters" role="group" aria-label="Filter tasks">
-      {taskLists.map(list => <button type="button" key={list} aria-pressed={filter === list} onClick={() => showList(list)}>{listLabels[list]}</button>)}
-      <button type="button" aria-pressed={filter === 'completed'} onClick={() => showList('completed')}>Done</button>
+      {taskLists.map(list => <button type="button" key={list} aria-pressed={filter === list} onClick={() => showList(list)}>{t(listLabels[list])}</button>)}
+      <button type="button" aria-pressed={filter === 'completed'} onClick={() => showList('completed')}>{t('Done')}</button>
     </div>
 
-    <JournalSheet dialog={editorDialog} label={editor?.id ? 'Edit task' : 'New task'} closeLabel="Close task editor"
+    <JournalSheet dialog={editorDialog} label={t(editor?.id ? 'Edit task' : 'New task')} closeLabel={t('Close task editor')}
       className="journal-sheet--centered"
       onClose={() => { if (!editorDialog.current?.open) setEditor(null) }}>
     {editor && <form className="life-main-editor" onSubmit={saveTask}>
-      <label htmlFor="life-main-task-title" className="journal-sr-only">Task name</label>
-      <input ref={editorInput} id="life-main-task-title" placeholder="Task name" maxLength={140} value={editor.title} onChange={event => setEditor({ ...editor, title: event.target.value })} />
-      <span id="life-main-task-list-label" className="life-main-editor-label">List</span>
+      <label htmlFor="life-main-task-title" className="journal-sr-only">{t('Task name')}</label>
+      <input ref={editorInput} id="life-main-task-title" placeholder={t('Task name')} maxLength={140} value={editor.title} onChange={event => setEditor({ ...editor, title: event.target.value })} />
+      <span id="life-main-task-list-label" className="life-main-editor-label">{t('List')}</span>
       <div className="life-main-filters life-main-editor-lists" role="group" aria-labelledby="life-main-task-list-label">
         {taskLists.map(list => {
           const full = list === 'today' && cannotAddToToday
           return <button type="button" key={list} aria-pressed={editor.list === list} disabled={full}
             onClick={() => setEditor({ ...editor, list })}>
-            {listLabels[list]}{full ? ' (full)' : ''}
+            {t(listLabels[list])}{full ? (language === 'ru' ? ' (полный)' : ' (full)') : ''}
           </button>
         })}
       </div>
       <div className="life-main-editor-actions">
-        <button type="button" className="life-main-text" onClick={() => editorDialog.current?.close()}>Cancel</button>
-        <button type="submit" className="life-main-primary" disabled={!editor.title.trim() || (editor.list === 'today' && cannotAddToToday)}>{editor.id ? 'Save task' : 'Add task'}</button>
+        <button type="button" className="life-main-text" onClick={() => editorDialog.current?.close()}>{t('Cancel')}</button>
+        <button type="submit" className="life-main-primary" disabled={!editor.title.trim() || (editor.list === 'today' && cannotAddToToday)}>{t(editor.id ? 'Save task' : 'Add task')}</button>
       </div>
     </form>}
     </JournalSheet>
@@ -332,7 +334,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
               <button type="button" className="life-main-task-link" aria-haspopup="dialog" onClick={() => onOpenTask(task.id)}>
                 <span>{task.title}</span><ChevronRight size={16} aria-hidden="true" />
               </button>
-              {task.completedAt && <small>{listLabels[taskList(task)]} · {new Date(task.completedAt).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })}</small>}
+              {task.completedAt && <small>{t(listLabels[taskList(task)])} · {new Date(task.completedAt).toLocaleDateString(language, { month: 'short', day: 'numeric', year: 'numeric' })}</small>}
             </span>
             {!task.completedAt && !breakCard && <button type="button" className="life-main-icon life-main-start-small" aria-label={`Start ${task.title}`} onClick={() => onStart(task)}><Play size={17} fill="currentColor" /></button>}
             <button type="button" className="life-main-icon life-main-task-actions-toggle" aria-label={`Actions for ${task.title}`}
@@ -350,28 +352,28 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
               event.currentTarget.closest('.life-main-task')?.querySelector<HTMLButtonElement>('.life-main-task-actions-toggle')?.focus()
               setEditor({ id: task.id, title: task.title, list: taskList(task) })
               setActions(null)
-            }}><Pencil size={15} /> Edit or move</button>
+            }}><Pencil size={15} /> {t('Edit or move')}</button>
             {canReorder && <>
-              <button type="button" className="life-main-text" aria-disabled={!previous} onClick={() => { if (previous) reorder(task.id, previous.id) }}><ArrowUp size={15} /> Move up</button>
-              <button type="button" className="life-main-text" aria-disabled={!next} onClick={() => { if (next) reorder(task.id, next.id) }}><ArrowDown size={15} /> Move down</button>
+              <button type="button" className="life-main-text" aria-disabled={!previous} onClick={() => { if (previous) reorder(task.id, previous.id) }}><ArrowUp size={15} /> {t('Move up')}</button>
+              <button type="button" className="life-main-text" aria-disabled={!next} onClick={() => { if (next) reorder(task.id, next.id) }}><ArrowDown size={15} /> {t('Move down')}</button>
             </>}
-            <button type="button" className="life-main-text life-main-task-delete" onClick={() => { setDeleting(task.id); setActions(null) }}><Trash2 size={15} /> Delete</button>
+            <button type="button" className="life-main-text life-main-task-delete" onClick={() => { setDeleting(task.id); setActions(null) }}><Trash2 size={15} /> {t('Delete')}</button>
           </div>}
           {deleting === task.id && <div className="life-main-delete">
-            <span>Delete this task?</span>
+            <span>{t('Delete this task?')}</span>
             <button type="button" className="life-main-icon" aria-label="Cancel deletion" onClick={() => setDeleting(null)}><X size={16} /></button>
-            <button type="button" className="life-main-text" onClick={() => removeTask(task.id)}>Delete task</button>
+            <button type="button" className="life-main-text" onClick={() => removeTask(task.id)}>{t('Delete task')}</button>
           </div>}
         </li>
       })}
     </ul> : <div className="life-main-tasks-empty">
       <ListTodo size={25} />
-      <p>{filter === 'completed' ? 'Completed tasks will appear here.' : filter === 'today' ? 'No tasks for today.' : `No tasks in ${listLabels[filter]}.`}</p>
+      <p>{filter === 'completed' ? t('Completed tasks will appear here.') : filter === 'today' ? t('No tasks for today.') : language === 'ru' ? `В списке «${t(listLabels[filter])}» пока нет задач.` : `No tasks in ${listLabels[filter]}.`}</p>
     </div>}
 
-    {filter === 'today' && todayIsFull && <p className="life-main-limit">Today has five active tasks. Complete or move one to make space.</p>}
+    {filter === 'today' && todayIsFull && <p className="life-main-limit">{t('Today has five active tasks. Complete or move one to make space.')}</p>}
     {filter !== 'completed' && <div className="life-main-tasks-footer">
-      {canAdd && <button type="button" className="life-main-text" aria-haspopup="dialog" onClick={() => addTo(filter)}><Plus size={18} /> Add a task <ArrowRight size={16} /></button>}
+      {canAdd && <button type="button" className="life-main-text" aria-haspopup="dialog" onClick={() => addTo(filter)}><Plus size={18} /> {t('Add a task')} <ArrowRight size={16} /></button>}
     </div>}
   </main>
 }

@@ -3,6 +3,7 @@ import { accountAuth, type AccountAuth } from './accounts'
 import AccountPanel from './settings/AccountPanel'
 import { STORAGE_KEY } from './data'
 import { useState, type FormEvent } from 'react'
+import { translate } from './language'
 
 function ResetPassword({ auth, token, onDone }: { auth: AccountAuth; token: string; onDone: () => void }) {
   const [password, setPassword] = useState('')
@@ -48,15 +49,15 @@ function ResetPassword({ auth, token, onDone }: { auth: AccountAuth; token: stri
 function ConnectedApp({ auth }: { auth: AccountAuth }) {
   const { data, isPending, error, refetch } = auth.useSession()
   if (isPending) return <main className="settings-page"><p role="status">Opening LifeOS...</p></main>
-  if (error) return <App account={<div className="settings-page__account">
-    <p className="settings-page__description" role="alert">Could not connect to your account. You can use LifeOS as a guest.</p>
-    <button type="button" className="settings-page__action" onClick={() => void refetch()}>Try again</button>
+  if (error) return <App account={language => <div className="settings-page__account">
+    <p className="settings-page__description" role="alert">{translate(language, 'Could not connect to your account. You can use LifeOS as a guest.')}</p>
+    <button type="button" className="settings-page__action" onClick={() => void refetch()}>{translate(language, 'Try again')}</button>
   </div>} existingAccount />
 
   const user = data?.user
   const storageKey = user ? `${STORAGE_KEY}.neon.${user.id}` : undefined
   return <App key={storageKey ?? STORAGE_KEY} storageKey={storageKey} existingAccount={Boolean(user)}
-    account={<AccountPanel auth={auth} user={user} refreshSession={refetch} />} />
+    account={language => <AccountPanel auth={auth} user={user} refreshSession={refetch} language={language} />} />
 }
 
 export default function AccountApp() {

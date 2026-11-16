@@ -17,6 +17,7 @@ import { useDeleteUndo } from './delete-undo'
 import UnifiedSearch from './search/UnifiedSearch'
 import WebOnboarding, { type OnboardingDestination } from './onboarding/WebOnboarding'
 import { completionKey, initialOnboardingMode } from './onboarding/state'
+import { translate, type AppLanguage } from './language'
 import './reflection-confirmation.css'
 import './mobile-navigation.css'
 
@@ -25,10 +26,13 @@ const shortcutIcons = { tasks: ClipboardList, journal: BookOpen, focus: Play, fl
 const factors: Factor[] = ['Meaningful Goal', 'Personal Control', 'Fast Feedback', 'Other']
 const repoUrl = 'https://github.com/ProgrammerLevpetrogradsky/LifeOS-Public'
 
-function App({ storageKey, account, existingAccount = false }: { storageKey?: string; account?: ReactNode; existingAccount?: boolean }) {
+function App({ storageKey, account, existingAccount = false }: { storageKey?: string; account?: ReactNode | ((language: AppLanguage) => ReactNode); existingAccount?: boolean }) {
   const [loadResult, setLoadResult] = useState(() => loadData(storageKey))
   const [onboardingMode, setOnboardingMode] = useState(() => initialOnboardingMode(storageKey, localStorage, window.location.search, existingAccount))
   const data = loadResult.data
+  const language = data.language ?? 'en'
+  const t = (text: string) => translate(language, text)
+  const accountContent = typeof account === 'function' ? account(language) : account
   const dataRef = useRef(data)
   const hiddenSections = data.hiddenSections ?? []
   const showHome = !hiddenSections.includes('main')
@@ -62,6 +66,8 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
   const [journalDraft, setJournalDraft] = useState<JournalDraft>({ text: '' })
   const [journalPrompt, setJournalPrompt] = useState(false)
   const [backupMessage, setBackupMessage] = useState('')
+
+  useEffect(() => { document.documentElement.lang = language }, [language])
 
   useEffect(() => {
     const selected = data.theme === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : data.theme
@@ -405,19 +411,19 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
   }))
 
   const renderNavigation = (iconSize: number, bottom = false) => <>
-    {showHome && <NavButton icon={<House size={iconSize} />} label="Home" selected={view === 'main'} onClick={() => navigate('main')} />}
-    {!bottom && <NavButton icon={<Settings2 size={iconSize} />} label="Settings" selected={view === 'settings'} onClick={() => navigate('settings')} />}
+    {showHome && <NavButton icon={<House size={iconSize} />} label={t('Home')} selected={view === 'main'} onClick={() => navigate('main')} />}
+    {!bottom && <NavButton icon={<Settings2 size={iconSize} />} label={t('Settings')} selected={view === 'settings'} onClick={() => navigate('settings')} />}
     {shortcuts.filter(({ id }) => inBar(id)).sort((a, b) => bottom ? Number(b.id === 'tasks') - Number(a.id === 'tasks') : 0).map(({ id, label }) => {
       const Icon = shortcutIcons[id]
-      return <NavButton key={id} icon={<Icon size={iconSize} />} label={label} selected={view === id}
+      return <NavButton key={id} icon={<Icon size={iconSize} />} label={t(label)} selected={view === id}
         onClick={() => {
           if (id !== 'focus') navigate(id)
           else if (data.activeSession?.pausedAt) resumeSession()
           else startFocus()
         }} />
     })}
-    {showAskLifeOS && <NavButton icon={<MessageCircle size={iconSize} />} label="Ask LifeOS" selected={view === 'ask'} onClick={() => navigate('ask')} />}
-    {bottom && <NavButton icon={<Settings2 size={iconSize} />} label="Settings" selected={view === 'settings'} onClick={() => navigate('settings')} />}
+    {showAskLifeOS && <NavButton icon={<MessageCircle size={iconSize} />} label={t('Ask LifeOS')} selected={view === 'ask'} onClick={() => navigate('ask')} />}
+    {bottom && <NavButton icon={<Settings2 size={iconSize} />} label={t('Settings')} selected={view === 'settings'} onClick={() => navigate('settings')} />}
   </>
 
   const renderBrand = (size: number) => {
@@ -459,11 +465,12 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
     return true
   }
 
-  if (onboardingMode) return <WebOnboarding mode={onboardingMode} displayName={data.displayName ?? ''} account={existingAccount ? undefined : account}
+  if (onboardingMode) return <WebOnboarding mode={onboardingMode} displayName={data.displayName ?? ''} account={existingAccount ? undefined : accountContent}
     onComplete={finishOnboarding} onClose={() => { clearOnboardingPreviewUrl(); setOnboardingMode(null) }} />
 
   if (data.activeSession && (!pausedSession || pausedFocusScreen === pausedSession.id)) return <>
     <MainFocus
+      language={language}
       session={data.activeSession}
       showTime={showTime}
       now={now}
@@ -485,6 +492,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
   </>
 
   if (data.pendingSession && !checkingIn) return <PostFocusChoice
+    language={language}
     taskTitle={data.pendingSession.taskTitle}
     storageError={storageError}
     preferred={data.postFocusAction}
@@ -493,22 +501,22 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
 
   if (data.pendingSession) return (<>
     <main className="checkin-screen page-container">
-      {storageError && <div className="storage-error" role="alert">Your browser could not save the check-in. Your answers are still here. Check available storage and try again.</div>}
-      <div className="focus-top"><div className="brand-mark"><Leaf size={18} strokeWidth={2.3} /></div><span>LifeOS / Check-in</span></div>
+      {storageError && <div className="storage-error" role="alert">{t('Your browser could not save the check-in. Your answers are still here. Check available storage and try again.')}</div>}
+      <div className="focus-top"><div className="brand-mark"><Leaf size={18} strokeWidth={2.3} /></div><span>{t('LifeOS / Check-in')}</span></div>
       <div className="checkin-card">
         <div className="section-icon"><Sparkles size={20} /></div>
-        <p className="eyebrow">A MOMENT TO REFLECT</p>
-        <h1>How did it feel?</h1>
+        <p className="eyebrow">{t('A MOMENT TO REFLECT')}</p>
+        <h1>{t('How did it feel?')}</h1>
         <p className="muted">{data.pendingSession.taskId === null
-          ? 'Your focus session is complete.'
-          : `Your time with “${data.pendingSession.taskTitle}” is complete.`} A few quick answers help you notice what works.</p>
-        <button type="button" className="checkin-turn-off" onClick={() => setCheckingIn(false)}>Back to choices</button>
+          ? t('Your focus session is complete.')
+          : language === 'ru' ? `Сессия «${data.pendingSession.taskTitle}» завершена.` : `Your time with “${data.pendingSession.taskTitle}” is complete.`} {t('A few quick answers help you notice what works.')}</p>
+        <button type="button" className="checkin-turn-off" onClick={() => setCheckingIn(false)}>{t('Back to choices')}</button>
         <form onSubmit={saveCheckin}>
-          <Rating label="Interest in the process" value={interest} onChange={setInterest} />
-          <Rating label="Desire to continue" value={continueDesire} onChange={setContinueDesire} />
-          <Rating label="Sense of progress" value={progress} onChange={setProgress} />
-          <div className="factor-field"><span className="field-label">What helped? <span className="optional">Optional</span></span><div className="factor-options">{factors.map(factor => <button type="button" key={factor} className={`factor-chip ${selectedFactors.includes(factor) ? 'selected' : ''}`} onClick={() => setSelectedFactors(current => current.includes(factor) ? current.filter(item => item !== factor) : [...current, factor])}>{factor}</button>)}</div></div>
-          <button className="button button-dark checkin-submit" disabled={!interest || !continueDesire || !progress}>Save check-in <ArrowRight size={18} /></button>
+          <Rating language={language} label="Interest in the process" value={interest} onChange={setInterest} />
+          <Rating language={language} label="Desire to continue" value={continueDesire} onChange={setContinueDesire} />
+          <Rating language={language} label="Sense of progress" value={progress} onChange={setProgress} />
+          <div className="factor-field"><span className="field-label">{t('What helped?')} <span className="optional">{t('Optional')}</span></span><div className="factor-options">{factors.map(factor => <button type="button" key={factor} className={`factor-chip ${selectedFactors.includes(factor) ? 'selected' : ''}`} onClick={() => setSelectedFactors(current => current.includes(factor) ? current.filter(item => item !== factor) : [...current, factor])}>{t(factor)}</button>)}</div></div>
+          <button className="button button-dark checkin-submit" disabled={!interest || !continueDesire || !progress}>{t('Save check-in')} <ArrowRight size={18} /></button>
         </form>
       </div>
     </main>
@@ -520,7 +528,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
       <aside className="sidebar">
         {renderBrand(20)}
         <nav aria-label="Main navigation">{renderNavigation(19)}</nav>
-        <div className="sidebar-foot"><div className="sidebar-quote"><span>✳</span><p>A little space for what matters.</p></div><span>LifeOS v0.1</span></div>
+        <div className="sidebar-foot"><div className="sidebar-quote"><span>✳</span><p>{t('A little space for what matters.')}</p></div><span>LifeOS v0.1</span></div>
       </aside>
 
       <div className="main-area">
@@ -575,6 +583,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
         />}
 
         {(view === 'flow' || view === 'focus-history') && <FlowEnginePage key={view}
+          language={language}
           data={data} onUpdate={update}
           onReturn={view === 'flow' ? () => navigate(reflectionReturnView) : returnFromSection}
           returnLabel={view === 'flow' ? reflectionReturnLabel : returnLabel}
@@ -585,7 +594,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
           sessionsOnly={view === 'focus-history'} />}
 
         {view === 'journal' && (
-          <JournalPage entries={data.journal} folders={data.journalFolders ?? []} draft={journalDraft} onDraftChange={setJournalDraft}
+          <JournalPage language={language} entries={data.journal} folders={data.journalFolders ?? []} draft={journalDraft} onDraftChange={setJournalDraft}
             onReturn={returnFromSection} returnLabel={returnLabel}
             onSaveFolder={saveJournalFolder} onReorderFolders={reorderJournalFolders} onDeleteFolder={deleteJournalFolder} onMoveEntry={moveJournalEntry}
             linkedTaskTitle={linkedTaskTitle} onUnlinkTask={() => setJournalTaskId(undefined)}
@@ -596,7 +605,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
 
         {view === 'settings' && (
           <SettingsPage
-            account={account}
+            account={accountContent}
             theme={data.theme}
             language={data.language ?? 'en'}
             onLanguageChange={language => update(current => ({ ...current, language }))}
@@ -627,6 +636,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
         )}
       </div>
       {historyTask && <TaskHistory
+        language={language}
         key={historyTask.id}
         task={historyTask}
         sessions={data.sessions.filter(session => session.taskId === historyTask.id).sort((a, b) => Date.parse(b.endedAt) - Date.parse(a.endedAt))}
@@ -655,7 +665,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
           navigate('journal')
         } : undefined}
       />}
-      <UnifiedSearch open={searchOpen} tasks={data.tasks} tasksOnly={!showJournal} entries={showJournal ? data.journal : []}
+      <UnifiedSearch language={language} open={searchOpen} tasks={data.tasks} tasksOnly={!showJournal} entries={showJournal ? data.journal : []}
         onClose={() => setSearchOpen(false)} onSelectTask={openTaskHistory} onSelectEntry={openSearchEntry} />
       <nav className="mobile-nav" aria-label="Main navigation">{renderNavigation(21, true)}</nav>
       {undoNotice}
@@ -675,6 +685,9 @@ function NavButton({ icon, label, selected, onClick }: { icon: React.ReactNode; 
   return <button ref={button} className={`nav-button ${selected ? 'selected' : ''}`} onClick={onClick}
     aria-current={selected ? 'page' : undefined}>{icon}<span>{label}</span></button>
 }
-function Rating({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) { return <fieldset className="rating-field"><legend>{label}</legend><div className="rating-buttons">{[1, 2, 3, 4, 5].map(number => <button type="button" className={value === number ? 'selected' : ''} key={number} onClick={() => onChange(number)} aria-label={`${label}: ${number} out of 5`} aria-pressed={value === number}>{number}</button>)}</div><div className="rating-ends"><span>Not much</span><span>Very much</span></div></fieldset> }
+function Rating({ label, value, onChange, language }: { label: string; value: number; onChange: (value: number) => void; language: AppLanguage }) {
+  const t = (text: string) => translate(language, text)
+  return <fieldset className="rating-field"><legend>{t(label)}</legend><div className="rating-buttons">{[1, 2, 3, 4, 5].map(number => <button type="button" className={value === number ? 'selected' : ''} key={number} onClick={() => onChange(number)} aria-label={language === 'ru' ? `${t(label)}: ${number} из 5` : `${label}: ${number} out of 5`} aria-pressed={value === number}>{number}</button>)}</div><div className="rating-ends"><span>{t('Not much')}</span><span>{t('Very much')}</span></div></fieldset>
+}
 
 export default App

@@ -2,9 +2,11 @@ import { BookOpen, ChevronRight, ListTodo, Search, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import type { JournalEntry, Task } from '../data'
 import { journalDate, journalDayLabel } from '../journal/timeline'
+import { translate, type AppLanguage } from '../language'
 import './search.css'
 
 type UnifiedSearchProps = {
+  language?: AppLanguage
   open: boolean
   entries: JournalEntry[]
   onClose: () => void
@@ -26,7 +28,8 @@ function excerpt(text: string, query: string): string {
   return (start > 0 ? '…' : '') + line.slice(start, end) + (end < line.length ? '…' : '')
 }
 
-export default function UnifiedSearch({ open, journalOnly, tasksOnly, tasks, entries, onClose, onSelectTask, onSelectEntry }: UnifiedSearchProps) {
+export default function UnifiedSearch({ open, journalOnly, tasksOnly, tasks, entries, onClose, onSelectTask, onSelectEntry, language = 'en' }: UnifiedSearchProps) {
+  const t = (text: string) => translate(language, text)
   const [query, setQuery] = useState('')
   const id = useId()
   const dialog = useRef<HTMLDialogElement>(null)
@@ -54,7 +57,7 @@ export default function UnifiedSearch({ open, journalOnly, tasksOnly, tasks, ent
   }
 
   return (
-    <dialog ref={dialog} className="unified-search" aria-label={journalOnly ? 'Search journal' : 'Search'}
+    <dialog ref={dialog} className="unified-search" aria-label={t(journalOnly ? 'Search journal' : 'Search')}
       onClose={() => { setQuery(''); onClose() }}
       onClick={event => {
         if (event.target !== event.currentTarget) return
@@ -65,32 +68,32 @@ export default function UnifiedSearch({ open, journalOnly, tasksOnly, tasks, ent
       }}>
       <div className="unified-search-input">
         <Search size={20} aria-hidden="true" />
-        <input ref={search} type="search" aria-label={searchLabel}
-          placeholder={`${searchLabel}…`}
+        <input ref={search} type="search" aria-label={t(searchLabel)}
+          placeholder={`${t(searchLabel)}…`}
           value={query} onChange={event => setQuery(event.currentTarget.value)} />
-        <button type="button" className="unified-search-close" aria-label="Close search" onClick={() => dialog.current?.close()}>
+        <button type="button" className="unified-search-close" aria-label={t('Close search')} onClick={() => dialog.current?.close()}>
           <X size={22} aria-hidden="true" />
         </button>
       </div>
       {terms.length > 0 && <div className="unified-search-results">
         <p className="unified-search-status" role="status">
-          {resultCount === 0 ? 'No matches. Try a different word.' :
-            resultCount === 1 ? '1 match' : `${resultCount} matches`}
+          {resultCount === 0 ? t('No matches. Try a different word.') :
+            resultCount === 1 ? t('1 match') : language === 'ru' ? `${resultCount} совпадений` : `${resultCount} matches`}
         </p>
         {onSelectTask && taskMatches.length > 0 && <section aria-labelledby={`${id}-tasks`}>
-          <h3 id={`${id}-tasks`}><ListTodo size={17} aria-hidden="true" />Tasks</h3>
+          <h3 id={`${id}-tasks`}><ListTodo size={17} aria-hidden="true" />{t('Tasks')}</h3>
           <ul>{taskMatches.map(task => <li key={task.id}>
             <button type="button" onClick={() => select(task.id, onSelectTask)}>
-              <span><strong>{task.title}</strong><small>{task.completedAt ? 'Completed' : taskLists[task.list ?? 'today']}</small></span>
+              <span><strong>{task.title}</strong><small>{t(task.completedAt ? 'Completed' : taskLists[task.list ?? 'today'])}</small></span>
               <ChevronRight size={18} aria-hidden="true" />
             </button>
           </li>)}</ul>
         </section>}
         {entryMatches.length > 0 && <section aria-labelledby={`${id}-journal`}>
-          <h3 id={`${id}-journal`}><BookOpen size={17} aria-hidden="true" />Journal</h3>
+          <h3 id={`${id}-journal`}><BookOpen size={17} aria-hidden="true" />{t('Journal')}</h3>
           <ul>{entryMatches.map(entry => <li key={entry.id}>
             <button type="button" onClick={() => select(entry.id, onSelectEntry)}>
-              <span><strong>{excerpt(entry.text, terms[0]) || 'Photo entry'}</strong><small>{journalDate(entry.createdAt)}</small></span>
+              <span><strong>{excerpt(entry.text, terms[0]) || t('Photo entry')}</strong><small>{journalDate(entry.createdAt)}</small></span>
               <ChevronRight size={18} aria-hidden="true" />
             </button>
           </li>)}</ul>

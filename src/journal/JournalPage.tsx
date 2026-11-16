@@ -10,6 +10,7 @@ import UnifiedSearch from '../search/UnifiedSearch'
 import { prepareJournalPhoto } from './photo'
 import { groupJournalEntries, journalDate, journalTime } from './timeline'
 import { dictationLanguages, useJournalDictation } from './useJournalDictation'
+import { translate, type AppLanguage } from '../language'
 import './journal.css'
 
 export interface JournalDraft {
@@ -18,6 +19,7 @@ export interface JournalDraft {
 }
 
 interface JournalPageProps {
+  language?: AppLanguage
   onReturn: () => void
   returnLabel: string
   entries: JournalEntry[]
@@ -40,6 +42,7 @@ interface JournalPageProps {
 }
 
 interface JournalFormProps {
+  language?: AppLanguage
   id: string
   draft: JournalDraft
   onDraftChange: Dispatch<SetStateAction<JournalDraft>>
@@ -50,7 +53,8 @@ interface JournalFormProps {
   onCancel?: () => void
 }
 
-function JournalForm({ id, draft, onDraftChange, onSubmit, folder, linkedTaskTitle, onUnlinkTask, onCancel }: JournalFormProps) {
+function JournalForm({ id, draft, onDraftChange, onSubmit, folder, linkedTaskTitle, onUnlinkTask, onCancel, language = 'en' }: JournalFormProps) {
+  const t = (text: string) => translate(language, text)
   const [photoError, setPhotoError] = useState('')
   const [saveError, setSaveError] = useState(false)
   const [loadingPhoto, setLoadingPhoto] = useState(false)
@@ -94,15 +98,15 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folder, linkedTaskTit
       }
     }}>
       {linkedTaskTitle !== undefined && onUnlinkTask && <div className="journal-task-link">
-        <span>Linked to: <strong>{linkedTaskTitle}</strong></span>
-        <button type="button" className="journal-icon" aria-label="Unlink task" onClick={onUnlinkTask}><X size={17} aria-hidden="true" /></button>
+        <span>{t('Linked to:')} <strong>{linkedTaskTitle}</strong></span>
+        <button type="button" className="journal-icon" aria-label={t('Unlink task')} onClick={onUnlinkTask}><X size={17} aria-hidden="true" /></button>
       </div>}
-      {!onCancel && <label htmlFor={id}>Brain dump</label>}
-      {folder && <p className="journal-composer-folder"><FolderGlyph {...folder} size={14} /> Saving to {folder.name}</p>}
+      {!onCancel && <label htmlFor={id}>{t('Brain dump')}</label>}
+      {folder && <p className="journal-composer-folder"><FolderGlyph {...folder} size={14} /> {t('Saving to')} {folder.name}</p>}
       <textarea
         id={id}
-        aria-label={onCancel ? 'Entry text' : undefined}
-        placeholder="What’s on your mind?"
+        aria-label={onCancel ? t('Entry text') : undefined}
+        placeholder={t('What’s on your mind?')}
         rows={onCancel ? 3 : 2}
         value={draft.text}
         onChange={event => {
@@ -112,21 +116,21 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folder, linkedTaskTit
       />
       {draft.photo && (
         <div className="journal-photo-preview">
-          <img src={draft.photo} alt="Attached photo preview" />
-          <button type="button" className="journal-icon" disabled={loadingPhoto} onClick={() => onDraftChange(current => ({ text: current.text }))} aria-label="Remove attached photo"><X size={17} /></button>
+          <img src={draft.photo} alt={t('Attached photo preview')} />
+          <button type="button" className="journal-icon" disabled={loadingPhoto} onClick={() => onDraftChange(current => ({ text: current.text }))} aria-label={t('Remove attached photo')}><X size={17} /></button>
         </div>
       )}
-      {photoError && <p className="journal-photo-error" role="alert">{photoError}</p>}
-      {dictation.message && <p className="journal-dictation-message" role="status">{dictation.message}</p>}
-      {saveError && <p className="journal-photo-error" role="alert">Couldn’t save this entry. Your draft is still here.</p>}
+      {photoError && <p className="journal-photo-error" role="alert">{t(photoError)}</p>}
+      {dictation.message && <p className="journal-dictation-message" role="status">{t(dictation.message)}</p>}
+      {saveError && <p className="journal-photo-error" role="alert">{t('Couldn’t save this entry. Your draft is still here.')}</p>}
       <div className="journal-form-actions">
         <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" onChange={attachPhoto} hidden />
-        <button type="button" className="journal-icon journal-photo-action" aria-label={draft.photo ? 'Replace photo' : 'Attach photo'} disabled={loadingPhoto} onClick={() => fileInput.current?.click()}><ImagePlus size={19} /></button>
+        <button type="button" className="journal-icon journal-photo-action" aria-label={t(draft.photo ? 'Replace photo' : 'Attach photo')} disabled={loadingPhoto} onClick={() => fileInput.current?.click()}><ImagePlus size={19} /></button>
         {!onCancel && (
           <button
             type="button"
             className="journal-icon journal-voice-action"
-            aria-label={dictation.status === 'listening' ? 'Stop dictation' : dictating ? 'Cancel dictation' : 'Start dictation'}
+            aria-label={t(dictation.status === 'listening' ? 'Stop dictation' : dictating ? 'Cancel dictation' : 'Start dictation')}
             data-listening={dictating}
             onClick={dictation.toggle}
           >
@@ -157,15 +161,16 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folder, linkedTaskTit
             transcribing: 'Turning speech into text…',
           }[dictation.status]}
         </span>}
-        {loadingPhoto && <span className="journal-local-note" role="status">Preparing photo…</span>}
-        {onCancel && <button type="button" className="journal-text-action" onClick={onCancel}>Cancel</button>}
-        <button type="submit" className="journal-save" disabled={!canSave} aria-label={onCancel ? 'Save changes' : 'Save entry'}>{onCancel ? 'Save changes' : 'Save'}</button>
+        {loadingPhoto && <span className="journal-local-note" role="status">{t('Preparing photo…')}</span>}
+        {onCancel && <button type="button" className="journal-text-action" onClick={onCancel}>{t('Cancel')}</button>}
+        <button type="submit" className="journal-save" disabled={!canSave} aria-label={t(onCancel ? 'Save changes' : 'Save entry')}>{t(onCancel ? 'Save changes' : 'Save')}</button>
       </div>
     </form>
   )
 }
 
-function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult }: {
+function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult, language = 'en' }: {
+  language?: AppLanguage
   entry: JournalEntry
   folders: JournalFolder[]
   onEdit: (draft: JournalDraft) => boolean
@@ -173,6 +178,7 @@ function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult 
   onMove: (folderId?: string) => boolean
   isSearchResult: boolean
 }) {
+  const t = (text: string) => translate(language, text)
   const [action, setAction] = useState<'read' | 'edit' | 'delete'>('read')
   const folder = folders.find(folder => folder.id === entry.folderId)
   const [draft, setDraft] = useState<JournalDraft>({ text: entry.text, photo: entry.photo })
@@ -204,13 +210,13 @@ function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult 
       tabIndex={isSearchResult ? -1 : undefined} data-search-result={isSearchResult || undefined}>
       <div className="journal-entry-content">
         {entry.photo && <button className="journal-thumbnail" type="button" onClick={() => setExpanded(value => !value)}
-          aria-expanded={expanded} aria-controls={photoId} aria-label={expanded ? 'Hide entry photo' : 'View entry photo'}>
+          aria-expanded={expanded} aria-controls={photoId} aria-label={t(expanded ? 'Hide entry photo' : 'View entry photo')}>
           <img src={entry.photo} alt="" loading="lazy" />
         </button>}
         <div className="journal-entry-copy">
           <div className="journal-entry-time">
             <time dateTime={entry.createdAt}>{journalTime(entry.createdAt)}</time>
-            {entry.updatedAt && <span title={journalDate(entry.updatedAt)}>Edited</span>}
+            {entry.updatedAt && <span title={journalDate(entry.updatedAt)}>{t('Edited')}</span>}
             {folder && <span className="journal-entry-folder"><FolderGlyph {...folder} size={12} />{folder.name}</span>}
           </div>
           {entry.text && <p>{entry.text}</p>}
@@ -226,40 +232,40 @@ function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult 
             actionMenu.current.querySelector('summary')?.focus()
           }
         }}>
-          <summary className="journal-icon" aria-label="Entry actions"><MoreHorizontal size={20} /></summary>
+          <summary className="journal-icon" aria-label={t('Entry actions')}><MoreHorizontal size={20} /></summary>
           <div className="journal-actions-popover">
-            <button type="button" aria-haspopup="dialog" onClick={startEditing}><Pencil size={15} /> Edit entry</button>
+            <button type="button" aria-haspopup="dialog" onClick={startEditing}><Pencil size={15} /> {t('Edit entry')}</button>
             {folders.length > 0 && <button type="button" aria-haspopup="dialog" onClick={() => {
               if (actionMenu.current) {
                 actionMenu.current.open = false
                 actionMenu.current.querySelector('summary')?.focus()
               }
               moveDialog.current?.showModal()
-            }}><Folder size={15} /> Move to folder</button>}
+            }}><Folder size={15} /> {t('Move to folder')}</button>}
             <button type="button" onClick={() => {
               if (actionMenu.current) actionMenu.current.open = false
               setAction('delete')
-            }}><Trash2 size={15} /> Delete entry</button>
+            }}><Trash2 size={15} /> {t('Delete entry')}</button>
           </div>
         </details>
       </div>
       {entry.photo && <div id={photoId} hidden={!expanded} className="journal-expanded-photo">
-        {expanded && <img src={entry.photo} alt="Photo attached to this entry" />}
+        {expanded && <img src={entry.photo} alt={t('Photo attached to this entry')} />}
       </div>}
-      {folders.length > 0 && <FolderSheet dialog={moveDialog} label="Move to folder"
+      {folders.length > 0 && <FolderSheet dialog={moveDialog} label={t('Move to folder')}
         value={entry.folderId ?? ''} onChange={folderId => onMove(folderId || undefined)} options={[
-          { value: '', label: 'No folder' },
+          { value: '', label: t('No folder') },
           ...folders.map(folder => ({ value: folder.id, label: folder.name, folder })),
         ]} />}
       {action === 'delete' && (
         <div className="journal-delete-confirm">
-          <span>Delete this entry?</span>
-          <button type="button" onClick={() => setAction('read')}>Cancel</button>
-          <button type="button" onClick={onDelete}>Delete</button>
+          <span>{t('Delete this entry?')}</span>
+          <button type="button" onClick={() => setAction('read')}>{t('Cancel')}</button>
+          <button type="button" onClick={onDelete}>{t('Delete')}</button>
         </div>
       )}
-      <JournalSheet dialog={editDialog} label="Edit entry" closeLabel="Close entry editor" onClose={() => setAction('read')}>
-        {action === 'edit' && <JournalForm id={`journal-edit-${entry.id}`} draft={draft} onDraftChange={setDraft}
+      <JournalSheet dialog={editDialog} label={t('Edit entry')} closeLabel={t('Close entry editor')} onClose={() => setAction('read')}>
+        {action === 'edit' && <JournalForm language={language} id={`journal-edit-${entry.id}`} draft={draft} onDraftChange={setDraft}
           onSubmit={next => {
             const saved = onEdit(next)
             if (saved) closeEditor()
@@ -271,9 +277,11 @@ function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult 
 }
 
 export default function JournalPage({
+  language = 'en',
   onReturn, returnLabel,
   entries, folders, onSaveFolder, onReorderFolders, onDeleteFolder, onMoveEntry, draft, onDraftChange, linkedTaskTitle, onUnlinkTask, sessionPrompt, onDismissPrompt, onCreate, onEdit, onDelete, searchResult, onSelectSearchEntry,
 }: JournalPageProps) {
+  const t = (text: string) => translate(language, text)
   const [searchOpen, setSearchOpen] = useState(false)
   const [folderFilter, setFolderFilter] = useState('all')
   const [notice, setNotice] = useState('')
@@ -299,17 +307,17 @@ export default function JournalPage({
     <main className="journal-page">
       <header className="journal-title">
         <div className="journal-title-heading">
-          <button type="button" className="journal-icon journal-search-toggle" aria-label={returnLabel} onClick={onReturn}>
+          <button type="button" className="journal-icon journal-search-toggle" aria-label={t(returnLabel)} onClick={onReturn}>
             <ArrowLeft size={21} aria-hidden="true" />
           </button>
-          <h1>Journal</h1>
+          <h1>{t('Journal')}</h1>
         </div>
-        <button type="button" className="journal-icon journal-search-toggle" aria-label="Search journal"
+        <button type="button" className="journal-icon journal-search-toggle" aria-label={t('Search journal')}
           aria-haspopup="dialog" onClick={() => setSearchOpen(true)}>
           <Search size={21} aria-hidden="true" />
         </button>
       </header>
-      <UnifiedSearch journalOnly open={searchOpen} entries={entries} onClose={() => setSearchOpen(false)}
+      <UnifiedSearch language={language} journalOnly open={searchOpen} entries={entries} onClose={() => setSearchOpen(false)}
         onSelectEntry={id => {
           if (!scopedEntries.some(entry => entry.id === id)) setFolderFilter('all')
           onSelectSearchEntry(id)
@@ -317,17 +325,17 @@ export default function JournalPage({
       {sessionPrompt && (
         <div className="journal-session-prompt" role="status">
           <Sparkles size={17} aria-hidden="true" />
-          <span>Session saved. Want to capture a thought while it’s fresh?</span>
+          <span>{t('Session saved. Want to capture a thought while it’s fresh?')}</span>
           <button className="journal-icon" type="button" onClick={onDismissPrompt} aria-label="Dismiss prompt"><X size={17} /></button>
         </div>
       )}
-      <JournalForm id="journal-entry" draft={draft} onDraftChange={onDraftChange} folder={currentFolder}
+      <JournalForm language={language} id="journal-entry" draft={draft} onDraftChange={onDraftChange} folder={currentFolder}
         linkedTaskTitle={linkedTaskTitle} onUnlinkTask={onUnlinkTask} onSubmit={next => {
         const saved = onCreate(next, currentFolder?.id)
         if (saved) setNotice('Entry saved.')
         return saved
       }} />
-      <JournalFolders folders={folders} entries={entries} filter={currentFolder || folderFilter === 'unfiled' ? folderFilter : 'all'}
+      <JournalFolders language={language} folders={folders} entries={entries} filter={currentFolder || folderFilter === 'unfiled' ? folderFilter : 'all'}
         onFilterChange={setFolderFilter} onSave={onSaveFolder} onReorder={onReorderFolders} onDelete={id => {
           const deleted = onDeleteFolder(id)
           if (deleted && currentFolder?.id === id) setFolderFilter('unfiled')
@@ -335,21 +343,21 @@ export default function JournalPage({
         }} />
       <section className="journal-timeline" aria-labelledby="journal-timeline-title">
         <header className="journal-timeline-heading">
-          <h2 id="journal-timeline-title">Entries</h2>
-          <span className="journal-entry-count" aria-live="polite">{resultCount} {resultCount === 1 ? 'entry' : 'entries'}</span>
+          <h2 id="journal-timeline-title">{t('Entries')}</h2>
+          <span className="journal-entry-count" aria-live="polite">{resultCount} {t(resultCount === 1 ? 'entry' : 'entries')}</span>
         </header>
         <span className="journal-sr-only" role="status">{notice}</span>
         {groups.length === 0 ? (
           <div className="journal-timeline-empty">
             <BookOpen size={23} aria-hidden="true" />
-            <p>{folderFilter === 'unfiled' || currentFolder ? 'No entries here yet.' : 'Your entries will appear here.'}</p>
+            <p>{t(folderFilter === 'unfiled' || currentFolder ? 'No entries here yet.' : 'Your entries will appear here.')}</p>
           </div>
         ) : groups.map(group => (
           <section className="journal-day" key={group.key}>
             <h3>{group.label}</h3>
             <div className="journal-day-entries">
               {group.entries.map(entry => (
-                <JournalCard key={entry.id} entry={entry} folders={folders} onMove={folderId => {
+                <JournalCard language={language} key={entry.id} entry={entry} folders={folders} onMove={folderId => {
                   const saved = onMoveEntry(entry.id, folderId)
                   if (saved) setNotice('Entry moved.')
                   return saved

@@ -1,5 +1,6 @@
 import { ArrowRight, Check, ChevronRight, Settings2, Sparkles, Target, Zap } from 'lucide-react'
 import type { FlowDiscovery, FlowSignal } from '../data'
+import { translate, type AppLanguage } from '../language'
 
 type Choice = { label: string; signal: FlowSignal }
 
@@ -55,46 +56,49 @@ export function discoveryFromAnswers(answers: Answer[]): FlowDiscovery {
   }
 }
 
-export function DiscoveryConversation({ answers }: { answers: Answer[] }) {
+export function DiscoveryConversation({ answers, language = 'en' }: { answers: Answer[]; language?: AppLanguage }) {
+  const t = (text: string) => translate(language, text)
   if (!answers.length) return null
-  return <ol className="flow-conversation" aria-label="Earlier questions and answers">
+  return <ol className="flow-conversation" aria-label={t('Earlier questions and answers')}>
     {answers.map((answer, index) => <li key={prompts[index].field}>
-      <p className="flow-bubble flow-bubble-prompt">{prompts[index].question}</p>
+      <p className="flow-bubble flow-bubble-prompt">{t(prompts[index].question)}</p>
       <p className="flow-bubble flow-bubble-answer">
-        <span className="flow-bubble-speaker">You</span>
-        {answerText(index, answer)}
+        <span className="flow-bubble-speaker">{t('You')}</span>
+        {answer.choice < prompts[index].choices.length ? t(answerText(index, answer)) : answerText(index, answer)}
       </p>
     </li>)}
   </ol>
 }
 
-export function DiscoveryQuestion({ step, answers, onChange, onNext }: {
+export function DiscoveryQuestion({ step, answers, onChange, onNext, language = 'en' }: {
+  language?: AppLanguage
   step: number
   answers: Answer[]
   onChange: (answer: Answer) => void
   onNext: () => void
 }) {
+  const t = (text: string) => translate(language, text)
   const answer = answers[step]
   const prompt = prompts[step]
   const other = prompt.choices.length
 
   return <form className="flow-question" onSubmit={event => { event.preventDefault(); if (answerText(step, answer)) onNext() }}>
-    <progress className="flow-progress" max={prompts.length} value={step + 1} aria-label="Reflection progress" />
-    <DiscoveryConversation answers={answers.slice(0, step)} />
-    <h1 id="flow-title" className="flow-bubble flow-bubble-prompt" tabIndex={-1}>{prompt.question}</h1>
+    <progress className="flow-progress" max={prompts.length} value={step + 1} aria-label={t('Reflection progress')} />
+    <DiscoveryConversation answers={answers.slice(0, step)} language={language} />
+    <h1 id="flow-title" className="flow-bubble flow-bubble-prompt" tabIndex={-1}>{t(prompt.question)}</h1>
     <fieldset className="flow-choices" aria-labelledby="flow-title">
       {[...prompt.choices.map(choice => choice.label), 'Write my own'].map((label, index) => <label className="flow-choice" key={label}>
         <input type="radio" name="discovery-answer" checked={answer.choice === index} onChange={() => onChange({ ...answer, choice: index })} />
         <span className="flow-radio" aria-hidden="true"><Check size={11} strokeWidth={3} /></span>
-        <span>{label}</span>
+        <span>{t(label)}</span>
       </label>)}
       {answer.choice === other && <label className="flow-custom">
-        Your answer
+        {t('Your answer')}
         <textarea value={answer.custom} onChange={event => onChange({ ...answer, custom: event.target.value })} maxLength={500} rows={2} />
       </label>}
     </fieldset>
     <button className="flow-primary" type="submit" disabled={!answerText(step, answer)}>
-      {step === prompts.length - 1 ? 'See summary' : 'Next'} <ArrowRight size={19} />
+      {t(step === prompts.length - 1 ? 'See summary' : 'Next')} <ArrowRight size={19} />
     </button>
   </form>
 }
@@ -105,11 +109,13 @@ const signalCards = {
   'Personal Control': { icon: Settings2, color: 'mint', title: 'Doing it your way', description: 'Give yourself a say in how you start.' },
 } satisfies Record<FlowSignal, { icon: typeof Target; color: string; title: string; description: string }>
 
-export function DiscoveryResults({ discovery, onPlan, showAnswers = true }: {
+export function DiscoveryResults({ discovery, onPlan, showAnswers = true, language = 'en' }: {
+  language?: AppLanguage
   discovery: FlowDiscovery
   onPlan?: () => void
   showAnswers?: boolean
 }) {
+  const t = (text: string) => translate(language, text)
   const signals = discovery.signals ?? []
   return <>
     {signals.length > 0 && <div className="flow-menu">
@@ -117,19 +123,19 @@ export function DiscoveryResults({ discovery, onPlan, showAnswers = true }: {
         const { icon: Icon, color, title, description } = signalCards[signal]
         return <article className="flow-tile" key={signal}>
           <span className={`flow-tile-icon ${color}`}><Icon size={26} /></span>
-          <span className="flow-tile-copy"><strong>{title}</strong><span>{description}</span></span>
+          <span className="flow-tile-copy"><strong>{t(title)}</strong><span>{t(description)}</span></span>
         </article>
       })}
     </div>}
     {showAnswers && <details className="flow-answers" open={signals.length === 0 ? true : undefined}>
-      <summary>Your answers</summary>
+      <summary>{t('Your answers')}</summary>
       <dl>{prompts.map(({ field, question }) => discovery[field] && <div key={field}>
-        <dt>{question}</dt><dd>{discovery[field]}</dd>
+        <dt>{t(question)}</dt><dd>{t(discovery[field])}</dd>
       </div>)}</dl>
     </details>}
     {onPlan && <button type="button" className="flow-tile flow-plan" onClick={onPlan}>
       <span className="flow-tile-icon purple"><Sparkles size={22} /></span>
-      <span className="flow-tile-copy"><strong>Try an idea</strong><span>Pick one thing to try next time.</span></span>
+      <span className="flow-tile-copy"><strong>{t('Try an idea')}</strong><span>{t('Pick one thing to try next time.')}</span></span>
       <ChevronRight size={18} />
     </button>}
   </>

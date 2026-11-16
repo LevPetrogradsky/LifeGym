@@ -1,12 +1,14 @@
 import { useState, type FormEvent } from 'react'
 import type { AccountAuth } from '../accounts'
+import { translate, type AppLanguage } from '../language'
 
 type Mode = 'sign-in' | 'sign-up' | 'reset'
 type AccountUser = { email: string }
 
-export default function AccountPanel({ auth, user, refreshSession }: {
-  auth: AccountAuth; user?: AccountUser; refreshSession: () => Promise<unknown>
+export default function AccountPanel({ auth, user, refreshSession, language }: {
+  auth: AccountAuth; user?: AccountUser; refreshSession: () => Promise<unknown>; language: AppLanguage
 }) {
+  const t = (text: string) => translate(language, text)
   const [mode, setMode] = useState<Mode>('sign-in')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -73,28 +75,28 @@ export default function AccountPanel({ auth, user, refreshSession }: {
         if (result.error) throw new Error('Could not sign out. Try again.')
         await refreshSession()
         changeMode('sign-in')
-      })}>Sign out</button>
+      })}>{t('Sign out')}</button>
     </> : <form className="settings-page__account" onSubmit={submit}>
-      <label className="settings-page__field">Email
+      <label className="settings-page__field">{t('Email')}
         <input type="email" autoComplete="username" required value={email} onChange={event => setEmail(event.currentTarget.value)} />
       </label>
-      {mode !== 'reset' && <label className="settings-page__field">Password
+      {mode !== 'reset' && <label className="settings-page__field">{t('Password')}
         <input type="password" autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'}
           required minLength={mode === 'sign-up' ? 8 : undefined} value={password} onChange={event => setPassword(event.currentTarget.value)} />
       </label>}
       <button className="settings-page__action" type="submit" disabled={busy}>
-        {mode === 'sign-up' ? 'Create account' : mode === 'reset' ? 'Send reset link' : 'Sign in'}
+        {t(mode === 'sign-up' ? 'Create account' : mode === 'reset' ? 'Send reset link' : 'Sign in')}
       </button>
       <div className="settings-page__account-links">
-        {mode !== 'sign-in' && <button type="button" disabled={busy} onClick={() => changeMode('sign-in')}>Sign in</button>}
+        {mode !== 'sign-in' && <button type="button" disabled={busy} onClick={() => changeMode('sign-in')}>{t('Sign in')}</button>}
         {mode === 'sign-in' && <>
-          <button type="button" disabled={busy} onClick={() => changeMode('sign-up')}>Create account</button>
-          <button type="button" disabled={busy} onClick={() => changeMode('reset')}>Forgot password?</button>
+          <button type="button" disabled={busy} onClick={() => changeMode('sign-up')}>{t('Create account')}</button>
+          <button type="button" disabled={busy} onClick={() => changeMode('reset')}>{t('Forgot password?')}</button>
         </>}
       </div>
     </form>}
-    {notice && <p className="settings-page__description" role="status">{notice}</p>}
-    {error && <p className="settings-page__description" role="alert">{error}</p>}
-    <p className="settings-page__description">Your account works on other devices. Tasks and notes stay in this browser.</p>
+    {notice && <p className="settings-page__description" role="status">{t(notice)}</p>}
+    {error && <p className="settings-page__description" role="alert">{t(error)}</p>}
+    <p className="settings-page__description">{t('Your account works on other devices. Tasks and notes stay in this browser.')}</p>
   </div>
 }

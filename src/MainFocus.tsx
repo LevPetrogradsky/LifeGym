@@ -1,9 +1,11 @@
 import { ArrowLeft, BellOff, Ellipsis, ExternalLink, Eye, EyeOff, Globe, Pause, Play, Smartphone, Trees, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { elapsedClock, focusedDuration, type ActiveSession } from './data'
+import { translate, type AppLanguage } from './language'
 import './main-dashboard.css'
 
 interface MainFocusProps {
+  language?: AppLanguage
   session: ActiveSession
   showTime: boolean
   now: number
@@ -58,9 +60,11 @@ function closeAudio(context: AudioContext | null) {
 }
 
 export default function MainFocus({
+  language = 'en',
   session, showTime, now, storageError, checkinEnabled, showCheckinToggle, onToggleCheckin, onToggleTime, onToggleSilence,
   onPause, onResume, onLeave, returnDestination, onFinish, children,
 }: MainFocusProps) {
+  const t = (text: string) => translate(language, text)
   const [panel, setPanel] = useState<'options' | keyof typeof deviceHelp>('options')
   const dialog = useRef<HTMLDialogElement>(null)
   const dialogTrigger = useRef<HTMLButtonElement>(null)
@@ -112,65 +116,65 @@ export default function MainFocus({
   }
 
   return <main className="life-main-focus">
-    {storageError && <p className="life-main-focus-error" role="alert">Your session is still here. Check available storage and try again.</p>}
+    {storageError && <p className="life-main-focus-error" role="alert">{t('Your session is still here. Check available storage and try again.')}</p>}
     <header className="life-main-focus-top">
-      <button type="button" aria-label={paused ? `Back to ${returnDestination}` : `Pause and return to ${returnDestination}`}
-        title={`Back to ${returnDestination}`} onClick={onLeave}><ArrowLeft size={22} aria-hidden="true" /></button>
-      <h1>Focus Mode</h1>
-      <button ref={dialogTrigger} type="button" aria-label="Focus options" aria-haspopup="dialog"
+      <button type="button" aria-label={language === 'ru' ? `${paused ? 'Вернуться' : 'Поставить на паузу и вернуться'}: ${t(returnDestination)}` : paused ? `Back to ${returnDestination}` : `Pause and return to ${returnDestination}`}
+        title={language === 'ru' ? `Вернуться: ${t(returnDestination)}` : `Back to ${returnDestination}`} onClick={onLeave}><ArrowLeft size={22} aria-hidden="true" /></button>
+      <h1>{t('Focus Mode')}</h1>
+      <button ref={dialogTrigger} type="button" aria-label={t('Focus options')} aria-haspopup="dialog"
         onClick={() => dialog.current?.showModal()}><Ellipsis size={23} /></button>
     </header>
     <div className="life-main-focus-center">
       <div className="life-main-clock">
         <div className="life-main-clock-time" id="focus-elapsed-time" data-hidden={!showTime}
           role={showTime ? 'timer' : undefined}>
-          {showTime ? elapsedClock(focusedDuration(session, now)) : <span aria-hidden="true">Time hidden</span>}
+          {showTime ? elapsedClock(focusedDuration(session, now)) : <span aria-hidden="true">{t('Time hidden')}</span>}
         </div>
       </div>
-      <h2>{session.taskTitle}</h2>
-      {paused && <p className="life-main-focus-status" role="status">Paused</p>}
+      <h2>{session.taskId ? session.taskTitle : t(session.taskTitle)}</h2>
+      {paused && <p className="life-main-focus-status" role="status">{t('Paused')}</p>}
       <div className="life-main-focus-preferences">
         <button type="button" className="life-main-time-toggle" aria-controls="focus-elapsed-time" onClick={onToggleTime}>
-          {showTime ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />} {showTime ? 'Hide elapsed time' : 'Show elapsed time'}
+          {showTime ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />} {t(showTime ? 'Hide elapsed time' : 'Show elapsed time')}
         </button>
         {showCheckinToggle && <button type="button" className="life-main-checkin-toggle" role="switch" aria-label="Focus check-in"
           aria-checked={checkinEnabled} onClick={onToggleCheckin}>
-          Check-in <span aria-hidden="true">{checkinEnabled ? 'On' : 'Off'}</span>
+          {t('Check-in')} <span aria-hidden="true">{t(checkinEnabled ? 'On' : 'Off')}</span>
         </button>}
       </div>
       <div className="life-main-focus-controls">
         <button type="button" className="life-main-focus-pause" onClick={paused ? onResume : onPause}>
-          {paused ? <><Play size={18} aria-hidden="true" /> Resume focus</> : <><Pause size={18} aria-hidden="true" /> Take a break</>}
+          {paused ? <><Play size={18} aria-hidden="true" /> {t('Resume focus')}</> : <><Pause size={18} aria-hidden="true" /> {t('Take a break')}</>}
         </button>
-        <button type="button" className="life-main-focus-finish" onClick={onFinish}>Finish session</button>
+        <button type="button" className="life-main-focus-finish" onClick={onFinish}>{t('Finish session')}</button>
       </div>
     </div>
     <dialog ref={dialog} className="life-main-focus-dialog" aria-labelledby="focus-dialog-title"
       onClose={() => { setPanel('options'); dialogTrigger.current?.focus() }}>
       <div className="life-main-focus-dialog-header">
-        {help && <button type="button" aria-label="Back to focus options" onClick={() => setPanel('options')}><ArrowLeft size={20} /></button>}
-        <h2 id="focus-dialog-title" ref={panelHeading} tabIndex={-1}>{help?.title ?? 'Focus options'}</h2>
-        <button type="button" aria-label="Close" autoFocus onClick={() => dialog.current?.close()}><X size={20} /></button>
+        {help && <button type="button" aria-label={t('Back to focus options')} onClick={() => setPanel('options')}><ArrowLeft size={20} /></button>}
+        <h2 id="focus-dialog-title" ref={panelHeading} tabIndex={-1}>{t(help?.title ?? 'Focus options')}</h2>
+        <button type="button" aria-label={t('Close')} autoFocus onClick={() => dialog.current?.close()}><X size={20} /></button>
       </div>
       {help ? <>
-        <p>{help.description}</p>
-        <p>LifeOS can’t change these settings from the browser.</p>
-        <a href={help.link} target="_blank" rel="noreferrer">Apple Screen Time guide <ExternalLink size={16} /></a>
+        <p>{t(help.description)}</p>
+        <p>{t('LifeOS can’t change these settings from the browser.')}</p>
+        <a href={help.link} target="_blank" rel="noreferrer">{t('Apple Screen Time guide')} <ExternalLink size={16} /></a>
       </> : <div className="life-main-focus-dialog-actions">
         <button type="button" onClick={() => setPanel('apps')}>
-          <Smartphone size={18} aria-hidden="true" /> Block Apps
+          <Smartphone size={18} aria-hidden="true" /> {t('Block Apps')}
         </button>
         <button type="button" aria-pressed={silenced} aria-describedby="focus-silence-help" onClick={onToggleSilence}>
-          <BellOff size={18} aria-hidden="true" /> Silence <span>{silenced ? 'On' : 'Off'}</span>
+          <BellOff size={18} aria-hidden="true" /> {t('Silence')} <span>{t(silenced ? 'On' : 'Off')}</span>
         </button>
         <button type="button" onClick={() => setPanel('sites')}>
-          <Globe size={18} aria-hidden="true" /> Hide Sites
+          <Globe size={18} aria-hidden="true" /> {t('Hide Sites')}
         </button>
         <button type="button" aria-pressed={ambient} onClick={toggleAmbient}>
-          <Trees size={18} aria-hidden="true" /> Ambient <span>{ambient ? 'On' : 'Off'}</span>
+          <Trees size={18} aria-hidden="true" /> {t('Ambient')} <span>{t(ambient ? 'On' : 'Off')}</span>
         </button>
-        <p id="focus-silence-help" className="life-main-focus-tool-note">Silence applies to LifeOS break reminders.</p>
-        {ambientMessage && <p className="life-main-focus-tool-note" role="status">{ambientMessage}</p>}
+        <p id="focus-silence-help" className="life-main-focus-tool-note">{t('Silence applies to LifeOS break reminders.')}</p>
+        {ambientMessage && <p className="life-main-focus-tool-note" role="status">{t(ambientMessage)}</p>}
       </div>}
     </dialog>
     {children}

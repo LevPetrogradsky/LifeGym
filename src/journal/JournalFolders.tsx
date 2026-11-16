@@ -3,8 +3,10 @@ import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import FolderPicker from './FolderPicker'
 import { FolderGlyph, folderIconLabel } from './FolderGlyph'
 import { journalFolderColors, journalFolderIcons, maxJournalFolderNameLength, type JournalEntry, type JournalFolder, type JournalFolderAppearance } from '../data'
+import { translate, type AppLanguage } from '../language'
 
 interface JournalFoldersProps {
+  language?: AppLanguage
   folders: JournalFolder[]
   entries: JournalEntry[]
   filter: string
@@ -14,7 +16,8 @@ interface JournalFoldersProps {
   onDelete: (id: string) => boolean
 }
 
-export default function JournalFolders({ folders, entries, filter, onFilterChange, onSave, onReorder, onDelete }: JournalFoldersProps) {
+export default function JournalFolders({ folders, entries, filter, onFilterChange, onSave, onReorder, onDelete, language = 'en' }: JournalFoldersProps) {
+  const t = (text: string) => translate(language, text)
   const dialog = useRef<HTMLDialogElement>(null)
   const [editor, setEditor] = useState<JournalFolderAppearance & { id?: string; name: string }>()
   const [deleting, setDeleting] = useState<JournalFolder>()
@@ -96,16 +99,16 @@ export default function JournalFolders({ folders, entries, filter, onFilterChang
     setError('')
   }
 
-  return <section className="journal-folders" aria-label="Journal folders">
+  return <section className="journal-folders" aria-label={t('Journal folders')}>
     <div className="journal-folder-toolbar">
-      <FolderPicker label="Show entries" value={filter} onChange={onFilterChange} dialogClassName="journal-sheet--centered" options={[
-        { value: 'all', label: 'All entries', icon: Archive },
-        { value: 'unfiled', label: 'No folder', icon: FolderOpen },
+      <FolderPicker label={t('Show entries')} value={filter} onChange={onFilterChange} dialogClassName="journal-sheet--centered" options={[
+        { value: 'all', label: t('All entries'), icon: Archive },
+        { value: 'unfiled', label: t('No folder'), icon: FolderOpen },
         ...folders.map(folder => ({ value: `folder:${folder.id}`, label: folder.name, folder })),
       ]} />
-      <button type="button" className="journal-folder-toggle" aria-label="Manage folders"
+      <button type="button" className="journal-folder-toggle" aria-label={t('Manage folders')}
         aria-haspopup="dialog" onClick={() => dialog.current?.showModal()}>
-        <Settings2 size={17} aria-hidden="true" /> Folders
+        <Settings2 size={17} aria-hidden="true" /> {t('Folders')}
       </button>
     </div>
 
@@ -113,8 +116,8 @@ export default function JournalFolders({ folders, entries, filter, onFilterChang
       onClose={reset} onClick={event => { if (event.target === event.currentTarget) dialog.current?.close() }}>
       <div className="journal-folder-manager-body">
         <header>
-          <h2 id="journal-folder-manager-title">{editor ? (editor.id ? 'Edit folder' : 'New folder') : deleting ? 'Delete folder' : 'Folders'}</h2>
-          <button type="button" className="journal-icon" aria-label="Close folders" onClick={() => dialog.current?.close()}>
+          <h2 id="journal-folder-manager-title">{t(editor ? (editor.id ? 'Edit folder' : 'New folder') : deleting ? 'Delete folder' : 'Folders')}</h2>
+          <button type="button" className="journal-icon" aria-label={t('Close folders')} onClick={() => dialog.current?.close()}>
             <X size={19} aria-hidden="true" />
           </button>
         </header>
@@ -153,7 +156,7 @@ export default function JournalFolders({ folders, entries, filter, onFilterChang
                   <FolderGlyph {...folder} />
                   <span className="journal-folder-name">
                     <strong>{folder.name}</strong>
-                    <small>{count} {count === 1 ? 'entry' : 'entries'}</small>
+                    <small>{count} {t(count === 1 ? 'entry' : 'entries')}</small>
                   </span>
                   <ChevronRight size={15} aria-hidden="true" />
                 </button>
@@ -168,7 +171,7 @@ export default function JournalFolders({ folders, entries, filter, onFilterChang
             {orderStatus?.message}
           </p>
           <button type="button" className="journal-folder-button journal-folder-add" onClick={() => setEditor({ name: '' })}>
-            <FolderPlus size={18} aria-hidden="true" /> New folder
+            <FolderPlus size={18} aria-hidden="true" /> {t('New folder')}
           </button>
         </>}
 
@@ -183,14 +186,14 @@ export default function JournalFolders({ folders, entries, filter, onFilterChang
           const { color, icon } = editor
           if (onSave(name, { color, icon }, editor.id)) reset()
         }}>
-          <label htmlFor="journal-folder-name">Folder name</label>
+          <label htmlFor="journal-folder-name">{t('Folder name')}</label>
           <input id="journal-folder-name" autoFocus value={editor.name} maxLength={maxJournalFolderNameLength}
             onChange={event => {
               setError('')
               setEditor({ ...editor, name: event.currentTarget.value })
             }} />
           <fieldset className="journal-folder-options">
-            <legend>Color</legend>
+            <legend>{t('Color')}</legend>
             <div className="journal-folder-choices">
               {journalFolderColors.map(color => {
                 const selected = (editor.color ?? 'blue') === color
@@ -203,7 +206,7 @@ export default function JournalFolders({ folders, entries, filter, onFilterChang
             </div>
           </fieldset>
           <fieldset className="journal-folder-options">
-            <legend>Icon</legend>
+            <legend>{t('Icon')}</legend>
             <div className="journal-folder-choices">
               {journalFolderIcons.map(icon => <button key={icon} type="button" className="journal-folder-choice"
                 aria-label={folderIconLabel(icon)} aria-pressed={(editor.icon ?? 'folder') === icon}
@@ -212,20 +215,20 @@ export default function JournalFolders({ folders, entries, filter, onFilterChang
               </button>)}
             </div>
           </fieldset>
-          {error && <p className="journal-photo-error" role="alert">{error}</p>}
+          {error && <p className="journal-photo-error" role="alert">{t(error)}</p>}
           <div className="journal-folder-actions">
-            <button type="button" className="journal-text-action" onClick={reset}>Cancel</button>
-            <button type="submit" className="journal-folder-button" disabled={!editor.name.trim()}>{editor.id ? 'Save changes' : 'Create folder'}</button>
+            <button type="button" className="journal-text-action" onClick={reset}>{t('Cancel')}</button>
+            <button type="submit" className="journal-folder-button" disabled={!editor.name.trim()}>{t(editor.id ? 'Save changes' : 'Create folder')}</button>
           </div>
         </form>}
 
         {deleting && <div className="journal-folder-editor">
-          <p>Delete “{deleting.name}”? Its entries will move to No folder.</p>
+          <p>{language === 'ru' ? `Удалить «${deleting.name}»? Записи переместятся в раздел «Без папки».` : `Delete “${deleting.name}”? Its entries will move to No folder.`}</p>
           <div className="journal-folder-actions">
-            <button type="button" className="journal-text-action" onClick={reset}>Cancel</button>
+            <button type="button" className="journal-text-action" onClick={reset}>{t('Cancel')}</button>
             <button type="button" className="journal-folder-button journal-folder-delete" onClick={() => {
               if (onDelete(deleting.id)) dialog.current?.close()
-            }}>Delete folder</button>
+            }}>{t('Delete folder')}</button>
           </div>
         </div>}
       </div>

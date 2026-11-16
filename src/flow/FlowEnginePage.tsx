@@ -4,9 +4,11 @@ import { sessionMinutes, type FlowDiscovery, type FlowEngineData, type LifeOSDat
 import { emptyFlowEngineData } from '../data'
 import { canDistillPrinciple, factorObservations, hypothesisSuggestion, principleDraft, principleHasEvidence, recentSessions, summarizeSessions, updateFlowEngine } from './model'
 import { DiscoveryConversation, DiscoveryQuestion, DiscoveryResults, discoveryFromAnswers, emptyAnswers, prompts } from './Discovery'
+import { translate, type AppLanguage } from '../language'
 import './flow.css'
 
 export interface FlowEnginePageProps {
+  language?: AppLanguage
   data: LifeOSData
   onUpdate: (change: (current: LifeOSData) => LifeOSData) => boolean
   onReturn: () => void
@@ -24,10 +26,13 @@ const tools = [
 ] as const
 
 const newId = () => crypto.randomUUID()
-const dateLabel = (date: string) => new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date(date))
-const timeLabel = (date: string) => new Intl.DateTimeFormat('en', { hour: 'numeric', minute: '2-digit' }).format(new Date(date))
-
-export default function FlowEnginePage({ data, onUpdate, onReturn, returnLabel, onReflectionSaved, sessionsOnly = false }: FlowEnginePageProps) {
+export default function FlowEnginePage({ data, onUpdate, onReturn, returnLabel, onReflectionSaved, sessionsOnly = false, language = 'en' }: FlowEnginePageProps) {
+  const t = (text: string) => translate(language, text)
+  const dateLabel = (date: string) => new Intl.DateTimeFormat(language, { month: 'short', day: 'numeric' }).format(new Date(date))
+  const timeLabel = (date: string) => new Intl.DateTimeFormat(language, { hour: 'numeric', minute: '2-digit' }).format(new Date(date))
+  const durationLabel = (durationMs: number) => language === 'ru'
+    ? durationMs < 60_000 ? 'Меньше минуты' : `${Math.round(durationMs / 60_000)} мин`
+    : sessionMinutes(durationMs)
   const [stage, setStage] = useState<FlowStage>(sessionsOnly ? 'history' : 'discover')
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState(emptyAnswers)
@@ -196,57 +201,57 @@ export default function FlowEnginePage({ data, onUpdate, onReturn, returnLabel, 
     ? 'Previous question'
     : stage === 'reflections' || tools.some(tool => tool.stage === stage) ? 'Back to History' : 'Back to Reflection'
   const historyButton = <button type="button" className="flow-history-button" onClick={() => openStage('history')}>
-    <History size={18} aria-hidden="true" /> History
+    <History size={18} aria-hidden="true" /> {t('History')}
   </button>
 
   return <main ref={pageRef} className="page-content flow-engine-page">
     <div className="flow-toolbar">
-      <button type="button" className="flow-back" aria-label={backLabel} onClick={goBack}><ArrowLeft size={21} /></button>
+      <button type="button" className="flow-back" aria-label={t(backLabel)} onClick={goBack}><ArrowLeft size={21} /></button>
       {stage === 'discover' && <span>{step + 1} / {prompts.length}</span>}
       {stage === 'discover' && historyButton}
     </div>
 
     {message && <p className="flow-engine-message" role="status">{message}<button aria-label="Dismiss message" onClick={() => setMessage('')}><X size={15} /></button></p>}
 
-    {stage === 'discover' && <DiscoveryQuestion step={step} answers={answers} onChange={answer => setAnswers(current => current.map((item, index) => index === step ? answer : item))} onNext={nextQuestion} />}
+    {stage === 'discover' && <DiscoveryQuestion language={language} step={step} answers={answers} onChange={answer => setAnswers(current => current.map((item, index) => index === step ? answer : item))} onNext={nextQuestion} />}
 
     {stage === 'review' && draft && <section className="flow-result">
-      <DiscoveryConversation answers={answers} />
-      <h1 tabIndex={-1}>Your reflection</h1>
-      <p className="flow-subtitle">Here’s what stood out in your answers.</p>
-      <DiscoveryResults discovery={draft} showAnswers={false} />
-      <button type="button" className="flow-primary" onClick={saveDiscovery}>Save reflection <Check size={19} aria-hidden="true" /></button>
+      <DiscoveryConversation answers={answers} language={language} />
+      <h1 tabIndex={-1}>{t('Your reflection')}</h1>
+      <p className="flow-subtitle">{t('Here’s what stood out in your answers.')}</p>
+      <DiscoveryResults discovery={draft} showAnswers={false} language={language} />
+      <button type="button" className="flow-primary" onClick={saveDiscovery}>{t('Save reflection')} <Check size={19} aria-hidden="true" /></button>
     </section>}
 
-    {title && <header className="flow-screen-header"><h1 tabIndex={-1}>{title}</h1></header>}
+    {title && <header className="flow-screen-header"><h1 tabIndex={-1}>{t(title)}</h1></header>}
 
     {stage === 'history' && <>
       {!sessionsOnly && flow.discoveries.length > 0 && <button type="button" className="flow-history-row" onClick={() => openStage('reflections')}>
-        <span>Past reflections</span>
+        <span>{t('Past reflections')}</span>
         <span>{flow.discoveries.length}</span>
         <ChevronRight size={17} aria-hidden="true" />
       </button>}
       <details className="flow-history" open>
-        <summary><span>Focus sessions</span><span>{sessionSummary.count} {sessionSummary.count === 1 ? 'session' : 'sessions'}</span></summary>
+        <summary><span>{t('Focus sessions')}</span><span>{sessionSummary.count} {t(sessionSummary.count === 1 ? 'session' : 'sessions')}</span></summary>
         {sessionSummary.count ? <div className="flow-history-content">
           {sessionSummary.interest !== '—' && <div className="flow-history-metrics">
-            <div><span>Average interest</span><strong>{sessionSummary.interest} / 5</strong></div>
-            <div><span>Desire to continue</span><strong>{sessionSummary.continueDesire} / 5</strong></div>
-            <div><span>Sense of progress</span><strong>{sessionSummary.progress} / 5</strong></div>
+            <div><span>{t('Average interest')}</span><strong>{sessionSummary.interest} / 5</strong></div>
+            <div><span>{t('Desire to continue')}</span><strong>{sessionSummary.continueDesire} / 5</strong></div>
+            <div><span>{t('Sense of progress')}</span><strong>{sessionSummary.progress} / 5</strong></div>
           </div>}
-          {!sessionsOnly && <h3>Recent sessions</h3>}
+          {!sessionsOnly && <h3>{t('Recent sessions')}</h3>}
           <div className="flow-history-list">{recent.map(session => <article key={session.id}>
             <strong>{session.taskTitle}</strong>
             <span>{dateLabel(session.endedAt)} · {timeLabel(session.endedAt)}</span>
-            <span>{sessionMinutes(session.durationMs)}</span>
+            <span>{durationLabel(session.durationMs)}</span>
           </article>)}</div>
-        </div> : <p className="muted flow-history-empty">Completed focus sessions will appear here.</p>}
+        </div> : <p className="muted flow-history-empty">{t('Completed focus sessions will appear here.')}</p>}
       </details>
       {!sessionsOnly && <details className="flow-history">
-        <summary>More tools</summary>
+        <summary>{t('More tools')}</summary>
         <div className="flow-history-content flow-tools">
           {tools.map(({ stage, label }) => <button type="button" className="flow-history-row" key={stage} onClick={() => openStage(stage)}>
-            <span>{label}</span>
+            <span>{t(label)}</span>
             <ChevronRight size={17} aria-hidden="true" />
           </button>)}
         </div>
@@ -254,79 +259,79 @@ export default function FlowEnginePage({ data, onUpdate, onReturn, returnLabel, 
     </>}
 
     {stage === 'reflections' && flow.discoveries[0] && <section className="flow-result">
-      <h2>Latest reflection</h2>
-      <DiscoveryResults discovery={flow.discoveries[0]} onPlan={() => planFrom(flow.discoveries[0])} />
+      <h2>{t('Latest reflection')}</h2>
+      <DiscoveryResults discovery={flow.discoveries[0]} onPlan={() => planFrom(flow.discoveries[0])} language={language} />
       {flow.discoveries.length > 1 && <details className="flow-answers">
-        <summary>Earlier reflections</summary>
+        <summary>{t('Earlier reflections')}</summary>
         <div className="flow-discovery-list">{flow.discoveries.slice(1).map(item => <article className="flow-record" key={item.id}>
           <time dateTime={item.createdAt}>{dateLabel(item.createdAt)}</time>
           <p>{[item.enjoyableWork, item.motivation, item.desireToReturn].filter(Boolean).join(' · ')}</p>
-          <button type="button" className="flow-text-button" onClick={() => planFrom(item)}>Explore this reflection</button>
+          <button type="button" className="flow-text-button" onClick={() => planFrom(item)}>{t('Explore this reflection')}</button>
         </article>)}</div>
       </details>}
     </section>}
 
     {stage === 'analyze' && <section className="flow-engine-card">
-      <h2>What might be worth testing?</h2>
-      <p className="flow-caution">These are clues, not causes or conclusions. You decide which idea is useful.</p>
+      <h2>{t('What might be worth testing?')}</h2>
+      <p className="flow-caution">{t('These are clues, not causes or conclusions. You decide which idea is useful.')}</p>
       {observations.length > 0 ? <div className="flow-observations">{observations.map(item => <article className="flow-observation" key={item.factor}>
-        <div><strong>{item.factor}</strong><span>{item.sessionCount} linked {item.sessionCount === 1 ? 'session' : 'sessions'}</span></div>
-        <p>Interest averaged {item.averageInterest.toFixed(1)} / 5 and progress {item.averageProgress.toFixed(1)} / 5 when this was selected.</p>
-        <button className="flow-text-button" onClick={() => { setHypothesisText(hypothesisSuggestion(item.factor)); setStage('analyze') }}>Explore this possibility</button>
-      </article>)}</div> : <p className="muted">Start a reflection to think about what helped, then write an idea to try.</p>}
+        <div><strong>{t(item.factor)}</strong><span>{item.sessionCount} {t('linked')} {t(item.sessionCount === 1 ? 'session' : 'sessions')}</span></div>
+        <p>{language === 'ru' ? `Средний интерес — ${item.averageInterest.toFixed(1)} / 5, прогресс — ${item.averageProgress.toFixed(1)} / 5 при выборе этого фактора.` : `Interest averaged ${item.averageInterest.toFixed(1)} / 5 and progress ${item.averageProgress.toFixed(1)} / 5 when this was selected.`}</p>
+        <button className="flow-text-button" onClick={() => { setHypothesisText(hypothesisSuggestion(item.factor)); setStage('analyze') }}>{t('Explore this possibility')}</button>
+      </article>)}</div> : <p className="muted">{t('Start a reflection to think about what helped, then write an idea to try.')}</p>}
       <form className="flow-engine-form" onSubmit={saveHypothesis}>
-        <label>Your working hypothesis<textarea rows={3} value={hypothesisText} onChange={event => setHypothesisText(event.target.value)} placeholder="I might enjoy tasks more when…" /></label>
-        {flow.discoveries.length > 0 && <label>Connect a reflection<select value={selectedDiscoveryId} onChange={event => setSelectedDiscoveryId(event.target.value)}><option value="">No reflection selected</option>{flow.discoveries.map(item => <option key={item.id} value={item.id}>{dateLabel(item.createdAt)} · {item.enjoyableWork || item.motivation || item.desireToReturn}</option>)}</select></label>}
-        <button className="button button-dark" type="submit" disabled={!hypothesisText.trim()}>Save hypothesis</button>
+        <label>{t('Your working hypothesis')}<textarea rows={3} value={hypothesisText} onChange={event => setHypothesisText(event.target.value)} placeholder={t('I might enjoy tasks more when…')} /></label>
+        {flow.discoveries.length > 0 && <label>{t('Connect a reflection')}<select value={selectedDiscoveryId} onChange={event => setSelectedDiscoveryId(event.target.value)}><option value="">{t('No reflection selected')}</option>{flow.discoveries.map(item => <option key={item.id} value={item.id}>{dateLabel(item.createdAt)} · {item.enjoyableWork || item.motivation || item.desireToReturn}</option>)}</select></label>}
+        <button className="button button-dark" type="submit" disabled={!hypothesisText.trim()}>{t('Save hypothesis')}</button>
       </form>
-      {flow.hypotheses.length > 0 && <div className="flow-record-list"><h3>Ideas to explore</h3>{flow.hypotheses.map(item => <article className={`flow-record ${item.status === 'rejected' ? 'muted-record' : ''}`} key={item.id}>
-        <p>{item.statement}</p><span className="flow-record-status">{item.status === 'active' ? 'Open to testing' : 'Set aside'}</span>
-        {item.status === 'active' && <button className="flow-text-button" onClick={() => { setExperimentHypothesisId(item.id); setStage('experiment') }}>Try this in a session</button>}
-        {item.status === 'active' && <button className="flow-icon-button" aria-label="Set hypothesis aside" onClick={() => rejectHypothesis(item.id)}><X size={16} /></button>}
+      {flow.hypotheses.length > 0 && <div className="flow-record-list"><h3>{t('Ideas to explore')}</h3>{flow.hypotheses.map(item => <article className={`flow-record ${item.status === 'rejected' ? 'muted-record' : ''}`} key={item.id}>
+        <p>{item.statement}</p><span className="flow-record-status">{t(item.status === 'active' ? 'Open to testing' : 'Set aside')}</span>
+        {item.status === 'active' && <button className="flow-text-button" onClick={() => { setExperimentHypothesisId(item.id); setStage('experiment') }}>{t('Try this in a session')}</button>}
+        {item.status === 'active' && <button className="flow-icon-button" aria-label={t('Set hypothesis aside')} onClick={() => rejectHypothesis(item.id)}><X size={16} /></button>}
       </article>)}</div>}
     </section>}
 
     {stage === 'experiment' && <section className="flow-engine-card">
-      <h2>Try one small condition.</h2>
-      <p className="muted">Start with a real focus session. Check-ins stay in your existing history; here you only link them to an idea.</p>
+      <h2>{t('Try one small condition.')}</h2>
+      <p className="muted">{t('Start with a real focus session. Check-ins stay in your existing history; here you only link them to an idea.')}</p>
       <form className="flow-engine-form" onSubmit={startExperiment}>
-        <label>Working hypothesis<select value={experimentHypothesisId} onChange={event => setExperimentHypothesisId(event.target.value)}><option value="">Choose an idea</option>{activeHypotheses.map(item => <option key={item.id} value={item.id}>{item.statement}</option>)}</select></label>
-        <label>What will you try?<textarea rows={2} value={condition} onChange={event => setCondition(event.target.value)} placeholder="For example, choose the first step myself…" /></label>
-        <button className="button button-dark" type="submit" disabled={!experimentHypothesisId || !condition.trim()}>Start experiment</button>
+        <label>{t('Working hypothesis')}<select value={experimentHypothesisId} onChange={event => setExperimentHypothesisId(event.target.value)}><option value="">{t('Choose an idea')}</option>{activeHypotheses.map(item => <option key={item.id} value={item.id}>{item.statement}</option>)}</select></label>
+        <label>{t('What will you try?')}<textarea rows={2} value={condition} onChange={event => setCondition(event.target.value)} placeholder={t('For example, choose the first step myself…')} /></label>
+        <button className="button button-dark" type="submit" disabled={!experimentHypothesisId || !condition.trim()}>{t('Start experiment')}</button>
       </form>
-      {flow.experiments.length > 0 && <div className="flow-record-list"><h3>Experiments</h3>{flow.experiments.map(item => {
+      {flow.experiments.length > 0 && <div className="flow-record-list"><h3>{t('Experiments')}</h3>{flow.experiments.map(item => {
         const hypothesis = flow.hypotheses.find(entry => entry.id === item.hypothesisId)
         return <article className="flow-record" key={item.id}>
-          <div className="flow-record-top"><strong>{item.condition}</strong><span className="flow-record-status">{item.status === 'active' ? 'In progress' : 'Completed'}</span></div>
-          {hypothesis && <p className="muted">Testing: {hypothesis.statement}</p>}
-          <p>{item.sessionIds.length} focus {item.sessionIds.length === 1 ? 'session' : 'sessions'} linked</p>
+          <div className="flow-record-top"><strong>{item.condition}</strong><span className="flow-record-status">{t(item.status === 'active' ? 'In progress' : 'Completed')}</span></div>
+          {hypothesis && <p className="muted">{language === 'ru' ? 'Проверяем:' : 'Testing:'} {hypothesis.statement}</p>}
+          <p>{language === 'ru' ? `Связано с сессиями фокуса: ${item.sessionIds.length}` : `${item.sessionIds.length} focus ${item.sessionIds.length === 1 ? 'session' : 'sessions'} linked`}</p>
           {item.status === 'active' && <>
-            <button className="flow-text-button" onClick={() => setSelectedExperimentId(item.id)}>Link a recent session</button>
-            {item.id === selectedExperiment?.id && <div className="flow-session-list">{[...data.sessions].sort((a, b) => b.endedAt.localeCompare(a.endedAt)).slice(0, 8).map(session => <button key={session.id} disabled={item.sessionIds.includes(session.id)} onClick={() => linkSession(item.id, session.id)}><span>{sessionLabel(session.id)}</span>{item.sessionIds.includes(session.id) ? <Check size={16} /> : <span>Link</span>}</button>)}</div>}
-            <button className="flow-text-button" disabled={item.sessionIds.length === 0} onClick={() => finishExperiment(item.id)}>Finish experiment</button>
+            <button className="flow-text-button" onClick={() => setSelectedExperimentId(item.id)}>{t('Link a recent session')}</button>
+            {item.id === selectedExperiment?.id && <div className="flow-session-list">{[...data.sessions].sort((a, b) => b.endedAt.localeCompare(a.endedAt)).slice(0, 8).map(session => <button key={session.id} disabled={item.sessionIds.includes(session.id)} onClick={() => linkSession(item.id, session.id)}><span>{sessionLabel(session.id)}</span>{item.sessionIds.includes(session.id) ? <Check size={16} /> : <span>{t('Link')}</span>}</button>)}</div>}
+            <button className="flow-text-button" disabled={item.sessionIds.length === 0} onClick={() => finishExperiment(item.id)}>{t('Finish experiment')}</button>
           </>}
         </article>
       })}</div>}
     </section>}
 
     {stage === 'principle' && <section className="flow-engine-card">
-      <h2>Keep what repeats and helps.</h2>
-      <p className="muted">A tentative principle needs at least two linked sessions. Edit or set it aside whenever your experience changes.</p>
-      {flow.experiments.length === 0 && <p className="muted">Your experiments and linked focus sessions will appear here.</p>}
+      <h2>{t('Keep what repeats and helps.')}</h2>
+      <p className="muted">{t('A tentative principle needs at least two linked sessions. Edit or set it aside whenever your experience changes.')}</p>
+      {flow.experiments.length === 0 && <p className="muted">{t('Your experiments and linked focus sessions will appear here.')}</p>}
       <div className="flow-record-list">{flow.experiments.map(experiment => {
         const hypothesis = flow.hypotheses.find(item => item.id === experiment.hypothesisId)
         const principle = flow.principles.find(item => item.experimentId === experiment.id)
         return <article className="flow-record" key={experiment.id}>
-          <div className="flow-record-top"><strong>{experiment.condition}</strong><span className="flow-record-status">{experiment.sessionIds.length} sessions</span></div>
-          {hypothesis && <p className="muted">Idea: {hypothesis.statement}</p>}
-          {!principle && <button className="button button-dark" disabled={!canDistillPrinciple(experiment) || !hypothesis} onClick={() => createPrinciple(experiment.id)}>Draft a principle</button>}
+          <div className="flow-record-top"><strong>{experiment.condition}</strong><span className="flow-record-status">{experiment.sessionIds.length} {t('sessions')}</span></div>
+          {hypothesis && <p className="muted">{language === 'ru' ? 'Идея:' : 'Idea:'} {hypothesis.statement}</p>}
+          {!principle && <button className="button button-dark" disabled={!canDistillPrinciple(experiment) || !hypothesis} onClick={() => createPrinciple(experiment.id)}>{t('Draft a principle')}</button>}
           {principle && <div className={`flow-principle ${principle.status === 'rejected' ? 'muted-record' : ''}`}>
-            {editingPrincipleId === principle.id ? <><label>Edit your principle<textarea rows={3} value={principleText} onChange={event => setPrincipleText(event.target.value)} /></label><button className="button button-dark" disabled={!principleText.trim()} onClick={() => savePrinciple(principle.id)}>Save changes</button></> : <><p>{principle.text}</p><p className="flow-evidence">Based on {principle.evidenceSessionIds.length} focus sessions. This is a personal observation, not a rule.</p>{principle.status === 'active' ? <><button className="flow-text-button" onClick={() => { setEditingPrincipleId(principle.id); setPrincipleText(principle.text) }}>Edit</button><button className="flow-text-button" onClick={() => rejectPrinciple(principle.id)}>Set aside</button></> : <span className="flow-record-status">Set aside; evidence kept</span>}</>}
+            {editingPrincipleId === principle.id ? <><label>{t('Edit your principle')}<textarea rows={3} value={principleText} onChange={event => setPrincipleText(event.target.value)} /></label><button className="button button-dark" disabled={!principleText.trim()} onClick={() => savePrinciple(principle.id)}>{t('Save changes')}</button></> : <><p>{principle.text}</p><p className="flow-evidence">{language === 'ru' ? `Основано на ${principle.evidenceSessionIds.length} сессиях фокуса. Это личное наблюдение, а не правило.` : `Based on ${principle.evidenceSessionIds.length} focus sessions. This is a personal observation, not a rule.`}</p>{principle.status === 'active' ? <><button className="flow-text-button" onClick={() => { setEditingPrincipleId(principle.id); setPrincipleText(principle.text) }}>{t('Edit')}</button><button className="flow-text-button" onClick={() => rejectPrinciple(principle.id)}>{t('Set aside')}</button></> : <span className="flow-record-status">{t('Set aside; evidence kept')}</span>}</>}
           </div>}
-          {principle && !principleHasEvidence(principle, experiment) && <p className="flow-caution">This principle has fewer than two evidence sessions now. Add observations before relying on it.</p>}
+          {principle && !principleHasEvidence(principle, experiment) && <p className="flow-caution">{t('This principle has fewer than two evidence sessions now. Add observations before relying on it.')}</p>}
         </article>
       })}</div>
-      {flow.principles.some(item => item.status === 'active') && <div className="flow-record-list"><h3>Your principles</h3>{flow.principles.filter(item => item.status === 'active').map(item => <p className="flow-principle-summary" key={item.id}><Check size={15} />{item.text}</p>)}</div>}
+      {flow.principles.some(item => item.status === 'active') && <div className="flow-record-list"><h3>{t('Your principles')}</h3>{flow.principles.filter(item => item.status === 'active').map(item => <p className="flow-principle-summary" key={item.id}><Check size={15} />{item.text}</p>)}</div>}
     </section>}
 
   </main>
