@@ -67,6 +67,30 @@
   overflow-wrap: anywhere;
 }
 .life-main-thanks { display: flex; align-items: center; gap: 5px; margin: 7px 0 0; color: var(--main-muted); font-size: 13px; }
+.life-main-thanks svg { color: #df3954; }
+.life-main-discord {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  margin-top: 12px;
+  padding: 7px 12px;
+  border: 1px solid #4b72e8;
+  border-radius: 11px;
+  background: #5865f2;
+  box-shadow: 0 5px 13px rgb(47 64 177 / 28%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  transition: background 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+.life-main-discord:hover { background: #4855d7; box-shadow: 0 7px 17px rgb(47 64 177 / 33%); transform: translateY(-1px); }
+.life-main-discord:focus-visible { outline: 3px solid #a9cbff; outline-offset: 3px; }
+:root[data-theme='dark'] .life-main-discord { border-color: #8790ff; background: #6975ff; box-shadow: 0 5px 17px rgb(105 117 255 / 28%); color: #101326; }
+:root[data-theme='dark'] .life-main-discord:hover { background: #828cff; box-shadow: 0 7px 20px rgb(105 117 255 / 36%); }
 
 .life-main-icon {
   display: grid;

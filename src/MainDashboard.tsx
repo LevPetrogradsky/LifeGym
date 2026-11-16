@@ -186,7 +186,10 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
   if (screen === 'home') return <main className="life-main life-main-home">
     <header className="life-main-hero">
       <div><h1 ref={heading} tabIndex={-1}>{language === 'ru' ? 'Добро пожаловать' : 'Welcome'}{displayName?.trim() ? `, ${displayName.trim()}` : ''}!</h1>
-        <p className="life-main-thanks">{language === 'ru' ? 'Спасибо' : 'Thank you'} <Heart size={13} fill="currentColor" aria-hidden="true" /></p></div>
+        <p className="life-main-thanks">{language === 'ru' ? 'Спасибо' : 'Thank you'} <Heart size={13} fill="currentColor" aria-hidden="true" /></p>
+        <a className="life-main-discord" href="https://discord.gg/y4s67MzZr" target="_blank" rel="noopener noreferrer">
+          {language === 'ru' ? 'Вступить в Discord' : 'Join Discord'} <ArrowRight size={15} aria-hidden="true" />
+        </a></div>
       <div className="life-main-hero-actions">
         <button type="button" className="life-main-icon life-main-settings" aria-label={searchIncludesJournal ? 'Search tasks and journal' : 'Search tasks'}
           aria-haspopup="dialog" onClick={onSearch}><Search size={20} aria-hidden="true" /></button>
