@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent, type ReactNode } from 'react'
 import { ChevronRight, Compass, Copy, Download, ExternalLink, Github, HardDrive, Info, Monitor, Moon, Palette, Sun, Timer, Upload, UserRound } from 'lucide-react'
-import { breakReminderMinutes, maxDisplayNameLength, shortcuts, type BreakReminderMinutes, type Shortcut, type ShortcutLocation, type Theme } from '../data'
+import { breakReminderMinutes, maxDisplayNameLength, shortcuts, type BreakReminderMinutes, type PostFocusAction, type Shortcut, type ShortcutLocation, type Theme } from '../data'
 import './settings.css'
 
 interface SettingsPageProps {
@@ -21,6 +21,8 @@ interface SettingsPageProps {
   displayName: string
   onDisplayNameChange: (name: string) => boolean
   focusCheckin?: { enabled: boolean; onChange: (enabled: boolean) => void }
+  postFocusAction?: { value?: PostFocusAction; onChange: (action: PostFocusAction) => void }
+  onOpenPresets?: () => void
 }
 
 const themes = [
@@ -102,7 +104,7 @@ function AboutLifeOS({ repoUrl }: { repoUrl: string }) {
 
 export default function SettingsPage({
   account,
-  theme, onThemeChange, showHome, onHomeVisibilityChange, showAskLifeOS, onAskLifeOSVisibilityChange, shortcutVisible, onShortcutChange, onExport, onImport, repoUrl, focusCheckin,
+  theme, onThemeChange, showHome, onHomeVisibilityChange, showAskLifeOS, onAskLifeOSVisibilityChange, shortcutVisible, onShortcutChange, onExport, onImport, repoUrl, focusCheckin, postFocusAction, onOpenPresets,
   reminderMinutes, onReminderMinutesChange, displayName, onDisplayNameChange,
 }: SettingsPageProps) {
   return (
@@ -111,7 +113,7 @@ export default function SettingsPage({
 
       <div className="settings-page__groups">
         {account && <SettingsGroup title="Account" icon={<UserRound size={18} />}>{account}</SettingsGroup>}
-        <SettingsGroup title="Personalize" icon={<Palette size={18} />}
+        <SettingsGroup title="Appearance & name" icon={<Palette size={18} />}
           summary={themes.find(option => option.value === theme)?.label}>
           <fieldset className="settings-page__themes">
             <legend>Color theme</legend>
@@ -128,7 +130,7 @@ export default function SettingsPage({
           <DisplayNameForm key={displayName} name={displayName} onSave={onDisplayNameChange} />
         </SettingsGroup>
 
-        <SettingsGroup title="Navigation" icon={<Compass size={18} />}>
+        <SettingsGroup title="Home & navigation" icon={<Compass size={18} />}>
           <label className="settings-page__toggle settings-page__navigation-toggle">
             <span className="settings-page__toggle-copy"><strong>Home</strong><span>In the navigation bar</span></span>
             <input type="checkbox" role="switch" aria-label="Home in navigation bar" checked={showHome}
@@ -151,8 +153,25 @@ export default function SettingsPage({
           </fieldset>)}
         </SettingsGroup>
 
-        <SettingsGroup title="Focus" icon={<Timer size={18} />}>
-          {focusCheckin && <label className="settings-page__toggle">
+        <SettingsGroup title="Focus & reminders" icon={<Timer size={18} />}>
+          {onOpenPresets && <button type="button" className="settings-page__action" onClick={onOpenPresets}>
+            Presets <ChevronRight size={17} aria-hidden="true" />
+          </button>}
+          {postFocusAction && <fieldset className="settings-page__post-focus">
+            <legend>After a focus session</legend>
+            <p className="settings-page__description">Choose what opens after you finish. You can change this at any time.</p>
+            {([
+              { value: 'reflection', title: 'Reflection', description: 'Recommended · Reflect on what helped.' },
+              { value: 'check-in', title: 'Automatic check-in', description: 'Rate interest, desire to continue, and progress.' },
+            ] as const).map(option => <label key={option.value} className="settings-page__post-focus-option">
+              <input type="radio" name="lifeos-post-focus" value={option.value}
+                checked={postFocusAction.value === option.value}
+                onChange={() => postFocusAction.onChange(option.value)} />
+              <span><strong>{option.title}</strong><small>{option.description}</small></span>
+            </label>)}
+            {!postFocusAction.value && <p className="settings-page__description">No preference saved yet. You can choose now or after finishing a focus session.</p>}
+          </fieldset>}
+          {focusCheckin && !postFocusAction?.value && <label className="settings-page__toggle">
             <span className="settings-page__toggle-copy">
               <strong>Focus check-in</strong>
               <span id="settings-page-focus-help">Ask how the session felt when I finish.</span>
@@ -174,7 +193,7 @@ export default function SettingsPage({
           </label>
         </SettingsGroup>
 
-        <SettingsGroup title="Backups" icon={<HardDrive size={18} />}>
+        <SettingsGroup title="Backup & restore" icon={<HardDrive size={18} />}>
           <p className="settings-page__description">
             Your data stays in this browser. Use a backup to move it to another device.
           </p>

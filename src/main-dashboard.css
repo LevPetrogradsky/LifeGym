@@ -601,7 +601,7 @@
 }
 
 .life-main-focus {
-  --focus-bg: #f8f7f3;
+  --focus-bg: #f7f8fc;
   --focus-ink: #26332d;
   --focus-muted: #526458;
   --focus-surface: #fff;
@@ -620,7 +620,7 @@
 }
 
 :root[data-theme='dark'] .life-main-focus {
-  --focus-bg: #171717;
+  --focus-bg: var(--bg, #171717);
   --focus-ink: #ececec;
   --focus-muted: #b8b8b8;
   --focus-surface: #242424;
@@ -669,6 +669,8 @@
 
 .life-main-clock-time[data-hidden='true'] {
   color: var(--focus-muted);
+  font-size: 15px;
+  font-weight: 600;
   user-select: none;
 }
 
@@ -758,7 +760,7 @@
     display: flex;
     flex-direction: column;
     min-height: 100dvh;
-    padding-bottom: calc(78px + env(safe-area-inset-bottom));
+    padding-bottom: calc(89px + env(safe-area-inset-bottom));
   }
 
   .life-main-hero {
@@ -767,11 +769,18 @@
 
   .life-main-stack {
     margin-block: auto;
+    transform: translateY(clamp(8px, 1.4dvh, 16px));
   }
 
   .life-main-tasks {
     width: calc(100% - 32px);
     padding: max(42px, env(safe-area-inset-top)) 0 calc(90px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 760px) and (max-height: 740px) {
+  .life-main-stack {
+    transform: none;
   }
 }
 

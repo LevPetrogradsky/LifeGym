@@ -26,6 +26,10 @@ export function shortcutVisible(data: LifeOSData, shortcut: Shortcut, location: 
 }
 export const breakReminderMinutes = [0, 5, 10, 15, 20] as const
 export type BreakReminderMinutes = typeof breakReminderMinutes[number]
+export const postFocusActions = ['reflection', 'check-in'] as const
+export type PostFocusAction = typeof postFocusActions[number]
+export const focusPresetIds = ['work', 'creativity', 'grounding', 'bible-reading'] as const
+export type FocusPresetId = typeof focusPresetIds[number]
 export const maxDisplayNameLength = 40
 export type Factor = 'Meaningful Goal' | 'Personal Control' | 'Fast Feedback' | 'Other'
 
@@ -175,6 +179,9 @@ export interface LifeOSData {
   askLifeOSInBar?: boolean
   shortcutPreferences?: ShortcutPreferences
   focusCheckinEnabled?: boolean
+  // An absent value retains the old focus check-in behavior until the user chooses.
+  postFocusAction?: PostFocusAction
+  focusPresetId?: FocusPresetId
   displayName?: string
   breakReminderMinutes?: BreakReminderMinutes
   // Optional so previously saved version 1 data remains valid without migration.
@@ -253,6 +260,8 @@ export function validateLifeOSData(value: unknown): value is LifeOSData {
   if (value.pendingSession !== null && !(validActiveSession(value.pendingSession) &&
     isTimestamp((value.pendingSession as Partial<PendingSession>).endedAt))) return false
   if (value.focusCheckinEnabled !== undefined && typeof value.focusCheckinEnabled !== 'boolean') return false
+  if (value.postFocusAction !== undefined && !postFocusActions.some(action => action === value.postFocusAction)) return false
+  if (value.focusPresetId !== undefined && !focusPresetIds.some(id => id === value.focusPresetId)) return false
   if (value.displayName !== undefined && (!isString(value.displayName) || value.displayName.length > maxDisplayNameLength)) return false
   if (value.breakReminderMinutes !== undefined && !breakReminderMinutes.some(minutes => minutes === value.breakReminderMinutes)) return false
   if (value.theme !== 'light' && value.theme !== 'dark' && value.theme !== 'system') return false
@@ -432,7 +441,10 @@ export function recordUnratedSession(data: LifeOSData, finished: PendingSession)
 }
 
 function resolvePendingSession(data: LifeOSData): LifeOSData {
-  return data.focusCheckinEnabled === false && data.pendingSession
+  // Preserve the first-session choice after reload; keep legacy auto-save for
+  // established users who disabled check-ins before this preference existed.
+  return data.postFocusAction === undefined && data.sessions.length > 0 &&
+    data.focusCheckinEnabled === false && data.pendingSession
     ? recordUnratedSession(data, data.pendingSession)
     : data
 }

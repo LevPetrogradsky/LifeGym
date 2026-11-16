@@ -119,6 +119,23 @@
 
 .journal-form-new {
   box-shadow: var(--journal-shadow);
+  padding: 12px 14px 10px;
+}
+
+.journal-form-new > label {
+  margin-bottom: 2px;
+  color: var(--journal-text);
+  font-size: 14px;
+}
+
+.journal-form-new .journal-form-actions {
+  padding-top: 9px;
+  border-top: 1px solid var(--journal-border);
+}
+
+.journal-form-new .journal-photo-action,
+.journal-form-new .journal-voice-action {
+  border-radius: 10px;
 }
 
 .journal-form-edit {
@@ -236,13 +253,59 @@
 }
 
 .journal-dictation-language {
+  position: relative;
+  flex: none;
+  color: var(--journal-accent);
+}
+
+.journal-dictation-language > summary {
+  display: flex;
+  min-width: 56px;
   min-height: 39px;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 7px;
   border: 1px solid var(--journal-border);
   border-radius: 10px;
-  padding: 0 6px;
-  color: var(--journal-muted);
-  background: var(--journal-field);
-  font-size: 16px;
+  background: var(--journal-tint);
+  font-size: 12px;
+  font-weight: 750;
+  list-style: none;
+  cursor: pointer;
+}
+
+.journal-dictation-language > summary::-webkit-details-marker { display: none; }
+.journal-dictation-language[open] > summary { border-color: var(--journal-accent); }
+.journal-dictation-languages {
+  position: absolute;
+  z-index: 8;
+  top: calc(100% + 5px);
+  left: 0;
+  display: grid;
+  min-width: 56px;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid var(--journal-border);
+  border-radius: 11px;
+  background: var(--journal-card);
+  box-shadow: var(--journal-shadow);
+}
+
+.journal-dictation-languages button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--journal-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.journal-dictation-languages button[aria-pressed='true'],
+.journal-dictation-languages button:hover {
+  background: var(--journal-tint);
+  color: var(--journal-accent);
 }
 
 .journal-dictation-message {
@@ -934,6 +997,17 @@
   border-color: var(--journal-accent);
   outline: 0;
   box-shadow: 0 0 0 3px var(--journal-tint);
+}
+
+.journal-form.journal-form-new textarea,
+.journal-form.journal-form-new textarea:focus {
+  min-height: 64px;
+  margin: 2px 0 8px;
+  padding: 7px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .journal-photo-preview > button {

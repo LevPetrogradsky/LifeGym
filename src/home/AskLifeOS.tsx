@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowRight, MessageCircle } from 'lucide-react'
+import { ArrowRight, MessageCircle, Sparkles } from 'lucide-react'
 import { answerLifeOS, starterQuestions, type GuideAnswer, type GuideTopic } from './lifeosGuide'
+import LocalAIPreview from './LocalAIPreview'
 import './ask-lifeos.css'
 
 type Exchange = { question: string; answer: GuideAnswer }
@@ -12,6 +13,7 @@ const actionLabels: Record<GuideTopic, string> = {
 export default function AskLifeOS({ actions }: { actions: Actions }) {
   const [question, setQuestion] = useState('')
   const [exchanges, setExchanges] = useState<Exchange[]>([])
+  const [aiOpen, setAiOpen] = useState(false)
   const messages = useRef<HTMLDivElement>(null)
   const prompts = exchanges.at(-1)?.answer.followUps ?? starterQuestions
 
@@ -33,6 +35,10 @@ export default function AskLifeOS({ actions }: { actions: Actions }) {
     event.currentTarget.querySelector('input')?.blur()
   }
 
+  if (aiOpen) return <section className="life-main-guide" aria-label="Ask LifeOS local AI preview">
+    <LocalAIPreview onBack={() => setAiOpen(false)} />
+  </section>
+
   return <section className="life-main-guide" aria-labelledby="life-main-guide-title">
     <div className="life-main-guide-heading">
       <span className="life-main-guide-icon"><MessageCircle size={19} aria-hidden="true" /></span>
@@ -40,6 +46,9 @@ export default function AskLifeOS({ actions }: { actions: Actions }) {
         <h2 id="life-main-guide-title">Hi there!</h2>
         <p>I can help you find your way around LifeOS.</p>
       </div>
+      <button type="button" className="life-main-ai-toggle" onClick={() => setAiOpen(true)}>
+        <Sparkles size={15} aria-hidden="true" /> Включить ИИ
+      </button>
     </div>
     {exchanges.length > 0 && <div className="life-main-guide-conversation">
       <div ref={messages} className="life-main-guide-messages" role="log" aria-label="LifeOS help answers" aria-live="polite">

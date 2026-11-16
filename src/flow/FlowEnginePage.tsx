@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { ArrowLeft, ArrowRight, Check, ChevronRight, History, X } from 'lucide-react'
+import { ArrowLeft, Check, ChevronRight, History, X } from 'lucide-react'
 import { sessionMinutes, type FlowDiscovery, type FlowEngineData, type LifeOSData } from '../data'
 import { emptyFlowEngineData } from '../data'
 import { canDistillPrinciple, factorObservations, hypothesisSuggestion, principleDraft, principleHasEvidence, recentSessions, summarizeSessions, updateFlowEngine } from './model'
@@ -11,10 +11,11 @@ export interface FlowEnginePageProps {
   onUpdate: (change: (current: LifeOSData) => LifeOSData) => boolean
   onReturn: () => void
   returnLabel: string
+  onReflectionSaved: () => void
   sessionsOnly?: boolean
 }
 
-type FlowStage = 'home' | 'discover' | 'review' | 'analyze' | 'experiment' | 'principle' | 'history' | 'reflections'
+type FlowStage = 'discover' | 'review' | 'analyze' | 'experiment' | 'principle' | 'history' | 'reflections'
 
 const tools = [
   { stage: 'analyze', label: 'Find patterns' },
@@ -26,7 +27,7 @@ const newId = () => crypto.randomUUID()
 const dateLabel = (date: string) => new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date(date))
 const timeLabel = (date: string) => new Intl.DateTimeFormat('en', { hour: 'numeric', minute: '2-digit' }).format(new Date(date))
 
-export default function FlowEnginePage({ data, onUpdate, onReturn, returnLabel, sessionsOnly = false }: FlowEnginePageProps) {
+export default function FlowEnginePage({ data, onUpdate, onReturn, returnLabel, onReflectionSaved, sessionsOnly = false }: FlowEnginePageProps) {
   const [stage, setStage] = useState<FlowStage>(sessionsOnly ? 'history' : 'discover')
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState(emptyAnswers)
@@ -71,13 +72,6 @@ export default function FlowEnginePage({ data, onUpdate, onReturn, returnLabel, 
     setStage(next)
   }
 
-  const startDiscovery = () => {
-    setStep(0)
-    setAnswers(emptyAnswers())
-    setDraft(null)
-    openStage('discover')
-  }
-
   const nextQuestion = () => {
     if (step < prompts.length - 1) {
       setStep(step + 1)
@@ -101,7 +95,7 @@ export default function FlowEnginePage({ data, onUpdate, onReturn, returnLabel, 
       discoveries: [draft, ...current.discoveries],
     }), 'Reflection saved.')) return
     setDraft(null)
-    setStage('home')
+    onReflectionSaved()
   }
 
   const goBack = () => {
@@ -109,7 +103,7 @@ export default function FlowEnginePage({ data, onUpdate, onReturn, returnLabel, 
       onReturn()
       return
     }
-    if (stage === 'home' || (stage === 'discover' && step === 0)) {
+    if (stage === 'discover' && step === 0) {
       onReturn()
     } else if (stage === 'review') {
       openStage('discover')
@@ -118,7 +112,7 @@ export default function FlowEnginePage({ data, onUpdate, onReturn, returnLabel, 
     } else if (stage === 'reflections' || tools.some(tool => tool.stage === stage)) {
       openStage('history')
     } else {
-      openStage('home')
+      openStage('discover')
     }
   }
 
@@ -197,32 +191,22 @@ export default function FlowEnginePage({ data, onUpdate, onReturn, returnLabel, 
     reflections: 'Past reflections',
   }
   const title = titles[stage]
-  const isReflectStart = stage === 'home' || (stage === 'discover' && step === 0)
+  const isReflectStart = stage === 'discover' && step === 0
   const backLabel = sessionsOnly || isReflectStart ? returnLabel : stage === 'review' || stage === 'discover'
     ? 'Previous question'
-    : stage === 'reflections' || tools.some(tool => tool.stage === stage) ? 'Back to History' : 'Back to Reflect'
+    : stage === 'reflections' || tools.some(tool => tool.stage === stage) ? 'Back to History' : 'Back to Reflection'
   const historyButton = <button type="button" className="flow-history-button" onClick={() => openStage('history')}>
     <History size={18} aria-hidden="true" /> History
   </button>
 
   return <main ref={pageRef} className="page-content flow-engine-page">
-    {stage === 'home' ? <header className="flow-home-header">
-      <button type="button" className="flow-back" aria-label={backLabel} onClick={goBack}><ArrowLeft size={21} /></button>
-      <h1 tabIndex={-1}>Reflect</h1>
-      {historyButton}
-    </header> : <div className="flow-toolbar">
+    <div className="flow-toolbar">
       <button type="button" className="flow-back" aria-label={backLabel} onClick={goBack}><ArrowLeft size={21} /></button>
       {stage === 'discover' && <span>{step + 1} / {prompts.length}</span>}
-      {isReflectStart && historyButton}
-    </div>}
+      {stage === 'discover' && historyButton}
+    </div>
 
     {message && <p className="flow-engine-message" role="status">{message}<button aria-label="Dismiss message" onClick={() => setMessage('')}><X size={15} /></button></p>}
-
-    {stage === 'home' && <section className="flow-intro">
-      <h2>What helps you focus?</h2>
-      <p>Think of a recent moment when work felt good. We’ll go one question at a time.</p>
-      <button type="button" className="flow-primary" onClick={startDiscovery}>Start reflection <ArrowRight size={19} aria-hidden="true" /></button>
-    </section>}
 
     {stage === 'discover' && <DiscoveryQuestion step={step} answers={answers} onChange={answer => setAnswers(current => current.map((item, index) => index === step ? answer : item))} onNext={nextQuestion} />}
 

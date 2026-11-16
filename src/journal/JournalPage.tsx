@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type Dispatch, type SetStateAction } from 'react'
-import { ArrowLeft, BookOpen, Folder, ImagePlus, Mic, MoreHorizontal, Pencil, Search, Sparkles, Square, Trash2, X } from 'lucide-react'
+import { ArrowLeft, BookOpen, ChevronDown, Folder, ImagePlus, Mic, MoreHorizontal, Pencil, Search, Sparkles, Square, Trash2, X } from 'lucide-react'
 import type { JournalEntry, JournalFolder, JournalFolderAppearance } from '../data'
 import JournalFolders from './JournalFolders'
 import EntryFolderDrag from './EntryFolderDrag'
@@ -55,6 +55,7 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folder, linkedTaskTit
   const [saveError, setSaveError] = useState(false)
   const [loadingPhoto, setLoadingPhoto] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
+  const languageMenu = useRef<HTMLDetailsElement>(null)
   const dictation = useJournalDictation(text => {
     onDraftChange(current => ({
       ...current,
@@ -63,6 +64,7 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folder, linkedTaskTit
   })
   const dictating = dictation.status !== 'idle'
   const canSave = !loadingPhoto && (draft.text.trim().length > 0 || !!draft.photo)
+  const selectedLanguage = dictationLanguages.find(([code]) => code === dictation.language) ?? dictationLanguages[0]
 
   const attachPhoto = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0]
@@ -100,7 +102,7 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folder, linkedTaskTit
       <textarea
         id={id}
         aria-label={onCancel ? 'Entry text' : undefined}
-        placeholder="Write whatever’s on your mind…"
+        placeholder="What’s on your mind?"
         rows={onCancel ? 3 : 2}
         value={draft.text}
         onChange={event => {
@@ -132,17 +134,20 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folder, linkedTaskTit
           </button>
         )}
         {!onCancel && !dictating && (
-          <select
-            className="journal-dictation-language"
-            aria-label="Dictation language"
-            value={dictation.language}
-            onChange={event => {
-              const selected = dictationLanguages.find(([code]) => code === event.currentTarget.value)
-              if (selected) dictation.setLanguage(selected[0])
-            }}
-          >
-            {dictationLanguages.map(([code, label]) => <option key={code} value={code}>{label}</option>)}
-          </select>
+          <details className="journal-dictation-language" ref={languageMenu}>
+            <summary aria-label={`Dictation language: ${selectedLanguage[1]}`}>
+              <span aria-hidden="true">{selectedLanguage[0].toUpperCase()}</span>
+              <ChevronDown size={14} aria-hidden="true" />
+            </summary>
+            <div className="journal-dictation-languages" role="group" aria-label="Choose dictation language">
+              {dictationLanguages.map(([code, label]) => <button type="button" key={code}
+                aria-label={label} aria-pressed={dictation.language === code}
+                onClick={() => {
+                  dictation.setLanguage(code)
+                  languageMenu.current?.removeAttribute('open')
+                }}>{code.toUpperCase()}</button>)}
+            </div>
+          </details>
         )}
         {dictation.status !== 'idle' && <span className="journal-local-note" role="status">
           {{

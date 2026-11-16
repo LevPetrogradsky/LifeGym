@@ -44,6 +44,54 @@
 .life-main-guide-heading > div { flex: 1; min-width: 0; }
 .life-main-guide h2 { margin: 0; font-size: 16px; line-height: 1.2; }
 .life-main-guide-heading p { margin: 3px 0 0; color: var(--main-muted); font-size: 12px; }
+.life-main-ai-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid var(--main-line);
+  border-radius: 9px;
+  background: var(--main-soft);
+  color: var(--main-blue-text);
+  font-size: 11px;
+  font-weight: 700;
+}
+.life-main-ai-heading { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
+.life-main-ai-heading > div { min-width: 0; }
+.life-main-ai-heading p { margin: 3px 0 0; color: var(--main-muted); font-size: 12px; }
+.life-main-ai-explainer,
+.life-main-ai-caution,
+.life-main-ai-status { color: var(--main-muted); font-size: 12px; line-height: 1.5; }
+.life-main-ai-explainer { margin: 0 0 16px; }
+.life-main-ai-caution { margin: 10px 0 0; }
+.life-main-ai-status { margin: 12px 0; }
+.life-main-ai-start,
+.life-main-ai-error button {
+  min-height: 40px;
+  padding: 8px 13px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--main-blue);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.life-main-ai-back {
+  display: block;
+  min-height: 40px;
+  margin-top: 14px;
+  padding: 7px 0;
+  border: 0;
+  background: transparent;
+  color: var(--main-blue-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+.life-main-ai-error { padding: 12px; border-radius: 11px; background: var(--main-soft); }
+.life-main-ai-error p { margin: 0 0 10px; color: var(--main-ink); font-size: 12px; line-height: 1.5; }
+.life-main-ai-answer { margin: 14px 0 0; color: var(--main-ink); font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 .life-main-guide-form {
   display: flex;

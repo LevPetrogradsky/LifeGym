@@ -24,6 +24,7 @@ interface MainDashboardProps {
   onStartOpenFocus: () => void
   onJournal?: () => void
   onReflect?: () => void
+  onPresets: () => void
   onFocusHistory: () => void
   onSettings: () => void
   onSearch: () => void
@@ -40,7 +41,7 @@ function greeting(hour: number) {
   return 'Good evening'
 }
 
-export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, tasks, pausedTaskTitle, displayName, onResume, onFinishPaused, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onReflect, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
+export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, tasks, pausedTaskTitle, displayName, onResume, onFinishPaused, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onReflect, onPresets, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
   const [screen, setScreen] = useState(initialScreen)
   const [filter, setFilter] = useState<TaskList | 'completed'>('today')
   const [editor, setEditor] = useState<TaskEditor | null>(null)
@@ -239,6 +240,10 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
           <span className="life-main-shortcut-icon reflect"><MessageCircle size={21} aria-hidden="true" /></span>
           <strong>Reflect</strong>
         </button>}
+        <button type="button" onClick={onPresets}>
+          <span className="life-main-shortcut-icon focus"><Settings2 size={21} aria-hidden="true" /></span>
+          <strong>Presets</strong>
+        </button>
       </nav>
       <button type="button" className="life-main-text life-main-history-link" onClick={onFocusHistory}>
         <History size={17} aria-hidden="true" /> Focus history <ChevronRight size={15} aria-hidden="true" />

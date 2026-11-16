@@ -9,6 +9,7 @@ interface MainFocusProps {
   now: number
   storageError: boolean
   checkinEnabled: boolean
+  showCheckinToggle: boolean
   onToggleCheckin: () => void
   onToggleTime: () => void
   onToggleSilence: () => void
@@ -57,7 +58,7 @@ function closeAudio(context: AudioContext | null) {
 }
 
 export default function MainFocus({
-  session, showTime, now, storageError, checkinEnabled, onToggleCheckin, onToggleTime, onToggleSilence,
+  session, showTime, now, storageError, checkinEnabled, showCheckinToggle, onToggleCheckin, onToggleTime, onToggleSilence,
   onPause, onResume, onLeave, returnDestination, onFinish, children,
 }: MainFocusProps) {
   const [panel, setPanel] = useState<'options' | keyof typeof deviceHelp>('options')
@@ -121,20 +122,21 @@ export default function MainFocus({
     </header>
     <div className="life-main-focus-center">
       <div className="life-main-clock">
-        <div className="life-main-clock-time" data-hidden={!showTime}>
-          {showTime ? elapsedClock(focusedDuration(session, now)) : <span aria-hidden="true">––:––:––</span>}
+        <div className="life-main-clock-time" id="focus-elapsed-time" data-hidden={!showTime}
+          role={showTime ? 'timer' : undefined}>
+          {showTime ? elapsedClock(focusedDuration(session, now)) : <span aria-hidden="true">Time hidden</span>}
         </div>
       </div>
       <h2>{session.taskTitle}</h2>
       {paused && <p className="life-main-focus-status" role="status">Paused</p>}
       <div className="life-main-focus-preferences">
-        <button type="button" className="life-main-time-toggle" onClick={onToggleTime}>
-          {showTime ? <EyeOff size={17} /> : <Eye size={17} />} {showTime ? 'Hide elapsed time' : 'Show elapsed time'}
+        <button type="button" className="life-main-time-toggle" aria-controls="focus-elapsed-time" onClick={onToggleTime}>
+          {showTime ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />} {showTime ? 'Hide elapsed time' : 'Show elapsed time'}
         </button>
-        <button type="button" className="life-main-checkin-toggle" role="switch" aria-label="Focus check-in"
+        {showCheckinToggle && <button type="button" className="life-main-checkin-toggle" role="switch" aria-label="Focus check-in"
           aria-checked={checkinEnabled} onClick={onToggleCheckin}>
           Check-in <span aria-hidden="true">{checkinEnabled ? 'On' : 'Off'}</span>
-        </button>
+        </button>}
       </div>
       <div className="life-main-focus-controls">
         <button type="button" className="life-main-focus-pause" onClick={paused ? onResume : onPause}>

@@ -10,10 +10,14 @@ import JournalPage, { type JournalDraft } from './journal/JournalPage'
 import FlowEnginePage from './flow/FlowEnginePage'
 import BreakReminder from './settings/BreakReminder'
 import SettingsPage from './settings/SettingsPage'
+import PostFocusChoice from './PostFocusChoice'
+import FocusPresets from './presets/PresetsPage'
+import { applyFocusPreset, findFocusPreset, type FocusPresetId } from './presets/focusPresets'
 import { useDeleteUndo } from './delete-undo'
 import UnifiedSearch from './search/UnifiedSearch'
+import './reflection-confirmation.css'
 
-type View = Exclude<Shortcut, 'focus'> | 'main' | 'ask' | 'settings' | 'focus-history'
+type View = Exclude<Shortcut, 'focus'> | 'main' | 'ask' | 'settings' | 'focus-history' | 'presets'
 const shortcutIcons = { tasks: ClipboardList, journal: BookOpen, focus: Play, flow: MessageCircle }
 const factors: Factor[] = ['Meaningful Goal', 'Personal Control', 'Fast Feedback', 'Other']
 const repoUrl = 'https://github.com/ProgrammerLevpetrogradsky/LifeOS-Public'
@@ -29,14 +33,18 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
   const inBar = (id: Shortcut) => shortcutVisible(data, id, 'bar')
   const defaultView = showHome ? 'main' : (['journal', 'tasks', 'flow'] as const).find(inBar) ?? 'settings'
   const [requestedView, setView] = useState<View>(defaultView)
+  const [presetsReturnView, setPresetsReturnView] = useState<View>(defaultView)
+  const [reflectionReturnView, setReflectionReturnView] = useState<View>(defaultView)
+  const [reflectionNotice, setReflectionNotice] = useState('')
   const isHidden = (page: View) => page === 'main' ? !showHome
     : (page === 'flow' || page === 'journal') && !inBar(page) && !(showHome && onHome(page))
+      && !(page === 'flow' && data.postFocusAction === 'reflection')
   const view = isHidden(requestedView) ? defaultView : requestedView
   const showJournal = !isHidden('journal')
   const [searchOpen, setSearchOpen] = useState(false)
   const [journalSearchResult, setJournalSearchResult] = useState<{ id: string }>()
   const [storageError, setStorageError] = useState(false)
-  const [showTime, setShowTime] = useState(false)
+  const [showTime, setShowTime] = useState(true)
   const [pausedFocusScreen, setPausedFocusScreen] = useState<string>()
   const [now, setNow] = useState(Date.now())
   const [interest, setInterest] = useState(0)
@@ -62,6 +70,11 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
     const interval = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(interval)
   }, [data.activeSession])
+  useEffect(() => {
+    if (!reflectionNotice) return
+    const timeout = window.setTimeout(() => setReflectionNotice(''), 4000)
+    return () => window.clearTimeout(timeout)
+  }, [reflectionNotice])
 
   const update = (change: (current: LifeOSData) => LifeOSData) => {
     if (loadResult.error) { setStorageError(true); return false }
@@ -132,21 +145,23 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
   }
 
   const startFocus = (task?: Task) => {
-    if (dataRef.current.activeSession || dataRef.current.pendingSession) return
+    if (dataRef.current.activeSession || dataRef.current.pendingSession) return false
     const now = Date.now()
     const started = update(current => ({
       ...current,
       activeSession: {
         id: crypto.randomUUID(),
         taskId: task?.id ?? null,
-        taskTitle: task?.title ?? 'Open focus',
+        taskTitle: task?.title ?? findFocusPreset(current.focusPresetId)?.label ?? 'Open focus',
         startedAt: new Date(now).toISOString(),
+        silenceBreakReminders: findFocusPreset(current.focusPresetId)?.silenceBreakReminders,
       },
     }))
     if (started) {
       setNow(now)
-      setShowTime(false)
+      setShowTime(true)
     }
+    return started
   }
 
   const pauseSession = (stayInFocus: boolean) => {
@@ -182,6 +197,7 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
     update(current => ({
       ...current,
       activeSession: { ...session, silenceBreakReminders: !session.silenceBreakReminders },
+      focusPresetId: undefined,
     }))
   }
 
@@ -195,7 +211,14 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
     const current = dataRef.current
     if (!current.activeSession) return
     const finished = { ...current.activeSession, endedAt: new Date().toISOString() }
-    if (current.focusCheckinEnabled === false) {
+    if (current.postFocusAction === 'reflection') {
+      if (update(data => recordUnratedSession({ ...data, activeSession: null }, finished))) {
+        setReflectionReturnView(showHome ? 'main' : defaultView)
+        setView('flow')
+      }
+      return
+    }
+    if (!current.postFocusAction && current.sessions.length > 0 && current.focusCheckinEnabled === false) {
       if (update(data => recordUnratedSession({ ...data, activeSession: null }, finished))) navigate('main')
       return
     }
@@ -204,6 +227,20 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
     setContinueDesire(0)
     setProgress(0)
     setSelectedFactors([])
+  }
+
+  const choosePostFocusAction = (action: 'reflection' | 'check-in') => {
+    if (!dataRef.current.pendingSession) return
+    const saved = update(current => {
+      const withChoice = { ...current, postFocusAction: action }
+      return action === 'reflection'
+        ? recordUnratedSession(withChoice, current.pendingSession!)
+        : withChoice
+    })
+    if (saved && action === 'reflection') {
+      setReflectionReturnView(showHome ? 'main' : defaultView)
+      setView('flow')
+    }
   }
 
   const saveCheckin = (event: FormEvent) => {
@@ -235,8 +272,17 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
   const disableFocusCheckins = () => {
     const pending = dataRef.current.pendingSession
     if (!pending) return
-    if (update(current => recordUnratedSession({ ...current, focusCheckinEnabled: false }, pending))) {
-      navigate('main')
+    if (update(current => recordUnratedSession({
+      ...current,
+      ...(current.postFocusAction === 'check-in'
+        ? { postFocusAction: 'reflection' as const }
+        : { focusCheckinEnabled: false }),
+    }, pending))) {
+      if (dataRef.current.postFocusAction === 'reflection') {
+        setReflectionReturnView(showHome ? 'main' : defaultView)
+        setView('flow')
+      }
+      else navigate('main')
     }
   }
 
@@ -308,13 +354,52 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
 
   const navigate = (next: View) => {
     setJournalSearchResult(undefined)
+    if (next === 'flow' && view !== 'flow') {
+      setReflectionReturnView(view)
+      setReflectionNotice('')
+    }
     setView(isHidden(next) ? defaultView : next)
     setJournalPrompt(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const openPresets = () => {
+    setPresetsReturnView(view)
+    navigate('presets')
+  }
+
+  const applyPreset = (id: FocusPresetId) => {
+    const preset = findFocusPreset(id)
+    if (!preset) return false
+    const idle = !dataRef.current.activeSession && !dataRef.current.pendingSession
+    const startedAt = Date.now()
+    const saved = update(current => {
+      const configured = applyFocusPreset(current, id)
+      if (!idle || configured.activeSession || configured.pendingSession) return configured
+      return {
+        ...configured,
+        activeSession: {
+          id: crypto.randomUUID(),
+          taskId: null,
+          taskTitle: preset.label,
+          startedAt: new Date(startedAt).toISOString(),
+          silenceBreakReminders: preset.silenceBreakReminders,
+        },
+      }
+    })
+    if (saved && idle) {
+      setNow(startedAt)
+      setShowTime(true)
+    }
+    return saved
+  }
+
   const returnLabel = showHome ? 'Back to Home' : 'Back to Settings'
   const returnFromSection = () => navigate(showHome ? 'main' : 'settings')
+  const reflectionReturnLabel = reflectionReturnView === 'main' ? 'Back to Home'
+    : reflectionReturnView === 'ask' ? 'Back to Ask LifeOS'
+      : reflectionReturnView === 'journal' ? 'Back to Journal'
+        : reflectionReturnView === 'tasks' ? 'Back to Tasks' : 'Back to Settings'
 
   const openSearchEntry = (id: string) => {
     if (!showJournal) return
@@ -379,6 +464,7 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
       now={now}
       storageError={storageError}
       checkinEnabled={data.focusCheckinEnabled !== false}
+      showCheckinToggle={!data.postFocusAction}
       onToggleCheckin={() => update(current => ({ ...current, focusCheckinEnabled: current.focusCheckinEnabled === false }))}
       onToggleTime={() => setShowTime(current => !current)}
       onToggleSilence={toggleFocusSilence}
@@ -393,6 +479,12 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
     {undoNotice}
   </>
 
+  if (data.pendingSession && data.sessions.length === 0 && !data.postFocusAction) return <PostFocusChoice
+    taskTitle={data.pendingSession.taskTitle}
+    storageError={storageError}
+    onChoose={choosePostFocusAction}
+  />
+
   if (data.pendingSession) return (<>
     <main className="checkin-screen page-container">
       {storageError && <div className="storage-error" role="alert">Your browser could not save the check-in. Your answers are still here. Check available storage and try again.</div>}
@@ -405,7 +497,7 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
           ? 'Your focus session is complete.'
           : `Your time with “${data.pendingSession.taskTitle}” is complete.`} A few quick answers help you notice what works.</p>
         <button type="button" className="checkin-turn-off" onClick={disableFocusCheckins}>
-          Skip and turn off check-ins
+          {data.postFocusAction === 'check-in' ? 'Skip check-in and open Reflection' : 'Skip and turn off check-ins'}
         </button>
         <form onSubmit={saveCheckin}>
           <Rating label="Interest in the process" value={interest} onChange={setInterest} />
@@ -431,6 +523,7 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
         <header className="mobile-header">{renderBrand(18)}<span>v0.1</span></header>
         {(storageError || loadResult.error) && <div className="storage-error" role="alert">{loadResult.error ?? 'Your browser could not save changes locally. Your unsaved text is still here. Check available storage, then try again.'} {loadResult.error && 'Import a valid backup below to recover. Existing saved content will not be changed until recovery succeeds.'}</div>}
         {backupMessage && <div className="storage-error" role="status">{backupMessage}</div>}
+        {reflectionNotice && <div className="lifeos-reflection-confirmation" role="status">{reflectionNotice}</div>}
         {breakReminder}
         {(view === 'main' || view === 'tasks') && <MainDashboard key={view}
           initialScreen={view === 'tasks' ? 'tasks' : 'home'}
@@ -451,6 +544,7 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
           onStartOpenFocus={() => startFocus()}
           onJournal={onHome('journal') ? () => navigate('journal') : undefined}
           onReflect={onHome('flow') ? () => navigate('flow') : undefined}
+          onPresets={openPresets}
           onFocusHistory={() => navigate('focus-history')}
           onSettings={() => navigate('settings')}
           onSearch={() => setSearchOpen(true)}
@@ -467,8 +561,22 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
           }} />
         </main>}
 
+        {view === 'presets' && <FocusPresets
+          appliedPresetId={data.focusPresetId}
+          sessionState={data.pendingSession ? 'pending' : data.activeSession ? 'active' : 'idle'}
+          onApply={applyPreset}
+          onBack={() => navigate(presetsReturnView)}
+        />}
+
         {(view === 'flow' || view === 'focus-history') && <FlowEnginePage key={view}
-          data={data} onUpdate={update} onReturn={returnFromSection} returnLabel={returnLabel} sessionsOnly={view === 'focus-history'} />}
+          data={data} onUpdate={update}
+          onReturn={view === 'flow' ? () => navigate(reflectionReturnView) : returnFromSection}
+          returnLabel={view === 'flow' ? reflectionReturnLabel : returnLabel}
+          onReflectionSaved={() => {
+            setReflectionNotice('Reflection saved.')
+            navigate(reflectionReturnView)
+          }}
+          sessionsOnly={view === 'focus-history'} />}
 
         {view === 'journal' && (
           <JournalPage entries={data.journal} folders={data.journalFolders ?? []} draft={journalDraft} onDraftChange={setJournalDraft}
@@ -497,11 +605,16 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
             displayName={data.displayName ?? ''}
             onDisplayNameChange={displayName => update(current => ({ ...current, displayName: displayName || undefined }))}
             reminderMinutes={reminderMinutes}
-            onReminderMinutesChange={breakReminderMinutes => update(current => ({ ...current, breakReminderMinutes }))}
+            onReminderMinutesChange={breakReminderMinutes => update(current => ({ ...current, breakReminderMinutes, focusPresetId: undefined }))}
             focusCheckin={{
               enabled: data.focusCheckinEnabled !== false,
               onChange: focusCheckinEnabled => update(current => ({ ...current, focusCheckinEnabled })),
             }}
+            postFocusAction={{
+              value: data.postFocusAction,
+              onChange: postFocusAction => update(current => ({ ...current, postFocusAction })),
+            }}
+            onOpenPresets={openPresets}
           />
         )}
       </div>
