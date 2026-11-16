@@ -59,6 +59,7 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folder, linkedTaskTit
   const [saveError, setSaveError] = useState(false)
   const [loadingPhoto, setLoadingPhoto] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
+  const textArea = useRef<HTMLTextAreaElement>(null)
   const languageMenu = useRef<HTMLDetailsElement>(null)
   const dictation = useJournalDictation(text => {
     onDraftChange(current => ({
@@ -69,6 +70,13 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folder, linkedTaskTit
   const dictating = dictation.status !== 'idle'
   const canSave = !loadingPhoto && (draft.text.trim().length > 0 || !!draft.photo)
   const selectedLanguage = dictationLanguages.find(([code]) => code === dictation.language) ?? dictationLanguages[0]
+
+  useLayoutEffect(() => {
+    if (!onCancel || !textArea.current) return
+    const field = textArea.current
+    field.style.height = 'auto'
+    field.style.height = `${field.scrollHeight + field.offsetHeight - field.clientHeight}px`
+  }, [draft.text, onCancel])
 
   const attachPhoto = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0]
@@ -104,6 +112,7 @@ function JournalForm({ id, draft, onDraftChange, onSubmit, folder, linkedTaskTit
       {!onCancel && <label htmlFor={id}>{t('Brain dump')}</label>}
       {folder && <p className="journal-composer-folder"><FolderGlyph {...folder} size={14} /> {t('Saving to')} {folder.name}</p>}
       <textarea
+        ref={textArea}
         id={id}
         aria-label={onCancel ? t('Entry text') : undefined}
         placeholder={t('What’s on your mind?')}
@@ -226,6 +235,10 @@ function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult,
             if (actionMenu.current) actionMenu.current.open = false
             moveDialog.current?.showModal()
           }} />}
+        {action !== 'delete' && <button type="button" className="journal-icon journal-entry-edit"
+          aria-label={t('Edit entry')} aria-haspopup="dialog" onClick={startEditing}>
+          <Pencil size={18} aria-hidden="true" />
+        </button>}
         <details className="journal-entry-actions" ref={actionMenu} onKeyDown={event => {
           if (event.key === 'Escape' && actionMenu.current?.open) {
             actionMenu.current.open = false

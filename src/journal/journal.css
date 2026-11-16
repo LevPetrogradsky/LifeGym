@@ -169,6 +169,11 @@
   color: var(--journal-muted);
 }
 
+.journal-form-edit textarea {
+  overflow-y: hidden;
+  resize: none;
+}
+
 .journal-form-actions {
   gap: 8px;
 }
@@ -392,6 +397,10 @@
   user-select: none;
   cursor: grab;
   color: var(--journal-muted);
+}
+
+.journal-entry-edit {
+  color: var(--journal-accent);
 }
 
 .journal-entry-grip[data-dragging='true'] {
