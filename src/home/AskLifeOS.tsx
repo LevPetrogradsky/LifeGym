@@ -7,7 +7,7 @@ import './ask-lifeos.css'
 type Exchange = { question: string; answer: GuideAnswer }
 type Actions = Partial<Record<GuideTopic, () => void>>
 const actionLabels: Record<GuideTopic, string> = {
-  tasks: 'Open Tasks', journal: 'Open Journal', focus: 'Start Focus', reflect: 'Open Reflect', settings: 'Open Settings',
+  tasks: 'Open Tasks', journal: 'Open Journal', focus: 'Start Focus', reflect: 'Answer 3 questions', settings: 'Open Settings',
 }
 
 export default function AskLifeOS({ actions }: { actions: Actions }) {

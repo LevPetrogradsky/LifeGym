@@ -1,0 +1,62 @@
+@media (max-width: 760px) {
+  .app-shell .mobile-nav {
+    align-items: stretch;
+    gap: 4px;
+    padding: 7px max(8px, env(safe-area-inset-right))
+      calc(8px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -5px 20px rgb(24 44 68 / 5%);
+  }
+
+  .app-shell .mobile-nav .nav-button {
+    min-width: 0;
+    min-height: 62px;
+    gap: 3px;
+    padding: 6px 3px;
+    border-radius: 13px;
+    font-size: clamp(10px, 2.7vw, 12px);
+    font-weight: 700;
+    line-height: 1.12;
+    text-align: center;
+  }
+
+  .app-shell .mobile-nav .nav-button svg {
+    width: 23px;
+    height: 23px;
+    flex: none;
+    stroke-width: 1.9;
+  }
+
+  .app-shell .mobile-nav .nav-button span {
+    display: block;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .app-shell .mobile-nav .nav-button.selected {
+    background: color-mix(in srgb, var(--soft) 88%, var(--surface));
+    color: color-mix(in srgb, var(--accent) 65%, var(--text));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+
+  .app-shell .mobile-nav .nav-button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  .app-shell .mobile-nav:has(> :nth-child(6)) {
+    grid-auto-columns: 64px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .app-shell .mobile-nav:has(> :nth-child(6))::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-shell .mobile-nav:has(> :nth-child(6)) .nav-button {
+    scroll-snap-align: center;
+  }
+}

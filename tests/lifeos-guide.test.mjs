@@ -8,10 +8,11 @@ test('local guide answers app topics and unknown questions without reading user 
     ['Where is Journal?', 'journal'],
     ['How does Focus work?', 'focus'],
     ['What is Reflect?', 'reflect'],
+    ['What are 3 questions?', 'reflect'],
     ['Change the dark theme', 'settings'],
   ]) assert.equal(answerLifeOS(question).topic, topic)
   assert.deepEqual(answerLifeOS('weather tomorrow').topic, undefined)
-  assert.match(answerLifeOS('weather tomorrow').text, /Tasks, Journal, Focus, Reflect, and Settings/)
+  assert.match(answerLifeOS('weather tomorrow').text, /Tasks, Journal, Focus, 3 questions, and Settings/)
 })
 
 test('guide follows the current step and switches topics on a new question', () => {

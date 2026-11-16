@@ -3,7 +3,7 @@ import { isJournalPhoto } from './journal/photo.ts'
 export type Theme = 'light' | 'dark' | 'system'
 export const navigationSections = [
   { id: 'main', label: 'Home' },
-  { id: 'flow', label: 'Reflect' },
+  { id: 'flow', label: '3 questions' },
   { id: 'journal', label: 'Journal' },
 ] as const
 export type NavigationSection = typeof navigationSections[number]['id']
@@ -11,7 +11,7 @@ export const shortcuts = [
   { id: 'tasks', label: 'Tasks' },
   { id: 'journal', label: 'Journal' },
   { id: 'focus', label: 'Focus' },
-  { id: 'flow', label: 'Reflect' },
+  { id: 'flow', label: '3 questions' },
 ] as const
 export type Shortcut = typeof shortcuts[number]['id']
 export type ShortcutLocation = 'home' | 'bar'

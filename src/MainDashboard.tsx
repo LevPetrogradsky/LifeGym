@@ -183,6 +183,11 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
     </section>
   )
 
+  const addTaskButton = <button type="button" className={`life-main-add-task${!nextTask && !breakCard ? ' life-main-add-task-inline' : ''}`} onClick={() => openTasks(true)}>
+    <span className="life-main-shortcut-icon add"><Plus size={21} aria-hidden="true" /></span>
+    <strong>Add a task</strong>
+  </button>
+
   if (screen === 'home') return <main className="life-main life-main-home">
     <header className="life-main-hero">
       <h1 ref={heading} tabIndex={-1}>{displayName?.trim() ? `Hey ${displayName.trim()}!` : greeting(now.getHours())}</h1>
@@ -213,15 +218,13 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
               <Play size={17} fill="currentColor" aria-hidden="true" />
             </button>
           </div>
-        ) : (
+        ) : <div className="life-main-today-empty-state">
           <p className="life-main-today-empty">{doneToday.length ? 'You’re all caught up' : 'No tasks for today'}</p>
-        )}
+          {addTaskButton}
+        </div>}
       </section>}
 
-      <button type="button" className="life-main-add-task" onClick={() => openTasks(true)}>
-        <span className="life-main-shortcut-icon add"><Plus size={21} aria-hidden="true" /></span>
-        <strong>Add a task</strong>
-      </button>
+      {(nextTask || breakCard) && addTaskButton}
 
       <nav className="life-main-shortcuts" aria-label="Home shortcuts">
         {showTasksShortcut && <button type="button" onClick={() => openTasks()}>
@@ -238,7 +241,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
         </button>}
         {onReflect && <button type="button" onClick={onReflect}>
           <span className="life-main-shortcut-icon reflect"><MessageCircle size={21} aria-hidden="true" /></span>
-          <strong>Reflect</strong>
+          <strong>Answer 3 questions</strong>
         </button>}
         <button type="button" onClick={onPresets}>
           <span className="life-main-shortcut-icon focus"><Settings2 size={21} aria-hidden="true" /></span>

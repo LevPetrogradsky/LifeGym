@@ -2,7 +2,7 @@ import MainDashboard from './MainDashboard'
 import MainFocus from './MainFocus'
 import TaskHistory from './TaskHistory'
 import AskLifeOS from './home/AskLifeOS'
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react'
 import { ArrowRight, BookOpen, ClipboardList, House, Leaf, MessageCircle, Play, Settings2, Sparkles } from 'lucide-react'
 import { focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, type Factor, type JournalFolderAppearance, type LifeOSData, type Shortcut, type ShortcutLocation, type Task } from './data'
 import { base64ToBytes, buildNoteBlocks, makeImportedNote, type SourceIndex } from './notes'
@@ -16,6 +16,7 @@ import { applyFocusPreset, findFocusPreset, type FocusPresetId } from './presets
 import { useDeleteUndo } from './delete-undo'
 import UnifiedSearch from './search/UnifiedSearch'
 import './reflection-confirmation.css'
+import './mobile-navigation.css'
 
 type View = Exclude<Shortcut, 'focus'> | 'main' | 'ask' | 'settings' | 'focus-history' | 'presets'
 const shortcutIcons = { tasks: ClipboardList, journal: BookOpen, focus: Play, flow: MessageCircle }
@@ -655,7 +656,18 @@ function App({ storageKey, account }: { storageKey?: string; account?: ReactNode
   )
 }
 
-function NavButton({ icon, label, selected, onClick }: { icon: React.ReactNode; label: string; selected: boolean; onClick: () => void }) { return <button className={`nav-button ${selected ? 'selected' : ''}`} onClick={onClick} aria-current={selected ? 'page' : undefined}>{icon}<span>{label}</span></button> }
+function NavButton({ icon, label, selected, onClick }: { icon: React.ReactNode; label: string; selected: boolean; onClick: () => void }) {
+  const button = useRef<HTMLButtonElement>(null)
+
+  useLayoutEffect(() => {
+    if (selected && button.current?.closest('.mobile-nav')) {
+      button.current.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    }
+  })
+
+  return <button ref={button} className={`nav-button ${selected ? 'selected' : ''}`} onClick={onClick}
+    aria-current={selected ? 'page' : undefined}>{icon}<span>{label}</span></button>
+}
 function Rating({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) { return <fieldset className="rating-field"><legend>{label}</legend><div className="rating-buttons">{[1, 2, 3, 4, 5].map(number => <button type="button" className={value === number ? 'selected' : ''} key={number} onClick={() => onChange(number)} aria-label={`${label}: ${number} out of 5`} aria-pressed={value === number}>{number}</button>)}</div><div className="rating-ends"><span>Not much</span><span>Very much</span></div></fieldset> }
 
 export default App
