@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BookOpen, Check, ChevronRight, Circle, ClipboardList, GripHorizontal, Heart, History, ListTodo, MessageCircle, Pause, Pencil, Play, Plus, Search, Settings2, Trash2, X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BookOpen, Check, ChevronRight, Circle, ClipboardList, Github, GripHorizontal, Heart, History, ListTodo, Pause, Pencil, Play, Plus, Search, Settings2, Trash2, X } from 'lucide-react'
 import { taskLists, type LifeOSData, type Task, type TaskList } from './data'
 import { todayTaskLimit } from './task-rules'
 import { translate } from './language'
@@ -13,10 +13,12 @@ interface MainDashboardProps {
   showTasksShortcut: boolean
   showFocusShortcut: boolean
   searchIncludesJournal: boolean
+  repoUrl: string
   tasks: Task[]
   pausedTaskTitle?: string
   displayName?: string
   language?: 'en' | 'ru'
+  interactiveTips: boolean
   onResume: () => void
   onFinishPaused: () => void
   onUpdate: (change: (current: LifeOSData) => LifeOSData) => boolean
@@ -25,7 +27,6 @@ interface MainDashboardProps {
   onStart: (task: Task) => void
   onStartOpenFocus: () => void
   onJournal?: () => void
-  onReflect?: () => void
   onPresets: () => void
   onFocusHistory: () => void
   onSettings: () => void
@@ -37,7 +38,7 @@ const taskList = (task: Task): TaskList => task.list ?? 'today'
 
 type TaskEditor = { id: string | null; title: string; list: TaskList }
 
-export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, tasks, pausedTaskTitle, displayName, language = 'en', onResume, onFinishPaused, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onReflect, onPresets, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
+export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, repoUrl, tasks, pausedTaskTitle, displayName, language = 'en', interactiveTips, onResume, onFinishPaused, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onPresets, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
   const t = (text: string) => translate(language, text)
   const [screen, setScreen] = useState(initialScreen)
   const [filter, setFilter] = useState<TaskList | 'completed'>('today')
@@ -166,19 +167,31 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
     if (onDeleteTask(id)) setDeleting(null)
   }
 
-  const breakCard = pausedTaskTitle !== undefined && (
-    <section className="life-main-today life-main-break" aria-labelledby="life-main-break-title">
+  const renderBreakCard = (compact: boolean) => pausedTaskTitle !== undefined && (
+    <section className={`life-main-today life-main-break${compact ? ' life-main-break--compact' : ''}`} aria-labelledby="life-main-break-title">
       <div className="life-main-break-heading">
         <Pause size={20} aria-hidden="true" />
         <div>
           <h2 id="life-main-break-title">{t('On a break')}</h2>
           <p>{pausedTaskTitle}</p>
         </div>
+        {compact && <button type="button" className="life-main-break-resume" aria-label={t('Resume focus')} title={t('Resume focus')} onClick={onResume}>
+          <span><Play size={15} fill="currentColor" aria-hidden="true" /></span>
+        </button>}
       </div>
-      <button type="button" className="life-main-primary" onClick={onResume}><Play size={16} fill="currentColor" /> {t('Resume focus')}</button>
-      <button type="button" className="life-main-text" onClick={onFinishPaused}>{t('Finish session')}</button>
+      {compact && interactiveTips && <div className="life-main-break-tip life-main-break-tip--resume">
+        <span>{t('Back to focus')}</span>
+        <svg viewBox="0 0 78 28" fill="none" aria-hidden="true"><path d="M2 23 C19 27 28 28 48 25 C67 23 71 20 71 5 M64 11 L71 3 L77 11" /></svg>
+      </div>}
+      {!compact && <button type="button" className="life-main-primary" onClick={onResume}><Play size={16} fill="currentColor" /> {t('Resume focus')}</button>}
+      <button type="button" className={`life-main-text${compact ? ' life-main-break-finish' : ''}`} onClick={onFinishPaused}>{t('Finish session')}</button>
+      {compact && interactiveTips && <div className="life-main-break-tip life-main-break-tip--finish">
+        <span>{t('Save and finish')}</span>
+        <svg viewBox="0 0 78 28" fill="none" aria-hidden="true"><path d="M2 23 C19 27 28 28 48 25 C67 23 71 20 71 5 M64 11 L71 3 L77 11" /></svg>
+      </div>}
     </section>
   )
+  const breakCard = renderBreakCard(false)
 
   const addTaskButton = <button type="button" className={`life-main-add-task${!nextTask && !breakCard ? ' life-main-add-task-inline' : ''}`} onClick={() => openTasks(true)}>
     <span className="life-main-shortcut-icon add"><Plus size={21} aria-hidden="true" /></span>
@@ -191,7 +204,11 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
         <p className="life-main-thanks">{language === 'ru' ? 'Спасибо' : 'Thank you'} <Heart size={13} fill="currentColor" aria-hidden="true" /></p>
         <a className="life-main-discord" href="https://discord.gg/y4s67MzZr" target="_blank" rel="noopener noreferrer">
           {language === 'ru' ? 'Вступить в Discord' : 'Join Discord'} <ArrowRight size={15} aria-hidden="true" />
-        </a></div>
+        </a>
+        <a className="life-main-github" href={repoUrl} target="_blank" rel="noopener noreferrer">
+          <Github size={15} aria-hidden="true" /> {t('View on GitHub')}
+        </a>
+      </div>
       <div className="life-main-hero-actions">
         <button type="button" className="life-main-icon life-main-settings" aria-label={t(searchIncludesJournal ? 'Search tasks and journal' : 'Search tasks')}
           aria-haspopup="dialog" onClick={onSearch}><Search size={20} aria-hidden="true" /></button>
@@ -200,7 +217,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
     </header>
 
     <div className="life-main-stack">
-      {breakCard || <section className="life-main-today" aria-labelledby="life-main-today">
+      {renderBreakCard(true) || <section className="life-main-today" aria-labelledby="life-main-today">
         <div className="life-main-today-heading">
           <h2 id="life-main-today">{t('Today')}</h2>
           {totalToday > 0 && <span>{doneToday.length} / {totalToday} {language === 'ru' ? 'выполнено' : 'done'}</span>}
@@ -239,10 +256,6 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
         {showFocusShortcut && <button type="button" onClick={breakCard ? onResume : onStartOpenFocus}>
           <span className="life-main-shortcut-icon focus"><Play size={21} aria-hidden="true" /></span>
           <strong>{t(breakCard ? 'Resume Focus' : 'Start Focus')}</strong>
-        </button>}
-        {onReflect && <button type="button" onClick={onReflect}>
-          <span className="life-main-shortcut-icon reflect"><MessageCircle size={21} aria-hidden="true" /></span>
-          <strong>{t('Answer 3 questions')}</strong>
         </button>}
         <button type="button" onClick={onPresets}>
           <span className="life-main-shortcut-icon focus"><Settings2 size={21} aria-hidden="true" /></span>

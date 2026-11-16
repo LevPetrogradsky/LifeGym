@@ -4,7 +4,7 @@ import TaskHistory from './TaskHistory'
 import AskLifeOS from './home/AskLifeOS'
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react'
 import { ArrowRight, BookOpen, ClipboardList, House, Leaf, MessageCircle, Play, Settings2, Sparkles } from 'lucide-react'
-import { focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, type Factor, type JournalFolderAppearance, type LifeOSData, type Shortcut, type ShortcutLocation, type Task } from './data'
+import { focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, visibleShortcuts, type Factor, type JournalFolderAppearance, type LifeOSData, type Shortcut, type ShortcutLocation, type Task } from './data'
 import { base64ToBytes, buildNoteBlocks, makeImportedNote, type SourceIndex } from './notes'
 import JournalPage, { type JournalDraft } from './journal/JournalPage'
 import FlowEnginePage from './flow/FlowEnginePage'
@@ -39,15 +39,15 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
   const showAskLifeOS = data.askLifeOSInBar === true
   const onHome = (id: Shortcut) => shortcutVisible(data, id, 'home')
   const inBar = (id: Shortcut) => shortcutVisible(data, id, 'bar')
-  const defaultView = showHome ? 'main' : (['journal', 'tasks', 'flow'] as const).find(inBar) ?? 'settings'
+  const defaultView = showHome ? 'main' : (['journal', 'tasks'] as const).find(inBar) ?? 'settings'
   const [requestedView, setView] = useState<View>(defaultView)
   const [presetsReturnView, setPresetsReturnView] = useState<View>(defaultView)
   const [reflectionReturnView, setReflectionReturnView] = useState<View>(defaultView)
   const [reflectionNotice, setReflectionNotice] = useState('')
   const [postFocusReflection, setPostFocusReflection] = useState(false)
   const isHidden = (page: View) => page === 'main' ? !showHome
-    : (page === 'flow' || page === 'journal') && !inBar(page) && !(showHome && onHome(page))
-      && !(page === 'flow' && (data.postFocusAction === 'reflection' || postFocusReflection))
+    : page === 'flow' ? !postFocusReflection
+      : page === 'journal' && !inBar(page) && !(showHome && onHome(page))
   const view = isHidden(requestedView) ? defaultView : requestedView
   const showJournal = !isHidden('journal')
   const [searchOpen, setSearchOpen] = useState(false)
@@ -413,7 +413,7 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
   const renderNavigation = (iconSize: number, bottom = false) => <>
     {showHome && <NavButton icon={<House size={iconSize} />} label={t('Home')} selected={view === 'main'} onClick={() => navigate('main')} />}
     {!bottom && <NavButton icon={<Settings2 size={iconSize} />} label={t('Settings')} selected={view === 'settings'} onClick={() => navigate('settings')} />}
-    {shortcuts.filter(({ id }) => inBar(id)).sort((a, b) => bottom ? Number(b.id === 'tasks') - Number(a.id === 'tasks') : 0).map(({ id, label }) => {
+    {visibleShortcuts.filter(({ id }) => inBar(id)).sort((a, b) => bottom ? Number(b.id === 'tasks') - Number(a.id === 'tasks') : 0).map(({ id, label }) => {
       const Icon = shortcutIcons[id]
       return <NavButton key={id} icon={<Icon size={iconSize} />} label={t(label)} selected={view === id}
         onClick={() => {
@@ -544,10 +544,12 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
           showTasksShortcut={onHome('tasks')}
           showFocusShortcut={onHome('focus')}
           searchIncludesJournal={showJournal}
+          repoUrl={repoUrl}
           tasks={data.tasks}
           pausedTaskTitle={pausedSession?.taskTitle}
           displayName={data.displayName}
           language={data.language ?? 'en'}
+          interactiveTips={data.interactiveTips !== false}
           onResume={resumeSession}
           onFinishPaused={endSession}
           onUpdate={update}
@@ -556,7 +558,6 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
           onStart={startFocus}
           onStartOpenFocus={() => startFocus()}
           onJournal={onHome('journal') ? () => navigate('journal') : undefined}
-          onReflect={onHome('flow') ? () => navigate('flow') : undefined}
           onPresets={openPresets}
           onFocusHistory={() => navigate('focus-history')}
           onSettings={() => navigate('settings')}
@@ -569,7 +570,6 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
             tasks: () => navigate('tasks'),
             journal: showJournal ? () => navigate('journal') : undefined,
             focus: data.activeSession?.pausedAt ? resumeSession : () => startFocus(),
-            reflect: !isHidden('flow') ? () => navigate('flow') : undefined,
             settings: () => navigate('settings'),
           }} />
         </main>}
@@ -610,6 +610,8 @@ function App({ storageKey, account, existingAccount = false }: { storageKey?: st
             language={data.language ?? 'en'}
             onLanguageChange={language => update(current => ({ ...current, language }))}
             onThemeChange={theme => update(current => ({ ...current, theme }))}
+            interactiveTips={data.interactiveTips !== false}
+            onInteractiveTipsChange={interactiveTips => update(current => ({ ...current, interactiveTips }))}
             showHome={showHome}
             onHomeVisibilityChange={changeHomeVisibility}
             showAskLifeOS={showAskLifeOS}

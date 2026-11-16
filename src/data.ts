@@ -13,6 +13,8 @@ export const shortcuts = [
   { id: 'focus', label: 'Focus' },
   { id: 'flow', label: '3 questions' },
 ] as const
+// Keep the legacy entry above so saved shortcut preferences and backups remain valid.
+export const visibleShortcuts = shortcuts.filter(shortcut => shortcut.id !== 'flow')
 export type Shortcut = typeof shortcuts[number]['id']
 export type ShortcutLocation = 'home' | 'bar'
 export type ShortcutPreferences = Partial<Record<Shortcut, Partial<Record<ShortcutLocation, boolean>>>>
@@ -176,6 +178,7 @@ export interface LifeOSData {
   pendingSession: PendingSession | null
   theme: Theme
   language?: 'en' | 'ru'
+  interactiveTips?: boolean
   hiddenSections?: NavigationSection[]
   askLifeOSInBar?: boolean
   shortcutPreferences?: ShortcutPreferences
@@ -268,6 +271,7 @@ export function validateLifeOSData(value: unknown): value is LifeOSData {
   if (value.breakReminderMinutes !== undefined && !breakReminderMinutes.some(minutes => minutes === value.breakReminderMinutes)) return false
   if (value.theme !== 'light' && value.theme !== 'dark' && value.theme !== 'system') return false
   if (value.language !== undefined && value.language !== 'en' && value.language !== 'ru') return false
+  if (value.interactiveTips !== undefined && typeof value.interactiveTips !== 'boolean') return false
   if (value.hiddenSections !== undefined && (!Array.isArray(value.hiddenSections) ||
     !value.hiddenSections.every(id => navigationSections.some(section => section.id === id)))) return false
   if (value.askLifeOSInBar !== undefined && typeof value.askLifeOSInBar !== 'boolean') return false

@@ -57,7 +57,7 @@ const russianAnswers: Record<string, { text: string; steps: string[] }> = {
   'tasks:link': { text: 'Заметку Journal можно связать с одной задачей.', steps: ['Открой Tasks и нажми название задачи.', 'В истории нажми Link a note и выбери свободную заметку.', 'Или нажми Write a reflection, чтобы создать новую связанную заметку.'] },
   'tasks:history': { text: 'Можно посмотреть все фокус-сессии или только сессии одной задачи.', steps: ['Нажми Focus history на Home, чтобы увидеть общий список.', 'Для одной задачи открой Tasks и нажми её название.'] },
   'tasks:plan': { text: 'Для текущих дел есть Today, а для идей на потом — Someday.', steps: ['Нажми Add a task на Home или открой Tasks.', 'Выбери Today или Someday.', 'В Today помещается до пяти активных задач.'] },
-  'reflect:review': { text: 'Три вопроса помогают заметить, что делало фокус-сессии полезными.', steps: ['Заверши сессию и заполни короткую оценку.', 'Нажми «Answer 3 questions», чтобы посмотреть закономерности.', 'В истории задачи можно также написать заметку через Write a reflection.'] },
+  'reflect:review': { text: 'Три вопроса помогают заметить, что делало фокус-сессии полезными.', steps: ['Заверши сессию фокуса.', 'Выбери «Написать рефлексию», чтобы ответить на вопросы.', 'Прошлые ответы доступны в истории фокуса.'] },
   'settings:personalize': { text: 'В Settings можно настроить LifeOS под себя.', steps: ['Открой Settings.', 'В Personalize выбери тему, а в Navigation настрой нижнюю панель.', 'Там же можно экспортировать резервную копию.'] },
 }
 
@@ -124,7 +124,7 @@ function answerEnglish(question: string, previous?: GuideContext): GuideAnswer {
   }
   if (/reflect|reflection|3 questions|three questions|check.?in|flow|рефлекс|итог|осмысл|оценк/.test(query)) {
     return answer('Three questions help you notice what made a focus session useful.', 'reflect', { topic: 'reflect', step: 'review' },
-      ['Finish a focus session and complete its check-in.', 'Tap Answer 3 questions to review patterns from your sessions.', 'You can also write a Journal reflection from a task’s history.'],
+      ['Finish a focus session.', 'Choose Write a reflection to answer the questions.', 'Past answers are available from Focus history.'],
       ['How do I start a focus session?', 'How do I link a note to a task?'])
   }
   if (/task|today|someday|plan|задач|сегодня|потом|план/.test(query)) {

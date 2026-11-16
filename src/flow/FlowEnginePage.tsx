@@ -105,7 +105,8 @@ export default function FlowEnginePage({ data, onUpdate, onReturn, returnLabel, 
 
   const goBack = () => {
     if (sessionsOnly) {
-      onReturn()
+      if (stage === 'history') onReturn()
+      else openStage('history')
       return
     }
     if (stage === 'discover' && step === 0) {
@@ -197,7 +198,7 @@ export default function FlowEnginePage({ data, onUpdate, onReturn, returnLabel, 
   }
   const title = titles[stage]
   const isReflectStart = stage === 'discover' && step === 0
-  const backLabel = sessionsOnly || isReflectStart ? returnLabel : stage === 'review' || stage === 'discover'
+  const backLabel = sessionsOnly ? stage === 'history' ? returnLabel : 'Back to History' : isReflectStart ? returnLabel : stage === 'review' || stage === 'discover'
     ? 'Previous question'
     : stage === 'reflections' || tools.some(tool => tool.stage === stage) ? 'Back to History' : 'Back to Reflection'
   const historyButton = <button type="button" className="flow-history-button" onClick={() => openStage('history')}>
@@ -226,7 +227,7 @@ export default function FlowEnginePage({ data, onUpdate, onReturn, returnLabel, 
     {title && <header className="flow-screen-header"><h1 tabIndex={-1}>{t(title)}</h1></header>}
 
     {stage === 'history' && <>
-      {!sessionsOnly && flow.discoveries.length > 0 && <button type="button" className="flow-history-row" onClick={() => openStage('reflections')}>
+      {flow.discoveries.length > 0 && <button type="button" className="flow-history-row" onClick={() => openStage('reflections')}>
         <span>{t('Past reflections')}</span>
         <span>{flow.discoveries.length}</span>
         <ChevronRight size={17} aria-hidden="true" />

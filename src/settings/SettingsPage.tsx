@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent, type ReactNode } from 'react'
 import { ChevronRight, Compass, Copy, Download, ExternalLink, Github, HardDrive, Info, Monitor, Moon, Palette, Sun, Timer, Upload, UserRound } from 'lucide-react'
-import { breakReminderMinutes, maxDisplayNameLength, shortcuts, type BreakReminderMinutes, type PostFocusAction, type Shortcut, type ShortcutLocation, type Theme } from '../data'
+import { breakReminderMinutes, maxDisplayNameLength, visibleShortcuts, type BreakReminderMinutes, type PostFocusAction, type Shortcut, type ShortcutLocation, type Theme } from '../data'
 import { translate, type AppLanguage } from '../language'
 import './settings.css'
 
@@ -10,6 +10,8 @@ interface SettingsPageProps {
   language: 'en' | 'ru'
   onLanguageChange: (language: 'en' | 'ru') => void
   onThemeChange: (theme: Theme) => void
+  interactiveTips: boolean
+  onInteractiveTipsChange: (enabled: boolean) => void
   showHome: boolean
   onHomeVisibilityChange: (visible: boolean) => void
   showAskLifeOS: boolean
@@ -111,7 +113,7 @@ function AboutLifeOS({ repoUrl, language }: { repoUrl: string; language: AppLang
 
 export default function SettingsPage({
   account,
-  theme, onThemeChange, language, onLanguageChange, showHome, onHomeVisibilityChange, showAskLifeOS, onAskLifeOSVisibilityChange, shortcutVisible, onShortcutChange, onExport, onImport, repoUrl, focusCheckin, postFocusAction, onOpenPresets,
+  theme, onThemeChange, language, onLanguageChange, interactiveTips, onInteractiveTipsChange, showHome, onHomeVisibilityChange, showAskLifeOS, onAskLifeOSVisibilityChange, shortcutVisible, onShortcutChange, onExport, onImport, repoUrl, focusCheckin, postFocusAction, onOpenPresets,
   reminderMinutes, onReminderMinutesChange, displayName, onDisplayNameChange,
 }: SettingsPageProps) {
   const t = (text: string) => translate(language, text)
@@ -148,6 +150,11 @@ export default function SettingsPage({
         </SettingsGroup>
 
         <SettingsGroup title={t('Focus')} icon={<Timer size={18} />} defaultOpen>
+          <label className="settings-page__toggle">
+            <span className="settings-page__toggle-copy"><strong>{t('Interactive tips')}</strong><span>{t('Show hints for focus actions on Home.')}</span></span>
+            <input type="checkbox" role="switch" aria-label={t('Interactive tips')} checked={interactiveTips}
+              onChange={event => onInteractiveTipsChange(event.currentTarget.checked)} />
+          </label>
           {onOpenPresets && <button type="button" className="settings-page__action" onClick={onOpenPresets}>
             {t('Presets')} <ChevronRight size={17} aria-hidden="true" />
           </button>}
@@ -185,7 +192,6 @@ export default function SettingsPage({
         </SettingsGroup>
 
         <SettingsGroup title={t('Backups')} icon={<HardDrive size={18} />} defaultOpen>
-          <p className="settings-page__description">{t('Your data stays in this browser. Save a copy to move it to another device.')}</p>
           <div className="settings-page__actions">
             <button type="button" className="settings-page__action" onClick={onExport}>
               <Download size={17} aria-hidden="true" />{t('Save a copy')}
@@ -212,7 +218,7 @@ export default function SettingsPage({
               onChange={event => onAskLifeOSVisibilityChange(event.currentTarget.checked)} />
           </label>
           {!showHome && <p className="settings-page__description">{t('Home shortcuts appear when Home is visible.')}</p>}
-          {shortcuts.map(({ id, label }) => <fieldset key={id} className="settings-page__shortcut">
+          {visibleShortcuts.map(({ id, label }) => <fieldset key={id} className="settings-page__shortcut">
             <legend>{t(label)}</legend>
             {([['home', 'On Home'], ['bar', 'In navigation bar']] as const).map(([location, text]) => <label
               className="settings-page__toggle settings-page__shortcut-option" key={location}>
