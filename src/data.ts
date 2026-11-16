@@ -193,6 +193,7 @@ export interface LifeOSData {
   // An absent value retains the old focus check-in behavior until the user chooses.
   postFocusAction?: PostFocusAction
   focusPresetId?: FocusPresetId
+  timerDefaultView?: 'full' | 'compact'
   displayName?: string
   breakReminderMinutes?: BreakReminderMinutes
   // Optional so previously saved version 1 data remains valid without migration.
@@ -200,6 +201,8 @@ export interface LifeOSData {
 }
 
 export const STORAGE_KEY = 'lifeos.v1'
+
+export const timerView = (data: Pick<LifeOSData, 'timerDefaultView'>): 'full' | 'compact' => data.timerDefaultView ?? 'compact'
 
 export type LoadResult = { data: LifeOSData; error: string | null }
 
@@ -274,6 +277,7 @@ export function validateLifeOSData(value: unknown): value is LifeOSData {
   if (value.focusCheckinEnabled !== undefined && typeof value.focusCheckinEnabled !== 'boolean') return false
   if (value.postFocusAction !== undefined && !postFocusActions.some(action => action === value.postFocusAction)) return false
   if (value.focusPresetId !== undefined && !focusPresetIds.some(id => id === value.focusPresetId)) return false
+  if (value.timerDefaultView !== undefined && value.timerDefaultView !== 'full' && value.timerDefaultView !== 'compact') return false
   if (value.displayName !== undefined && (!isString(value.displayName) || value.displayName.length > maxDisplayNameLength)) return false
   if (value.breakReminderMinutes !== undefined && !breakReminderMinutes.some(minutes => minutes === value.breakReminderMinutes)) return false
   if (value.theme !== 'light' && value.theme !== 'dark' && value.theme !== 'system') return false

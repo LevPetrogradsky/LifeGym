@@ -1,4 +1,4 @@
-import { ArrowLeft, BellOff, Ellipsis, ExternalLink, Eye, EyeOff, Globe, Minimize2, Pause, Play, Smartphone, Trees, X } from 'lucide-react'
+import { ArrowLeft, BellOff, Ellipsis, ExternalLink, Eye, EyeOff, Flag, Globe, Minimize2, Pause, Play, Smartphone, Trees, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { elapsedClock, focusedDuration, type ActiveSession } from './data'
 import { translate, type AppLanguage } from './language'
@@ -145,12 +145,12 @@ export default function MainFocus({
       </div>
       <div className="life-main-focus-controls">
         <button type="button" className="life-main-focus-pause" onClick={paused ? onResume : onPause}>
-          {paused ? <><Play size={18} aria-hidden="true" /> {t('Resume focus')}</> : <><Pause size={18} aria-hidden="true" /> {t('Take a break')}</>}
+          {paused ? <><Play size={18} aria-hidden="true" /> {language === 'ru' ? 'Продолжить' : 'Continue'}</> : <><Pause size={18} aria-hidden="true" /> {language === 'ru' ? 'Пауза' : 'Pause'}</>}
         </button>
         {!paused && <button type="button" className="life-main-focus-minimize" onClick={onMinimize}>
           <Minimize2 size={17} aria-hidden="true" /> {language === 'ru' ? 'Свернуть таймер' : 'Minimize timer'}
         </button>}
-        <button type="button" className="life-main-focus-finish" onClick={onFinish}>{t('Finish session')}</button>
+        <button type="button" className="life-main-focus-finish" onClick={onFinish}><Flag size={17} aria-hidden="true" /> {language === 'ru' ? 'Завершить' : 'Finish'}</button>
       </div>
     </div>
     <dialog ref={dialog} className="life-main-focus-dialog" aria-labelledby="focus-dialog-title"

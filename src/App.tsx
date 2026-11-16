@@ -4,7 +4,7 @@ import TaskHistory from './TaskHistory'
 import AskLifeOS from './home/AskLifeOS'
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode, type SetStateAction } from 'react'
 import { ArrowRight, BookOpen, ClipboardList, House, Leaf, MessageCircle, Play, Settings2, Sparkles } from 'lucide-react'
-import { elapsedClock, focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, visibleShortcuts, STORAGE_KEY, type Factor, type JournalFolderAppearance, type LifeOSData, type Shortcut, type ShortcutLocation, type Task } from './data'
+import { elapsedClock, focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, timerView, visibleShortcuts, STORAGE_KEY, type Factor, type JournalFolderAppearance, type LifeOSData, type Shortcut, type ShortcutLocation, type Task } from './data'
 import { base64ToBytes, buildNoteBlocks, makeImportedNote, type SourceIndex } from './notes'
 import JournalPage, { type JournalDraft } from './journal/JournalPage'
 import { clearJournalDraft, readJournalDraft, writeJournalDraft } from './journal/drafts'
@@ -254,10 +254,12 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
   const startFocus = (task?: Task) => {
     if (dataRef.current.activeSession || dataRef.current.pendingSession) return false
     const now = Date.now()
+    const sessionId = crypto.randomUUID()
+    const compact = timerView(dataRef.current) === 'compact'
     const started = update(current => ({
       ...current,
       activeSession: {
-        id: crypto.randomUUID(),
+        id: sessionId,
         taskId: task?.id ?? null,
         taskTitle: task?.title ?? findFocusPreset(current.focusPresetId)?.label ?? 'Open focus',
         startedAt: new Date(now).toISOString(),
@@ -265,13 +267,21 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
       },
     }))
     if (started) {
-      setMinimizedFocusScreen(undefined)
+      if (compact) {
+        try { localStorage.setItem(`${storageKey ?? STORAGE_KEY}.focus-minimized`, sessionId) } catch { setStorageError(true) }
+        setMinimizedFocusScreen(sessionId)
+        if (view !== 'main' && view !== 'tasks') navigate(showHome ? 'main' : defaultView)
+      } else {
+        try { localStorage.removeItem(`${storageKey ?? STORAGE_KEY}.focus-minimized`) } catch { /* Focus still opens. */ }
+        setMinimizedFocusScreen(undefined)
+      }
+      setPausedFocusScreen(undefined)
       setNow(now)
     }
     return started
   }
 
-  const pauseSession = (stayInFocus: boolean) => {
+  const pauseSession = (stayInFocus: boolean, returnHome = true) => {
     const session = dataRef.current.activeSession
     if (!session) return
     if (!session.pausedAt) {
@@ -280,10 +290,10 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
       setNow(pausedAt.getTime())
     }
     setPausedFocusScreen(stayInFocus ? session.id : undefined)
-    if (!stayInFocus) navigate('main')
+    if (!stayInFocus && returnHome) navigate(showHome ? 'main' : defaultView)
   }
 
-  const resumeSession = () => {
+  const resumeSession = (stayCompact = false) => {
     const session = dataRef.current.activeSession
     if (!session?.pausedAt) return
     const now = Date.now()
@@ -292,8 +302,11 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
       ...current,
       activeSession: { ...session, pausedAt: undefined, pausedDurationMs, breakReminderDismissed: undefined },
     }))) {
-      setMinimizedFocusScreen(undefined)
-      try { localStorage.removeItem(`${storageKey ?? STORAGE_KEY}.focus-minimized`) } catch { /* Focus still opens. */ }
+      setMinimizedFocusScreen(stayCompact ? session.id : undefined)
+      try {
+        if (stayCompact) localStorage.setItem(`${storageKey ?? STORAGE_KEY}.focus-minimized`, session.id)
+        else localStorage.removeItem(`${storageKey ?? STORAGE_KEY}.focus-minimized`)
+      } catch { setStorageError(true) }
       setPausedFocusScreen(undefined)
       setNow(now)
       window.scrollTo({ top: 0, behavior: 'instant' })
@@ -301,6 +314,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
   }
 
   const returnToFocus = () => {
+    setPausedFocusScreen(dataRef.current.activeSession?.pausedAt ? dataRef.current.activeSession.id : undefined)
     setMinimizedFocusScreen(undefined)
     try { localStorage.removeItem(`${storageKey ?? STORAGE_KEY}.focus-minimized`) } catch { /* Focus still opens. */ }
     setNow(Date.now())
@@ -359,6 +373,14 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
       setReflectionReturnView(showHome ? 'main' : defaultView)
       setView('flow')
     }
+  }
+
+  const skipPostFocus = () => {
+    const pending = dataRef.current.pendingSession
+    if (!pending) return
+    if (!update(current => recordUnratedSession(current, pending))) return
+    setCheckingIn(false)
+    navigate(showHome ? 'main' : defaultView)
   }
 
   const saveCheckin = (event: FormEvent) => {
@@ -481,13 +503,15 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
     if (!preset) return false
     const idle = !dataRef.current.activeSession && !dataRef.current.pendingSession
     const startedAt = Date.now()
+    const sessionId = crypto.randomUUID()
+    const compact = timerView(dataRef.current) === 'compact'
     const saved = update(current => {
       const configured = applyFocusPreset(current, id)
       if (!idle || configured.activeSession || configured.pendingSession) return configured
       return {
         ...configured,
         activeSession: {
-          id: crypto.randomUUID(),
+          id: sessionId,
           taskId: null,
           taskTitle: preset.label,
           startedAt: new Date(startedAt).toISOString(),
@@ -496,6 +520,15 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
       }
     })
     if (saved && idle) {
+      if (compact) {
+        try { localStorage.setItem(`${storageKey ?? STORAGE_KEY}.focus-minimized`, sessionId) } catch { setStorageError(true) }
+        setMinimizedFocusScreen(sessionId)
+        navigate(showHome ? 'main' : defaultView)
+      } else {
+        try { localStorage.removeItem(`${storageKey ?? STORAGE_KEY}.focus-minimized`) } catch { /* Focus still opens. */ }
+        setMinimizedFocusScreen(undefined)
+      }
+      setPausedFocusScreen(undefined)
       setNow(startedAt)
     }
     return saved
@@ -539,7 +572,6 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
       return <NavButton key={id} icon={<Icon size={iconSize} />} label={t(label)} selected={view === id}
         onClick={() => {
           if (id !== 'focus') navigate(id)
-          else if (data.activeSession?.pausedAt) resumeSession()
           else if (data.activeSession) returnToFocus()
           else startFocus()
         }} />
@@ -605,7 +637,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
       onToggleTime={toggleFocusTime}
       onToggleSilence={toggleFocusSilence}
       onPause={() => pauseSession(true)}
-      onResume={resumeSession}
+      onResume={() => resumeSession()}
       onLeave={() => pauseSession(false)}
       onMinimize={minimizeFocus}
       returnDestination={showHome ? 'Home' : shortcuts.find(({ id }) => id === defaultView)?.label ?? 'Settings'}
@@ -622,6 +654,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
     storageError={storageError}
     preferred={data.postFocusAction}
     onChoose={choosePostFocusAction}
+    onSkip={skipPostFocus}
   />
 
   if (data.pendingSession) return (<>
@@ -677,8 +710,9 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
           showPausedTime={showTime}
           displayName={data.displayName}
           language={data.language ?? 'en'}
-          interactiveTips={data.interactiveTips !== false}
-          onResume={pausedSession ? resumeSession : returnToFocus}
+          onPauseFocus={() => pauseSession(false, false)}
+          onContinueFocus={() => resumeSession(true)}
+          onReturnToFocus={returnToFocus}
           onFinishPaused={endSession}
           onUpdate={update}
           onOpenTask={openTaskHistory}
@@ -697,7 +731,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
           <AskLifeOS actions={{
             tasks: () => navigate('tasks'),
             journal: showJournal ? () => navigate('journal') : undefined,
-            focus: data.activeSession?.pausedAt ? resumeSession : () => startFocus(),
+            focus: data.activeSession ? returnToFocus : () => { startFocus() },
             settings: () => navigate('settings'),
           }} />
         </main>}
@@ -759,6 +793,8 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
             displayName={data.displayName ?? ''}
             onDisplayNameChange={displayName => update(current => ({ ...current, displayName: displayName || undefined }))}
             reminderMinutes={reminderMinutes}
+            timerDefaultView={timerView(data)}
+            onTimerDefaultViewChange={timerDefaultView => update(current => ({ ...current, timerDefaultView }))}
             onReminderMinutesChange={breakReminderMinutes => update(current => ({ ...current, breakReminderMinutes, focusPresetId: undefined }))}
             focusCheckin={{
               enabled: data.focusCheckinEnabled !== false,

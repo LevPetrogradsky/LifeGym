@@ -8,9 +8,10 @@ interface PostFocusChoiceProps {
   storageError: boolean
   preferred?: 'reflection' | 'check-in'
   onChoose: (action: 'reflection' | 'check-in') => void
+  onSkip: () => void
 }
 
-export default function PostFocusChoice({ taskTitle, storageError, preferred, onChoose, language = 'en' }: PostFocusChoiceProps) {
+export default function PostFocusChoice({ taskTitle, storageError, preferred, onChoose, onSkip, language = 'en' }: PostFocusChoiceProps) {
   const t = (text: string) => translate(language, text)
   return <main className="checkin-screen page-container post-focus-choice">
     {storageError && <p className="storage-error" role="alert">{t('Your choice could not be saved. Please try again.')}</p>}
@@ -37,6 +38,7 @@ export default function PostFocusChoice({ taskTitle, storageError, preferred, on
           </span>
           <ArrowRight size={20} aria-hidden="true" />
         </button>
+        <button type="button" className="post-focus-choice__skip" onClick={onSkip}>{language === 'ru' ? 'Пропустить' : 'Skip'}</button>
       </div>
     </section>
   </main>

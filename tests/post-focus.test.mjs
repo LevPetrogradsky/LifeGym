@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { emptyData, loadData, parseBackup, recordUnratedSession, shortcutVisible, validateLifeOSData } from '../src/data.ts'
+import { emptyData, loadData, parseBackup, recordUnratedSession, shortcutVisible, timerView, validateLifeOSData } from '../src/data.ts'
 
 test('new navigation defaults preserve explicit shortcut choices', () => {
   const fresh = emptyData()
@@ -33,10 +33,40 @@ test('finished focus is saved once and its choices remain after reload', () => {
   }
 })
 
+test('skipping post-focus clears the choice and keeps one saved session after reload', () => {
+  const pendingSession = {
+    id: 'skipped', taskId: null, taskTitle: 'Work',
+    startedAt: '2026-11-13T10:00:00.000Z',
+    endedAt: '2026-11-13T10:01:00.000Z',
+  }
+  const finished = { ...recordUnratedSession(emptyData(), pendingSession), pendingSession }
+  const skipped = recordUnratedSession(finished, pendingSession)
+  const previousStorage = globalThis.localStorage
+  globalThis.localStorage = { getItem: () => JSON.stringify(skipped) }
+  try {
+    const loaded = loadData().data
+    assert.equal(loaded.pendingSession, null)
+    assert.equal(loaded.sessions.filter(session => session.id === pendingSession.id).length, 1)
+  } finally {
+    globalThis.localStorage = previousStorage
+  }
+})
+
 test('older LifeOS backups remain valid without post-focus or preset choices', () => {
   const legacy = emptyData()
   assert.equal(validateLifeOSData(legacy), true)
   assert.equal(parseBackup(JSON.stringify(legacy)).postFocusAction, undefined)
+  assert.equal(parseBackup(JSON.stringify(legacy)).timerDefaultView, undefined)
+  assert.equal(timerView(parseBackup(JSON.stringify(legacy))), 'compact')
+})
+
+test('compact timer preference survives reload and rejects unknown views', () => {
+  assert.equal(timerView(emptyData()), 'compact')
+  const compact = { ...emptyData(), timerDefaultView: 'compact' }
+  assert.equal(validateLifeOSData(compact), true)
+  assert.equal(parseBackup(JSON.stringify(compact)).timerDefaultView, 'compact')
+  assert.equal(timerView(parseBackup(JSON.stringify({ ...compact, timerDefaultView: 'full' }))), 'full')
+  assert.equal(validateLifeOSData({ ...compact, timerDefaultView: 'floating' }), false)
 })
 
 test('explicit post-focus and preset choices survive a backup round trip', () => {

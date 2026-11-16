@@ -33,6 +33,21 @@
   gap: 12px;
 }
 
+.post-focus-choice__skip {
+  justify-self: center;
+  min-height: 44px;
+  padding: 9px 22px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.post-focus-choice__skip:hover,
+.post-focus-choice__skip:focus-visible { border-color: var(--accent); }
+
 .post-focus-choice__option {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 20px;

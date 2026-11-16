@@ -31,6 +31,8 @@ interface SettingsPageProps {
   focusCheckin?: { enabled: boolean; onChange: (enabled: boolean) => void }
   postFocusAction?: { value?: PostFocusAction; onChange: (action: PostFocusAction) => void }
   onOpenPresets?: () => void
+  timerDefaultView: 'full' | 'compact'
+  onTimerDefaultViewChange: (view: 'full' | 'compact') => void
 }
 
 const themes = [
@@ -119,7 +121,7 @@ function AboutLifeOS({ repoUrl, language }: { repoUrl: string; language: AppLang
 export default function SettingsPage({
   account,
   theme, onThemeChange, language, onLanguageChange, timeFormat, onTimeFormatChange, interactiveTips, onInteractiveTipsChange, showHome, onHomeVisibilityChange, showAskLifeOS, onAskLifeOSVisibilityChange, shortcutVisible, onShortcutChange, onExport, onImport, repoUrl, focusCheckin, postFocusAction, onOpenPresets,
-  reminderMinutes, onReminderMinutesChange, displayName, onDisplayNameChange,
+  reminderMinutes, onReminderMinutesChange, displayName, onDisplayNameChange, timerDefaultView, onTimerDefaultViewChange,
 }: SettingsPageProps) {
   const t = (text: string) => translate(language, text)
   const [openSections, setOpenSections] = useState<Record<SettingsSection, boolean>>({
@@ -188,6 +190,16 @@ export default function SettingsPage({
         </SettingsGroup>
 
         <SettingsGroup title={t('Focus')} icon={<Timer size={18} />} open={openSections.focus} onOpenChange={open => setSection('focus', open)}>
+          <fieldset className="settings-page__themes">
+            <legend>{language === 'ru' ? 'Вид таймера по умолчанию' : 'Default timer view'}</legend>
+            <div className="settings-page__theme-options">
+              {(['full', 'compact'] as const).map(value => <label className="settings-page__theme" key={value}>
+                <input type="radio" name="lifeos-timer-view" checked={timerDefaultView === value}
+                  onChange={() => onTimerDefaultViewChange(value)} />
+                <span>{value === 'compact' ? (language === 'ru' ? 'Компактный' : 'Compact') : (language === 'ru' ? 'На весь экран' : 'Full screen')}</span>
+              </label>)}
+            </div>
+          </fieldset>
           <label className="settings-page__toggle">
             <span className="settings-page__toggle-copy"><strong>{t('Interactive tips')}</strong><span>{t('Show hints for focus actions on Home and Tasks.')}</span></span>
             <input type="checkbox" role="switch" aria-label={t('Interactive tips')} checked={interactiveTips}
