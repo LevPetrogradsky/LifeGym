@@ -3,7 +3,7 @@ import { isJournalPhoto } from './photo.ts'
 import { validApproximateLocation, type ApproximateLocation } from './location.ts'
 import { validWorkout, type WorkoutRecord } from './workout.ts'
 
-export type SavedDraft = { text: string; photo?: string; location?: ApproximateLocation; linkedEntryId?: string; workout?: WorkoutRecord }
+export type SavedDraft = { text: string; photo?: string; location?: ApproximateLocation; linkedEntryId?: string; workout?: WorkoutRecord; plannedWorkoutId?: string }
 
 export function draftStorageKey(storageKey = STORAGE_KEY, id = 'new') {
   return `${storageKey}.journal-draft.v1.${id}`
@@ -40,6 +40,8 @@ export function readJournalDraft(storageKey?: string, id?: string): SavedDraft |
         (typeof value.photo !== 'string' || !isJournalPhoto(value.photo))) ||
       ('location' in value && value.location !== undefined && !validApproximateLocation(value.location)) ||
       ('workout' in value && value.workout !== undefined && !validWorkout(value.workout, true)) ||
+      ('plannedWorkoutId' in value && value.plannedWorkoutId !== undefined &&
+        (typeof value.plannedWorkoutId !== 'string' || !value.plannedWorkoutId || value.plannedWorkoutId.length > 200)) ||
       ('linkedEntryId' in value && value.linkedEntryId !== undefined &&
         (typeof value.linkedEntryId !== 'string' || !value.linkedEntryId || value.linkedEntryId.length > 200 || value.linkedEntryId === id))) return null
     return value as SavedDraft

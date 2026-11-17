@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Circle, ClipboardList, Flag, Github, GripHorizontal, ListTodo, Maximize2, Pause, Pencil, Play, Plus, Search, Settings2, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Circle, ClipboardList, Dumbbell, Flag, Github, GripHorizontal, ListTodo, Maximize2, Pause, Pencil, Play, Plus, Search, Settings2, Trash2, X } from 'lucide-react'
 import { taskLists, type LifeOSData, type Task, type TaskList } from './data'
 import { todayTaskLimit } from './task-rules'
 import { translate } from './language'
@@ -32,6 +32,7 @@ interface MainDashboardProps {
   onStart: (task: Task) => void
   onJournal?: () => void
   onAddExercise?: () => void
+  onWorkouts: () => void
   onSettings: () => void
   onSearch: () => void
 }
@@ -83,7 +84,7 @@ function BreakCard({ taskTitle, activeTime, showTime, running, language, onPause
   </section>
 }
 
-export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, searchIncludesJournal, repoUrl, hubUrl, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, language = 'en', onPauseFocus, onContinueFocus, onReturnToFocus, onFinishPaused, onCancelFocus, onUpdate, onOpenTask, onDeleteTask, onStart, onJournal, onAddExercise, onSettings, onSearch }: MainDashboardProps) {
+export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, searchIncludesJournal, repoUrl, hubUrl, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, language = 'en', onPauseFocus, onContinueFocus, onReturnToFocus, onFinishPaused, onCancelFocus, onUpdate, onOpenTask, onDeleteTask, onStart, onJournal, onAddExercise, onWorkouts, onSettings, onSearch }: MainDashboardProps) {
   const t = (text: string) => translate(language, text)
   const [screen, setScreen] = useState(initialScreen)
   const [filter, setFilter] = useState<TaskList | 'completed'>('today')
@@ -248,6 +249,10 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
           <span className="life-main-shortcut-icon tasks"><ClipboardList size={21} aria-hidden="true" /></span>
           <strong>{t('Tasks')}</strong>
         </button>}
+        <button type="button" onClick={onWorkouts}>
+          <span className="life-main-shortcut-icon tasks"><Dumbbell size={21} aria-hidden="true" /></span>
+          <strong>{language === 'ru' ? 'Тренировки' : 'Workouts'}</strong>
+        </button>
         {onJournal && <button type="button" onClick={onJournal}>
           <span className="life-main-shortcut-icon journal"><BookOpen size={21} aria-hidden="true" /></span>
           <strong>{t('Workout Tracker')}</strong>

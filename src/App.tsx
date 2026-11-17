@@ -4,9 +4,10 @@ import TaskHistory from './TaskHistory'
 import AskLifeOS from './home/AskLifeOS'
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode, type SetStateAction } from 'react'
 import { ArrowRight, BookOpen, ClipboardList, House, Leaf, MessageCircle, Play, Settings2, Sparkles } from 'lucide-react'
-import { elapsedClock, focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, timerView, visibleShortcuts, STORAGE_KEY, type Factor, type JournalFolderAppearance, type LifeOSData, type Shortcut, type ShortcutLocation, type Task } from './data'
+import { elapsedClock, focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, timerView, visibleShortcuts, STORAGE_KEY, type Factor, type JournalFolderAppearance, type LifeOSData, type PlannedWorkout, type Shortcut, type ShortcutLocation, type Task } from './data'
 import { base64ToBytes, buildNoteBlocks, makeImportedNote, type SourceIndex } from './notes'
 import JournalPage, { type JournalDraft } from './journal/JournalPage'
+import WorkoutsPage from './workouts/WorkoutsPage'
 import { emptyExercise } from './journal/workout'
 import { clearJournalDraft, readJournalDraft, writeJournalDraft } from './journal/drafts'
 import { JournalCloudSync, guestJournalCount, withJournalChanges } from './journal/cloud-sync'
@@ -23,7 +24,7 @@ import { translate, type AppLanguage } from './language'
 import './reflection-confirmation.css'
 import './mobile-navigation.css'
 
-type View = Exclude<Shortcut, 'focus'> | 'main' | 'ask' | 'settings' | 'focus-history'
+type View = Exclude<Shortcut, 'focus'> | 'main' | 'ask' | 'settings' | 'focus-history' | 'workouts'
 const shortcutIcons = { tasks: ClipboardList, journal: BookOpen, focus: Play, flow: MessageCircle }
 const factors: Factor[] = ['Meaningful Goal', 'Personal Control', 'Fast Feedback', 'Other']
 const repoUrl = 'https://github.com/LevPetrogradsky/LifeGym'
@@ -488,10 +489,14 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
   }
 
   const createJournalEntry = (draft: JournalDraft, folderId?: string) => {
+    const { plannedWorkoutId, ...entryDraft } = draft
     const saved = update(current => ({
       ...current,
+      plannedWorkouts: draft.workout && plannedWorkoutId
+        ? (current.plannedWorkouts ?? []).filter(plan => plan.id !== plannedWorkoutId)
+        : current.plannedWorkouts,
       journal: [{
-        ...draft, id: crypto.randomUUID(), createdAt: new Date().toISOString(), taskId: journalTaskId,
+        ...entryDraft, id: crypto.randomUUID(), createdAt: new Date().toISOString(), taskId: journalTaskId,
         folderId: current.journalFolders?.some(folder => folder.id === folderId) ? folderId : undefined,
       }, ...current.journal],
     }))
@@ -581,6 +586,34 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
     })
     setAddExerciseRequest(request => request + 1)
     navigate('journal')
+  }
+
+  const savePlannedWorkout = (title: string, plannedFor?: string, id?: string) => {
+    const cleanTitle = title.trim()
+    if (!cleanTitle || cleanTitle.length > 140) return false
+    return update(current => {
+      const plans = current.plannedWorkouts ?? []
+      if (id && plans.some(plan => plan.id === id)) return { ...current, plannedWorkouts: plans.map(plan =>
+        plan.id === id ? { ...plan, title: cleanTitle, plannedFor } : plan) }
+      return { ...current, plannedWorkouts: [{ id: crypto.randomUUID(), title: cleanTitle,
+        createdAt: new Date().toISOString(), plannedFor }, ...plans] }
+    })
+  }
+
+  const removePlannedWorkout = (id: string) => update(current => ({ ...current,
+    plannedWorkouts: (current.plannedWorkouts ?? []).filter(plan => plan.id !== id),
+  }))
+
+  const logPlannedWorkout = (plan: PlannedWorkout) => {
+    const current = journalDraftRef.current
+    const hasExerciseInput = current.workout?.exercises.some(exercise => exercise.name.trim() ||
+      exercise.sets.some(set => set.reps > 0 || set.weightKg !== undefined))
+    if (current.text.trim() || current.photo || current.location || current.linkedEntryId || hasExerciseInput) return false
+    changeJournalDraft({ ...current, text: plan.title,
+      workout: current.workout ?? { exercises: [emptyExercise()] }, plannedWorkoutId: plan.id })
+    setAddExerciseRequest(request => request + 1)
+    navigate('journal')
+    return true
   }
 
   const returnLabel = showHome ? 'Back to Home' : 'Back to Settings'
@@ -749,9 +782,15 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
           onStart={startFocus}
           onJournal={onHome('journal') ? () => navigate('journal') : undefined}
           onAddExercise={onHome('journal') ? openAddExercise : undefined}
+          onWorkouts={() => navigate('workouts')}
           onSettings={() => navigate('settings')}
           onSearch={() => setSearchOpen(true)}
         />}
+
+        {view === 'workouts' && <WorkoutsPage language={language} plans={data.plannedWorkouts ?? []}
+          history={data.journal.filter(entry => entry.workout)} onReturn={returnFromSection} returnLabel={returnLabel}
+          onSavePlan={savePlannedWorkout} onRemovePlan={removePlannedWorkout} onLogPlan={logPlannedWorkout}
+          onOpenEntry={openSearchEntry} />}
 
         {view === 'ask' && <main className="life-main life-main-guide-page">
           <h1>Ask LifeOS</h1>

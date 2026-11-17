@@ -20,6 +20,7 @@ import './journal.css'
 export interface JournalDraft {
   text: string
   workout?: WorkoutRecord
+  plannedWorkoutId?: string
   photo?: string
   location?: ApproximateLocation
   linkedEntryId?: string
