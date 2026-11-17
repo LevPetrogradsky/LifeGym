@@ -712,11 +712,14 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
       <aside className="sidebar">
         {renderBrand(20)}
         <nav aria-label="Main navigation">{renderNavigation(19)}</nav>
+        {view !== 'main' && <a className="app-hub-return" href={hubUrl}>{language === 'ru' ? 'Вернуться в LiveHub' : 'Back to LiveHub'}</a>}
         <div className="sidebar-foot"><div className="sidebar-quote"><span>✳</span><p>{t('A little space for what matters.')}</p></div><span>LifeGym preview</span></div>
       </aside>
 
       <div className="main-area">
-        <header className="mobile-header">{renderBrand(18)}<span>v0.1</span></header>
+        <header className="mobile-header">{renderBrand(18)}{view === 'main'
+          ? <span>v0.1</span>
+          : <a className="app-hub-return" href={hubUrl}>{language === 'ru' ? 'Вернуться в Hub' : 'Back to Hub'}</a>}</header>
         {(storageError || loadResult.error) && <div className="storage-error" role="alert">{loadResult.error ?? 'Your browser could not save changes locally. Your unsaved text is still here. Check available storage, then try again.'} {loadResult.error && 'Import a valid backup below to recover. Existing saved content will not be changed until recovery succeeds.'}</div>}
         {backupMessage && <div className="storage-error" role="status">{backupMessage}</div>}
         {reflectionNotice && <div className="lifeos-reflection-confirmation" role="status">{reflectionNotice}</div>}
