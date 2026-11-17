@@ -83,7 +83,7 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
   const [selectedFactors, setSelectedFactors] = useState<Factor[]>([])
   const [taskHistoryId, setTaskHistoryId] = useState<string | null>(null)
   const [journalTaskId, setJournalTaskId] = useState<string | undefined>()
-  const [journalDraft, setJournalDraft] = useState<JournalDraft>(() => readJournalDraft(storageKey) ?? { text: '' })
+  const [journalDraft, setJournalDraft] = useState<JournalDraft>(() => readJournalDraft(storageKey) ?? { text: '', workout: { exercises: [emptyExercise()] } })
   const [addExerciseRequest, setAddExerciseRequest] = useState(0)
   const [journalDraftError, setJournalDraftError] = useState(false)
   const journalDraftRef = useRef(journalDraft)
@@ -498,8 +498,9 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
     if (saved) {
       if (!clearJournalDraft(storageKey)) setStorageError(true)
       setJournalDraftError(false)
-      journalDraftRef.current = { text: '' }
-      setJournalDraft({ text: '' })
+      const nextDraft = { text: '', workout: { exercises: [emptyExercise()] } }
+      journalDraftRef.current = nextDraft
+      setJournalDraft(nextDraft)
       setJournalTaskId(undefined)
       setJournalPrompt(false)
     }

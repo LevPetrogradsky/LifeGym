@@ -98,6 +98,8 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
   })
   const dictating = dictation.status !== 'idle'
   const workoutReady = draft.workout !== undefined && validWorkout(draft.workout)
+  const workoutStarted = draft.workout?.exercises.some(exercise => exercise.name.trim() ||
+    exercise.sets.some(set => set.reps > 0 || set.weightKg !== undefined))
   const canSave = !loadingPhoto && (!draft.workout || workoutReady) && (draft.text.trim().length > 0 || !!draft.photo || workoutReady)
   const selectedLanguage = dictationLanguages.find(([code]) => code === dictation.language) ?? dictationLanguages[0]
   const selectedEntry = entries.find(entry => entry.id === draft.linkedEntryId)
@@ -188,7 +190,7 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
         <button type="button" className="journal-icon" aria-label={t('Unlink task')} onClick={onUnlinkTask}><X size={17} aria-hidden="true" /></button>
       </div>}
       <WorkoutFields language={language} workout={draft.workout} onChange={workout => onDraftChange(current => ({ ...current, workout }))} />
-      {draft.workout && !workoutReady && <p className="workout-required" role="status">{language === 'ru'
+      {draft.workout && workoutStarted && !workoutReady && <p className="workout-required" role="status">{language === 'ru'
         ? 'Проверьте название упражнения, повторы, вес и отдых.'
         : 'Check exercise name, reps, weight, and rest.'}</p>}
       <label htmlFor={id}>{draft.workout ? (language === 'ru' ? 'Заметки (необязательно)' : 'Notes (optional)') : t('Brain dump')}</label>
@@ -219,6 +221,9 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
           onDraftChange(current => ({ ...current, text }))
         }}
       />
+      <details className="journal-workout-advanced" open={Boolean(onCancel || draft.photo || draft.location || draft.linkedEntryId || folderId)}>
+        <summary>{language === 'ru' ? 'Дополнительно: папка, фото и место' : 'More options: folder, photo, location'}</summary>
+        <div className="journal-workout-advanced-content">
       {!onCancel && folders && onFolderChange && <div className="journal-form-folder">
         <span className="journal-form-folder-label">{t('Save in folder')}</span>
         <FolderPicker label={t('Save in folder')} value={folderId ?? ''} dialogClassName="journal-sheet--centered"
@@ -269,22 +274,13 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
           </button>}
       </div>
       {locationMessage && <p className="journal-local-note" role="status">{locationMessage}</p>}
-      {dictation.message && <p className="journal-dictation-message" role="status">{t(dictation.message)}</p>}
-      {saveError && <p className="journal-photo-error" role="alert">{t('Couldn’t save this entry. Your draft is still here.')}</p>}
-      {draftSaveError && <p className="journal-photo-error" role="alert">{language === 'ru'
-        ? 'Черновик не удалось сохранить на устройстве. Сохраните запись сейчас или скопируйте текст.'
-        : 'This device could not keep the draft. Save now or copy your text.'}</p>}
-      <div className="journal-form-actions">
+      <div className="journal-workout-media-actions">
         <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" onChange={attachPhoto} hidden />
         <button type="button" className="journal-icon journal-photo-action" aria-label={t(draft.photo ? 'Replace photo' : 'Attach photo')} disabled={loadingPhoto} onClick={() => fileInput.current?.click()}><ImagePlus size={19} /></button>
         {!onCancel && (
-          <button
-            type="button"
-            className="journal-icon journal-voice-action"
+          <button type="button" className="journal-icon journal-voice-action"
             aria-label={t(dictation.status === 'listening' ? 'Stop dictation' : dictating ? 'Cancel dictation' : 'Start dictation')}
-            data-listening={dictating}
-            onClick={dictation.toggle}
-          >
+            data-listening={dictating} onClick={dictation.toggle}>
             {dictating ? <Square size={16} fill="currentColor" aria-hidden="true" /> : <Mic size={19} aria-hidden="true" />}
           </button>
         )}
@@ -304,17 +300,26 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
             </div>
           </details>
         )}
-        {dictation.status !== 'idle' && <span className="journal-local-note" role="status">
-          {{
-            starting: 'Starting microphone…',
-            listening: 'Recording… Tap to finish.',
-            preparing: 'Preparing dictation… The first time may take a minute.',
-            transcribing: 'Turning speech into text…',
-          }[dictation.status]}
-        </span>}
+        {dictation.status !== 'idle' && <span className="journal-local-note" role="status">{{
+          starting: 'Starting microphone…', listening: 'Recording… Tap to finish.',
+          preparing: 'Preparing dictation… The first time may take a minute.',
+          transcribing: 'Turning speech into text…',
+        }[dictation.status]}</span>}
         {loadingPhoto && <span className="journal-local-note" role="status">{t('Preparing photo…')}</span>}
+      </div>
+        </div>
+      </details>
+      {dictation.message && <p className="journal-dictation-message" role="status">{t(dictation.message)}</p>}
+      {saveError && <p className="journal-photo-error" role="alert">{t('Couldn’t save this entry. Your draft is still here.')}</p>}
+      {draftSaveError && <p className="journal-photo-error" role="alert">{language === 'ru'
+        ? 'Черновик не удалось сохранить на устройстве. Сохраните запись сейчас или скопируйте текст.'
+        : 'This device could not keep the draft. Save now or copy your text.'}</p>}
+      <div className="journal-form-actions">
         {onCancel && <button type="button" className="journal-text-action" onClick={onCancel}>{t('Cancel')}</button>}
-        <button type="submit" className="journal-save" disabled={!canSave} aria-label={t(onCancel ? 'Save changes' : 'Save entry')}>{t(onCancel ? 'Save changes' : 'Save')}</button>
+        <button type="submit" className="journal-save" disabled={!canSave}
+          aria-label={onCancel ? t('Save changes') : draft.workout ? (language === 'ru' ? 'Сохранить тренировку' : 'Save workout') : t('Save entry')}>
+          {onCancel ? t('Save changes') : draft.workout ? (language === 'ru' ? 'Сохранить тренировку' : 'Save workout') : t('Save')}
+        </button>
       </div>
     </form>
   )
@@ -562,6 +567,8 @@ export default function JournalPage({
         }
         return saved
       }} />
+      <details className="journal-history-options" open={Boolean(currentFolder || folderFilter === 'unfiled')}>
+        <summary>{language === 'ru' ? 'Папки и фильтры' : 'Folders and filters'}</summary>
       <JournalFolders language={language} folders={folders} entries={entries} filter={currentFolder || folderFilter === 'unfiled' ? folderFilter : 'all'}
         onFilterChange={setFolderFilter} onSave={onSaveFolder} onReorder={onReorderFolders} onDelete={id => {
           const deleted = onDeleteFolder(id)
@@ -569,16 +576,19 @@ export default function JournalPage({
           if (deleted && composerFolderId === id) setComposerFolderId('')
           return deleted
         }} />
+      </details>
       <section className="journal-timeline" aria-labelledby="journal-timeline-title">
         <header className="journal-timeline-heading">
-          <h2 id="journal-timeline-title">{t('Entries')}</h2>
+          <h2 id="journal-timeline-title">{language === 'ru' ? 'История' : 'History'}</h2>
           <span className="journal-entry-count" aria-live="polite">{resultCount} {t(resultCount === 1 ? 'entry' : 'entries')}</span>
         </header>
         <span className="journal-sr-only" role="status">{notice}</span>
         {groups.length === 0 ? (
           <div className="journal-timeline-empty">
             <BookOpen size={23} aria-hidden="true" />
-            <p>{t(folderFilter === 'unfiled' || currentFolder ? 'No entries here yet.' : 'Your entries will appear here.')}</p>
+            <p>{folderFilter === 'unfiled' || currentFolder
+              ? t('No entries here yet.')
+              : language === 'ru' ? 'Здесь появятся сохранённые тренировки.' : 'Your saved workouts will appear here.'}</p>
           </div>
         ) : groups.map(group => (
           <section className="journal-day" key={group.key}>

@@ -1243,3 +1243,10 @@
 .workout-summary > div { display: grid; gap: 2px; }
 .workout-summary strong { font-size: 14px; }
 .workout-summary span, .workout-summary small { color: var(--journal-muted); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.journal-workout-advanced { margin: 12px 0 4px; border-top: 1px solid var(--journal-border); }
+.journal-workout-advanced > summary, .journal-history-options > summary { width: fit-content; padding: 12px 2px 7px; color: var(--journal-accent); font-size: 13px; font-weight: 700; cursor: pointer; }
+.journal-workout-advanced > summary:focus-visible, .journal-history-options > summary:focus-visible { outline: 2px solid var(--journal-primary); outline-offset: 2px; }
+.journal-workout-advanced-content { padding-bottom: 6px; }
+.journal-workout-media-actions { display: flex; align-items: center; gap: 8px; margin: 9px 0 4px; }
+.journal-history-options { margin-top: 14px; }
+.journal-history-options > summary { padding: 3px 2px 7px; }
