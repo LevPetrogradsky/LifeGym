@@ -38,9 +38,12 @@ export default function UnifiedSearch({ open, journalOnly, tasksOnly, tasks, ent
   const matches = (text: string) => terms.every(term => normalize(text).includes(term))
   const taskMatches = terms.length && tasks ? tasks.filter(task => matches(task.title)) : []
   const now = new Date()
-  const entryMatches = terms.length ? entries.filter(entry => matches(journalOnly
-    ? `${entry.text} ${journalDayLabel(new Date(entry.createdAt), now, language)} ${journalDate(entry.createdAt, language)}`
-    : entry.text)) : []
+  const entryMatches = terms.length ? entries.filter(entry => {
+    const content = [entry.text, ...entry.workout?.exercises.map(exercise => exercise.name) ?? []].join(' ')
+    return matches(journalOnly
+      ? `${content} ${journalDayLabel(new Date(entry.createdAt), now, language)} ${journalDate(entry.createdAt, language)}`
+      : content)
+  }) : []
   const resultCount = taskMatches.length + entryMatches.length
   const searchLabel = journalOnly ? 'Search workout entries' : tasksOnly ? 'Search tasks' : 'Search tasks and workouts'
 
@@ -93,7 +96,7 @@ export default function UnifiedSearch({ open, journalOnly, tasksOnly, tasks, ent
           <h3 id={`${id}-journal`}><BookOpen size={17} aria-hidden="true" />{t('Workout Tracker')}</h3>
           <ul>{entryMatches.map(entry => <li key={entry.id}>
             <button type="button" onClick={() => select(entry.id, onSelectEntry)}>
-              <span><strong>{excerpt(entry.text, terms[0]) || t('Photo entry')}</strong><small>{journalDate(entry.createdAt, language)}</small></span>
+              <span><strong>{excerpt(entry.text || entry.workout?.exercises.map(exercise => exercise.name).join(' ') || '', terms[0]) || t('Photo entry')}</strong><small>{journalDate(entry.createdAt, language)}</small></span>
               <ChevronRight size={18} aria-hidden="true" />
             </button>
           </li>)}</ul>

@@ -1,8 +1,9 @@
 import { STORAGE_KEY } from '../data.ts'
 import { isJournalPhoto } from './photo.ts'
 import { validApproximateLocation, type ApproximateLocation } from './location.ts'
+import { validWorkout, type WorkoutRecord } from './workout.ts'
 
-export type SavedDraft = { text: string; photo?: string; location?: ApproximateLocation; linkedEntryId?: string }
+export type SavedDraft = { text: string; photo?: string; location?: ApproximateLocation; linkedEntryId?: string; workout?: WorkoutRecord }
 
 export function draftStorageKey(storageKey = STORAGE_KEY, id = 'new') {
   return `${storageKey}.journal-draft.v1.${id}`
@@ -38,6 +39,7 @@ export function readJournalDraft(storageKey?: string, id?: string): SavedDraft |
       ('photo' in value && value.photo !== undefined &&
         (typeof value.photo !== 'string' || !isJournalPhoto(value.photo))) ||
       ('location' in value && value.location !== undefined && !validApproximateLocation(value.location)) ||
+      ('workout' in value && value.workout !== undefined && !validWorkout(value.workout, true)) ||
       ('linkedEntryId' in value && value.linkedEntryId !== undefined &&
         (typeof value.linkedEntryId !== 'string' || !value.linkedEntryId || value.linkedEntryId.length > 200 || value.linkedEntryId === id))) return null
     return value as SavedDraft
@@ -47,7 +49,7 @@ export function readJournalDraft(storageKey?: string, id?: string): SavedDraft |
 export function writeJournalDraft(draft: SavedDraft, storageKey?: string, id?: string): boolean {
   try {
     const key = draftStorageKey(storageKey, id)
-    if (!draft.text && !draft.photo && !draft.location && !draft.linkedEntryId) localStorage.removeItem(key)
+    if (!draft.text && !draft.photo && !draft.location && !draft.linkedEntryId && !draft.workout) localStorage.removeItem(key)
     else localStorage.setItem(key, JSON.stringify(draft))
     return true
   } catch { return false }

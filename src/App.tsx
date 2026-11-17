@@ -510,7 +510,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
 
   const editJournalEntry = (id: string, draft: JournalDraft) => update(current => ({
     ...current,
-    journal: current.journal.map(entry => entry.id === id ? { ...entry, text: draft.text, photo: draft.photo, location: draft.location,
+    journal: current.journal.map(entry => entry.id === id ? { ...entry, text: draft.text, photo: draft.photo, location: draft.location, workout: draft.workout,
       linkedEntryId: draft.linkedEntryId === id ? undefined : draft.linkedEntryId, updatedAt: new Date().toISOString() } : entry),
   }))
 

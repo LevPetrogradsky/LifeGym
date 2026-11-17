@@ -12,11 +12,14 @@ import { clearJournalDraft, readJournalDraft, readOpenJournalEditor, writeJourna
 import { locationLabel, requestApproximateLocation, type ApproximateLocation } from './location'
 import { groupJournalEntries, journalDate, journalTime } from './timeline'
 import { dictationLanguages, useJournalDictation } from './useJournalDictation'
+import WorkoutFields from './WorkoutFields'
+import { validWorkout, type WorkoutRecord } from './workout'
 import { translate, type AppLanguage } from '../language'
 import './journal.css'
 
 export interface JournalDraft {
   text: string
+  workout?: WorkoutRecord
   photo?: string
   location?: ApproximateLocation
   linkedEntryId?: string
@@ -71,7 +74,7 @@ interface JournalFormProps {
 
 function entryLabel(entry: JournalEntry, language: AppLanguage) {
   const excerpt = entry.text.trim().replace(/\s+/g, ' ').slice(0, 65)
-  return excerpt || `${language === 'ru' ? 'Запись от' : 'Entry from'} ${journalDate(entry.createdAt, language)}`
+  return excerpt || entry.workout?.exercises[0]?.name || `${language === 'ru' ? 'Запись от' : 'Entry from'} ${journalDate(entry.createdAt, language)}`
 }
 
 function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folders, folderId, onFolderChange, entries, currentEntryId, linkedTaskTitle, onUnlinkTask, onCancel, language = 'en' }: JournalFormProps) {
@@ -93,7 +96,8 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
     }))
   })
   const dictating = dictation.status !== 'idle'
-  const canSave = !loadingPhoto && (draft.text.trim().length > 0 || !!draft.photo)
+  const workoutReady = draft.workout !== undefined && validWorkout(draft.workout)
+  const canSave = !loadingPhoto && (!draft.workout || workoutReady) && (draft.text.trim().length > 0 || !!draft.photo || workoutReady)
   const selectedLanguage = dictationLanguages.find(([code]) => code === dictation.language) ?? dictationLanguages[0]
   const selectedEntry = entries.find(entry => entry.id === draft.linkedEntryId)
 
@@ -168,7 +172,9 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
     <form className={onCancel ? 'journal-form journal-form-edit' : 'journal-form journal-form-new'} onSubmit={event => {
       event.preventDefault()
       if (!canSave) return
-      const saved = onSubmit({ ...draft, text: draft.text.trim() })
+      const saved = onSubmit({ ...draft, text: draft.text.trim(), workout: draft.workout && {
+        exercises: draft.workout.exercises.map(exercise => ({ ...exercise, name: exercise.name.trim() })),
+      } })
       setSaveError(!saved)
       if (saved) {
         submitted.current = true
@@ -180,12 +186,16 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
         <span>{t('Linked to:')} <strong>{linkedTaskTitle}</strong></span>
         <button type="button" className="journal-icon" aria-label={t('Unlink task')} onClick={onUnlinkTask}><X size={17} aria-hidden="true" /></button>
       </div>}
-      {!onCancel && <label htmlFor={id}>{t('Brain dump')}</label>}
+      <WorkoutFields language={language} workout={draft.workout} onChange={workout => onDraftChange(current => ({ ...current, workout }))} />
+      {draft.workout && !workoutReady && <p className="workout-required" role="status">{language === 'ru'
+        ? 'Проверьте название упражнения, повторы, вес и отдых.'
+        : 'Check exercise name, reps, weight, and rest.'}</p>}
+      <label htmlFor={id}>{draft.workout ? (language === 'ru' ? 'Заметки (необязательно)' : 'Notes (optional)') : t('Brain dump')}</label>
       <textarea
         ref={textArea}
         id={id}
         aria-label={onCancel ? t('Entry text') : undefined}
-        placeholder={t('What’s on your mind?')}
+        placeholder={draft.workout ? (language === 'ru' ? 'Как прошла тренировка?' : 'How did it go?') : t('What’s on your mind?')}
         rows={onCancel ? 3 : 2}
         value={draft.text}
         onInput={event => {
@@ -328,8 +338,8 @@ function JournalCard({ entry, entries, folders, onEdit, onDelete, onMove, onOpen
   const folder = folders.find(folder => folder.id === entry.folderId)
   const linkedEntry = entries.find(item => item.id === entry.linkedEntryId)
   const [draft, setDraft] = useState<JournalDraft>(() => readOpenJournalEditor(draftStorageKey) === entry.id
-    ? readJournalDraft(draftStorageKey, entry.id) ?? { text: entry.text, photo: entry.photo, location: entry.location, linkedEntryId: entry.linkedEntryId }
-    : { text: entry.text, photo: entry.photo, location: entry.location, linkedEntryId: entry.linkedEntryId })
+    ? readJournalDraft(draftStorageKey, entry.id) ?? { text: entry.text, photo: entry.photo, location: entry.location, linkedEntryId: entry.linkedEntryId, workout: entry.workout }
+    : { text: entry.text, photo: entry.photo, location: entry.location, linkedEntryId: entry.linkedEntryId, workout: entry.workout })
   const draftRef = useRef(draft)
   const [draftSaveError, setDraftSaveError] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -362,7 +372,7 @@ function JournalCard({ entry, entries, folders, onEdit, onDelete, onMove, onOpen
       actionMenu.current.open = false
       actionMenu.current.querySelector('summary')?.focus()
     }
-    const next = readJournalDraft(draftStorageKey, entry.id) ?? { text: entry.text, photo: entry.photo, location: entry.location, linkedEntryId: entry.linkedEntryId }
+    const next = readJournalDraft(draftStorageKey, entry.id) ?? { text: entry.text, photo: entry.photo, location: entry.location, linkedEntryId: entry.linkedEntryId, workout: entry.workout }
     draftRef.current = next
     setDraft(next)
     if (!writeOpenJournalEditor(entry.id, draftStorageKey)) onDraftStorageError?.()
@@ -399,6 +409,11 @@ function JournalCard({ entry, entries, folders, onEdit, onDelete, onMove, onOpen
             {entry.location && <span className="journal-entry-location"><MapPin size={12} aria-hidden="true" />{locationLabel(entry.location, language)}</span>}
             {folder && <span className="journal-entry-folder"><FolderGlyph {...folder} size={12} />{folder.name}</span>}
           </div>
+          {entry.workout && <div className="workout-summary">{entry.workout.exercises.map((exercise, index) => <div key={index}>
+            <strong>{exercise.name}</strong>
+            <span>{exercise.sets.map((set, position) => `${position + 1}: ${set.reps} ${language === 'ru' ? 'повт.' : 'reps'}${set.weightKg === undefined ? '' : ` · ${set.weightKg} kg`}`).join('  ·  ')}</span>
+            {exercise.restSeconds !== undefined && <small>{language === 'ru' ? 'Отдых' : 'Rest'}: ${exercise.restSeconds} {language === 'ru' ? 'сек' : 'sec'}</small>}
+          </div>)}</div>}
           {entry.text && <p>{entry.text}</p>}
           {entry.linkedEntryId && (linkedEntry
             ? <button type="button" className="journal-entry-linked" onClick={() => onOpenLinked(linkedEntry.id)}>

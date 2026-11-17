@@ -26,6 +26,25 @@ test('tasks, sessions, journal, and active focus survive a save and reload', () 
   assert.deepEqual(loadData().data, data)
 })
 
+test('structured workouts survive save, reload, and backup while old notes remain valid', () => {
+  const memory = new Map()
+  globalThis.localStorage = {
+    getItem: key => memory.get(key) ?? null,
+    setItem: (key, value) => memory.set(key, value),
+  }
+  const data = emptyData()
+  data.journal.push({ id: 'old-note', text: 'Keep this note', createdAt: '2026-10-21T10:00:00.000Z' })
+  data.journal.push({ id: 'workout', text: '', createdAt: '2026-10-21T11:00:00.000Z', workout: {
+    exercises: [{ name: 'Leg press', restSeconds: 90, sets: [{ reps: 10, weightKg: 80 }, { reps: 8, weightKg: 90 }] }],
+  } })
+  assert.equal(saveData(data), true)
+  assert.deepEqual(loadData().data.journal, data.journal)
+  assert.deepEqual(parseBackup(JSON.stringify(data)).journal, data.journal)
+  const invalid = structuredClone(data)
+  invalid.journal[1].workout.exercises[0].sets[0].reps = 0
+  assert.throws(() => parseBackup(JSON.stringify(invalid)), /valid LifeOS backup structure/)
+})
+
 test('language preference survives reload without changing saved task titles', () => {
   const memory = new Map()
   globalThis.localStorage = {

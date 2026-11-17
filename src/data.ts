@@ -1,6 +1,7 @@
 import { isJournalPhoto } from './journal/photo.ts'
 import { validApproximateLocation, type ApproximateLocation } from './journal/location.ts'
 import type { CloudOperation } from './journal/cloud-model.ts'
+import { validWorkout, type WorkoutRecord } from './journal/workout.ts'
 
 export type Theme = 'light' | 'dark' | 'system'
 export const navigationSections = [
@@ -102,6 +103,7 @@ export interface JournalEntry {
   linkedEntryId?: string
   folderId?: string
   location?: ApproximateLocation
+  workout?: WorkoutRecord
 }
 
 export type FlowSignal = Exclude<Factor, 'Other'>
@@ -323,6 +325,7 @@ export function validateLifeOSData(value: unknown): value is LifeOSData {
     (item.taskId === undefined || isString(item.taskId)) &&
     (item.linkedEntryId === undefined || (isString(item.linkedEntryId) && item.linkedEntryId.length > 0 && item.linkedEntryId.length <= 200 && item.linkedEntryId !== item.id)) &&
     (item.location === undefined || validApproximateLocation(item.location)) &&
+    (item.workout === undefined || validWorkout(item.workout)) &&
     (item.folderId === undefined || (isString(item.folderId) && folderIds.has(item.folderId)))
   const flowEngine = value.flowEngine
   let validFlowEngine = flowEngine === undefined

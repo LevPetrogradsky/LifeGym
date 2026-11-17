@@ -1219,3 +1219,27 @@
     background: var(--journal-card);
   }
 }
+
+.workout-fields { margin: 2px 0 18px; }
+.workout-fields-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.workout-fields h2 { margin: 0; font-size: 15px; }
+.workout-fields-heading span { color: var(--journal-muted); font-size: 12px; text-align: end; }
+.workout-exercise { margin: 10px 0; padding: 12px; border: 1px solid var(--journal-border); border-radius: 13px; background: var(--journal-field); }
+.workout-exercise-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.workout-exercise h3 { margin: 0; font-size: 14px; }
+.workout-fields button { border: 0; background: none; color: var(--journal-accent); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.workout-fields button:focus-visible, .workout-fields input:focus-visible { outline: 2px solid var(--journal-primary); outline-offset: 2px; }
+.workout-exercise label { display: grid; gap: 4px; color: var(--journal-muted); font-size: 12px; }
+.workout-exercise input { box-sizing: border-box; width: 100%; min-width: 0; height: 40px; padding: 8px; border: 1px solid var(--journal-border); border-radius: 9px; background: var(--journal-card); color: var(--journal-text); font: inherit; font-size: 16px; }
+.workout-sets { display: grid; gap: 8px; margin-top: 12px; }
+.workout-set { display: grid; grid-template-columns: 48px minmax(0, 1fr) minmax(0, 1fr) 22px; align-items: end; gap: 7px; }
+.workout-set-number { align-self: center; color: var(--journal-muted); font-size: 12px; }
+.workout-fields .workout-set-remove { padding: 0 0 9px; font-size: 20px; }
+.workout-fields .workout-add-set { margin-top: 9px; padding: 7px 0; }
+.workout-rest { margin-top: 9px; }
+.workout-fields .workout-add-exercise { padding: 9px 11px; border: 1px solid var(--journal-border); border-radius: 9px; background: var(--journal-tint); }
+.workout-required { margin: -8px 0 12px; color: var(--journal-muted); font-size: 12px; }
+.workout-summary { display: grid; gap: 8px; margin-top: 6px; }
+.workout-summary > div { display: grid; gap: 2px; }
+.workout-summary strong { font-size: 14px; }
+.workout-summary span, .workout-summary small { color: var(--journal-muted); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }

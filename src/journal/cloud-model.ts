@@ -1,6 +1,7 @@
 import { journalFolderColors, journalFolderIcons, maxJournalFolderNameLength, type JournalEntry, type JournalFolder } from '../data.ts'
 import { isJournalPhoto } from './photo.ts'
 import { validApproximateLocation } from './location.ts'
+import { validWorkout } from './workout.ts'
 
 export type CloudKind = 'folder' | 'entry'
 type CloudBase = {
@@ -35,6 +36,7 @@ export function validCloudEntry(value: unknown): value is JournalEntry {
     (value.taskId === undefined || id(value.taskId)) &&
     (value.linkedEntryId === undefined || (id(value.linkedEntryId) && value.linkedEntryId !== value.id)) &&
     (value.location === undefined || validApproximateLocation(value.location)) &&
+    (value.workout === undefined || validWorkout(value.workout)) &&
     (value.folderId === undefined || id(value.folderId))
 }
 

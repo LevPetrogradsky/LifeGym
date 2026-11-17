@@ -48,6 +48,13 @@ function validApproximateLocation(value) {
   return typeof latitude === "number" && typeof longitude === "number" && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180 && Math.abs(latitude * 10 - Math.round(latitude * 10)) < 1e-8 && Math.abs(longitude * 10 - Math.round(longitude * 10)) < 1e-8;
 }
 
+// src/journal/workout.ts
+var record = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+function validWorkout(value, allowIncomplete = false) {
+  if (!record(value) || !Array.isArray(value.exercises) || value.exercises.length < 1 || value.exercises.length > 20) return false;
+  return value.exercises.every((exercise) => record(exercise) && typeof exercise.name === "string" && exercise.name.length <= 120 && (allowIncomplete || exercise.name.trim().length > 0) && Array.isArray(exercise.sets) && exercise.sets.length >= 1 && exercise.sets.length <= 30 && exercise.sets.every((set) => record(set) && typeof set.reps === "number" && Number.isFinite(set.reps) && (allowIncomplete ? set.reps >= 0 && set.reps <= 1e6 : Number.isSafeInteger(set.reps) && set.reps >= 1 && set.reps <= 1e3) && (set.weightKg === void 0 || typeof set.weightKg === "number" && Number.isFinite(set.weightKg) && set.weightKg >= 0 && set.weightKg <= (allowIncomplete ? 1e6 : 1e4))) && (exercise.restSeconds === void 0 || typeof exercise.restSeconds === "number" && Number.isFinite(exercise.restSeconds) && (allowIncomplete ? exercise.restSeconds >= 0 && exercise.restSeconds <= 1e6 : Number.isSafeInteger(exercise.restSeconds) && exercise.restSeconds >= 0 && exercise.restSeconds <= 3600)));
+}
+
 // src/data.ts
 var shortcuts = [
   { id: "journal", label: "Workout Tracker" },
@@ -61,22 +68,22 @@ var journalFolderColors = ["blue", "green", "purple", "amber", "pink", "slate"];
 var journalFolderIcons = ["folder", "briefcase", "book", "heart", "star", "lightbulb", "leaf", "camera"];
 
 // src/journal/cloud-model.ts
-var record = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+var record2 = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 var id = (value) => typeof value === "string" && value.length > 0 && value.length <= 200;
 var timestamp = (value) => typeof value === "string" && value.length <= 50 && Number.isFinite(Date.parse(value));
 function validCloudFolder(value) {
-  return record(value) && id(value.id) && typeof value.name === "string" && value.name.length > 0 && value.name.length <= maxJournalFolderNameLength && value.name === value.name.trim() && (value.order === void 0 || typeof value.order === "number" && Number.isSafeInteger(value.order) && value.order >= 0) && (value.color === void 0 || journalFolderColors.some((color) => color === value.color)) && (value.icon === void 0 || journalFolderIcons.some((icon) => icon === value.icon));
+  return record2(value) && id(value.id) && typeof value.name === "string" && value.name.length > 0 && value.name.length <= maxJournalFolderNameLength && value.name === value.name.trim() && (value.order === void 0 || typeof value.order === "number" && Number.isSafeInteger(value.order) && value.order >= 0) && (value.color === void 0 || journalFolderColors.some((color) => color === value.color)) && (value.icon === void 0 || journalFolderIcons.some((icon) => icon === value.icon));
 }
 function validCloudEntry(value) {
-  return record(value) && id(value.id) && typeof value.text === "string" && value.text.length <= 3e6 && timestamp(value.createdAt) && (value.updatedAt === void 0 || timestamp(value.updatedAt)) && (value.photo === void 0 || isJournalPhoto(value.photo)) && (value.taskId === void 0 || id(value.taskId)) && (value.linkedEntryId === void 0 || id(value.linkedEntryId) && value.linkedEntryId !== value.id) && (value.location === void 0 || validApproximateLocation(value.location)) && (value.folderId === void 0 || id(value.folderId));
+  return record2(value) && id(value.id) && typeof value.text === "string" && value.text.length <= 3e6 && timestamp(value.createdAt) && (value.updatedAt === void 0 || timestamp(value.updatedAt)) && (value.photo === void 0 || isJournalPhoto(value.photo)) && (value.taskId === void 0 || id(value.taskId)) && (value.linkedEntryId === void 0 || id(value.linkedEntryId) && value.linkedEntryId !== value.id) && (value.location === void 0 || validApproximateLocation(value.location)) && (value.workout === void 0 || validWorkout(value.workout)) && (value.folderId === void 0 || id(value.folderId));
 }
 function validCloudItem(value) {
-  if (!record(value) || value.kind !== "folder" && value.kind !== "entry" || !id(value.id) || typeof value.deleted !== "boolean") return false;
+  if (!record2(value) || value.kind !== "folder" && value.kind !== "entry" || !id(value.id) || typeof value.deleted !== "boolean") return false;
   if (value.deleted) return value.payload === null;
   return value.kind === "folder" ? validCloudFolder(value.payload) && value.payload.id === value.id : validCloudEntry(value.payload) && value.payload.id === value.id;
 }
 function validCloudOperation(value) {
-  if (!record(value)) return false;
+  if (!record2(value)) return false;
   const mode = value.mode;
   const previous = value.previous;
   return (mode === "import" || mode === "change") && validCloudItem(value) && (mode !== "import" || !value.deleted) && (previous === void 0 || previous === null || (value.kind === "folder" ? validCloudFolder(previous) : validCloudEntry(previous)));

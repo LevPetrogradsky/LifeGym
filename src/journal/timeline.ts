@@ -25,7 +25,7 @@ export function groupJournalEntries(entries: JournalEntry[], search: string, now
     const date = new Date(entry.createdAt)
     const key = date.toDateString()
     const label = journalDayLabel(date, now, language)
-    const searchable = [entry.text, label, journalDate(entry.createdAt, language)].join(' ').toLocaleLowerCase()
+    const searchable = [entry.text, ...entry.workout?.exercises.map(exercise => exercise.name) ?? [], label, journalDate(entry.createdAt, language)].join(' ').toLocaleLowerCase()
     if (query && !searchable.includes(query)) continue
 
     let group = groups.get(key)
