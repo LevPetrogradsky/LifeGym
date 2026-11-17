@@ -14,6 +14,7 @@ function meta(data: LifeOSData): Meta {
   if (value === undefined) return { version: 1, migrated: false, pending: [] }
   if (value.version !== 1 || typeof value.migrated !== 'boolean' ||
     (value.plansMigrated !== undefined && typeof value.plansMigrated !== 'boolean') ||
+    (value.endpoint !== undefined && value.endpoint !== 'gym-storage-v1') ||
     !Array.isArray(value.pending) || !value.pending.every(validCloudOperation)) {
     throw new Error('Saved Journal sync state is unreadable. Your local Journal was kept.')
   }
@@ -40,12 +41,23 @@ export function withJournalChanges(before: LifeOSData, after: LifeOSData): LifeO
   const pending = [
     ...changes('folder', before.journalFolders ?? [], ordered.journalFolders),
     ...changes('entry', before.journal, after.journal),
-    ...(before.journalCloud?.plansMigrated ? changes('plan', before.plannedWorkouts ?? [], after.plannedWorkouts ?? []) : []),
+    ...(before.journalCloud?.endpoint === 'gym-storage-v1' && before.journalCloud.plansMigrated
+      ? changes('plan', before.plannedWorkouts ?? [], after.plannedWorkouts ?? []) : []),
   ]
   if (!pending.length) return after
   const previous = meta(before)
-  const replaced = previous.pending.filter(item => !pending.some(next => next.kind === item.kind && next.id === item.id))
-  return { ...ordered, journalCloud: { ...previous, pending: [...replaced, ...pending] } }
+  const queue = new Map(previous.pending.map(item => [`${item.kind}:${item.id}`, item]))
+  for (const operation of pending) {
+    const key = `${operation.kind}:${operation.id}`
+    const earlier = queue.get(key)
+    const base = earlier?.mode === 'change' ? earlier.previous : operation.previous
+    if (base === null && operation.deleted || (!operation.deleted && base && JSON.stringify(base) === JSON.stringify(operation.payload))) {
+      queue.delete(key)
+    } else {
+      queue.set(key, { ...operation, previous: base })
+    }
+  }
+  return { ...ordered, journalCloud: { ...previous, pending: [...queue.values()] } }
 }
 
 const priority = (item: CloudItem) =>
@@ -188,6 +200,7 @@ export class JournalCloudSync {
       throw new Error('Cloud Journal returned empty data. Guest and account copies were kept.')
     }
     if (!this.client.save(applyItems(current, items))) throw new Error('Guest Journal reached the cloud, but the local view could not update. The guest copy was kept.')
+    this.client.status('Live Storage saved in cloud.')
   }
 
   private async requireToken() {
@@ -198,7 +211,7 @@ export class JournalCloudSync {
 
   private async send(token: string, operation: CloudOperation) {
     if (!validCloudOperation(operation)) throw new Error('A local Journal item needs recovery before sync. It was kept.')
-    const response = await fetch('/api/journal', {
+    const response = await fetch('/api/gym-storage', {
       method: 'POST',
       headers: { Authorization: token.startsWith('Guest ') ? token : `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(operation),
@@ -213,7 +226,7 @@ export class JournalCloudSync {
     let after: string | null = null
     const seen = new Set<string>()
     for (let page = 0; page < 10_000; page++) {
-      const url: string = after ? `/api/journal?after=${encodeURIComponent(after)}` : '/api/journal'
+      const url: string = after ? `/api/gym-storage?after=${encodeURIComponent(after)}` : '/api/gym-storage'
       const response = await fetch(url, { headers: { Authorization: token.startsWith('Guest ') ? token : `Bearer ${token}` }, cache: 'no-store' })
       if (!response.ok) throw new Error('Could not load cloud Journal. Your local copy was kept.')
       const body: unknown = await response.json()
@@ -239,13 +252,13 @@ export class JournalCloudSync {
     this.client.status('Syncing Live Storage…')
     const token = await this.requireToken()
     const original = this.client.getData()
-    if (!meta(original).migrated) {
+    if (!meta(original).migrated || meta(original).endpoint !== 'gym-storage-v1') {
       const preserved = await preserveInitialJournal(original, await this.list(token))
       preserved.journalCloud = { ...meta(original), pending: [] }
       if (!this.client.save(preserved)) throw new Error('Could not prepare local Journal for cloud merge. Your notes were kept.')
       for (const operation of importOperations(preserved)) await this.send(token, operation)
       const current = this.client.getData()
-      if (!this.client.save({ ...current, journalCloud: { ...meta(current), migrated: true, plansMigrated: true } })) {
+      if (!this.client.save({ ...current, journalCloud: { ...meta(current), migrated: true, plansMigrated: true, endpoint: 'gym-storage-v1' } })) {
         throw new Error('Could not mark Journal migration complete. Your local copy was kept.')
       }
     }

@@ -6,18 +6,18 @@ export function createJournalStore(connectionString: string): JournalStore {
   const sql = neon(connectionString)
   return {
     async guestExists(ownerId) {
-      const rows = await sql`SELECT 1 FROM lifeos_journal_guest_vaults WHERE owner_id = ${ownerId} LIMIT 1`
+      const rows = await sql`SELECT 1 FROM livegym_guest_vaults WHERE owner_id = ${ownerId} LIMIT 1`
       return rows.length > 0
     },
     async createGuest(ownerId) {
-      await sql`INSERT INTO lifeos_journal_guest_vaults (owner_id) VALUES (${ownerId}) ON CONFLICT DO NOTHING`
+      await sql`INSERT INTO livegym_guest_vaults (owner_id) VALUES (${ownerId}) ON CONFLICT DO NOTHING`
     },
     async list(userId, after) {
       const kind = after?.[0] ?? ''
       const id = after?.[1] ?? ''
       const rows = await sql`
         SELECT kind, id, payload, deleted
-        FROM lifeos_journal_items
+        FROM livegym_storage_items
         WHERE user_id = ${userId} AND (kind, id) > (${kind}, ${id})
         ORDER BY kind, id
         LIMIT 2
@@ -32,7 +32,7 @@ export function createJournalStore(connectionString: string): JournalStore {
       const payload = operation.deleted ? null : JSON.stringify(operation.payload)
       if (operation.kind === 'entry' && !operation.deleted && operation.payload?.folderId) {
         const folders = await sql`
-          SELECT 1 FROM lifeos_journal_items
+          SELECT 1 FROM livegym_storage_items
           WHERE user_id = ${userId} AND kind = 'folder'
             AND id = ${operation.payload.folderId} AND NOT deleted
           LIMIT 1
@@ -41,14 +41,14 @@ export function createJournalStore(connectionString: string): JournalStore {
       }
       if (operation.mode === 'import') {
         const inserted = await sql`
-          INSERT INTO lifeos_journal_items (user_id, kind, id, payload, deleted)
+          INSERT INTO livegym_storage_items (user_id, kind, id, payload, deleted)
           VALUES (${userId}, ${operation.kind}, ${operation.id}, ${payload}::jsonb, false)
           ON CONFLICT (user_id, kind, id) DO NOTHING
           RETURNING id
         `
         if (!inserted.length) {
           const identical = await sql`
-            SELECT 1 FROM lifeos_journal_items
+            SELECT 1 FROM livegym_storage_items
             WHERE user_id = ${userId} AND kind = ${operation.kind} AND id = ${operation.id}
               AND NOT deleted AND payload = ${payload}::jsonb
             LIMIT 1
@@ -60,13 +60,13 @@ export function createJournalStore(connectionString: string): JournalStore {
       if (operation.previous === undefined) throw new Error('Journal conflict')
       const changed = operation.previous === null
         ? await sql`
-          INSERT INTO lifeos_journal_items (user_id, kind, id, payload, deleted)
+          INSERT INTO livegym_storage_items (user_id, kind, id, payload, deleted)
           VALUES (${userId}, ${operation.kind}, ${operation.id}, ${payload}::jsonb, ${operation.deleted})
           ON CONFLICT (user_id, kind, id) DO NOTHING
           RETURNING id
         `
         : await sql`
-          UPDATE lifeos_journal_items SET payload = ${payload}::jsonb, deleted = ${operation.deleted}, changed_at = now()
+          UPDATE livegym_storage_items SET payload = ${payload}::jsonb, deleted = ${operation.deleted}, changed_at = now()
           WHERE user_id = ${userId} AND kind = ${operation.kind} AND id = ${operation.id}
             AND NOT deleted AND payload = ${JSON.stringify(operation.previous)}::jsonb
           RETURNING id
@@ -74,7 +74,7 @@ export function createJournalStore(connectionString: string): JournalStore {
       if (!changed.length) throw new Error('Journal conflict')
       if (operation.kind === 'folder' && operation.deleted) {
         await sql`
-          UPDATE lifeos_journal_items SET payload = payload - 'folderId', changed_at = now()
+          UPDATE livegym_storage_items SET payload = payload - 'folderId', changed_at = now()
           WHERE user_id = ${userId} AND kind = 'entry' AND NOT deleted
             AND payload->>'folderId' = ${operation.id}
         `

@@ -79,6 +79,7 @@ export default function JournalCloudPanel({ cloud, language, onSaveCopy }: {
         : cloud.lastSavedAt && cloud.status === 'Live Storage saved in cloud.' && cloud.pending === 0
           ? (ru ? 'Синхронизировано с облаком' : 'Synced with cloud storage')
           : (ru ? 'Проверяем синхронизацию…' : 'Checking sync…')}</span>
+      {cloud.error && cloud.status && <small role="alert">{cloud.status}</small>}
       {cloud.lastSavedAt && <small>{ru ? 'Последнее сохранение:' : 'Last saved:'} {new Date(cloud.lastSavedAt).toLocaleString(ru ? 'ru-RU' : 'en-US')}</small>}
       {cloud.guest && cloud.code && <div className="settings-page__recovery-code">
         <span>{ru ? 'Код восстановления — храните приватно. Любой, у кого есть код, сможет открыть ваши записи.' : 'Recovery code — keep it private. Anyone with this code can open your notes.'}</span>

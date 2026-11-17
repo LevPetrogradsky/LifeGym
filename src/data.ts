@@ -190,7 +190,7 @@ export interface LifeOSData {
   journalFolders?: JournalFolder[]
   timeFormat?: '12' | '24'
   // Account-local sync queue. Saved with the Journal so a reload cannot lose pending edits.
-  journalCloud?: { version: 1; migrated: boolean; plansMigrated?: boolean; pending: CloudOperation[] }
+  journalCloud?: { version: 1; migrated: boolean; plansMigrated?: boolean; endpoint?: 'gym-storage-v1'; pending: CloudOperation[] }
   importedNotes: ImportedNote[]
   activeSession: ActiveSession | null
   pendingSession: PendingSession | null

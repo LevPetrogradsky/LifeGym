@@ -208,7 +208,7 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
     const normalized = normalizeRecoveryCode(code)
     if (!normalized) return false
     try {
-      const response = await fetch('/api/journal?guest=status', { headers: { Authorization: `Guest ${normalized}` }, cache: 'no-store' })
+      const response = await fetch('/api/gym-storage?guest=status', { headers: { Authorization: `Guest ${normalized}` }, cache: 'no-store' })
       return response.ok && (await response.json()).exists === true
     } catch { return false }
   }
@@ -219,7 +219,7 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
       const normalized = normalizeRecoveryCode(code ?? '')
       if (!normalized) return false
       try {
-        const response = await fetch('/api/journal?guest=create', { method: 'POST', headers: { Authorization: `Guest ${normalized}` }, cache: 'no-store' })
+        const response = await fetch('/api/gym-storage?guest=create', { method: 'POST', headers: { Authorization: `Guest ${normalized}` }, cache: 'no-store' })
         if (!response.ok) return false
         localStorage.setItem(guestRecoveryStorageKey, normalized)
         localStorage.setItem(cloudConsentKey(effectiveStorageKey), 'true')
@@ -229,7 +229,7 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
       try {
         const token = await journalCloudToken()
         if (!token) return false
-        const response = await fetch('/api/journal', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+        const response = await fetch('/api/gym-storage', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
         if (!response.ok) return false
         localStorage.setItem(cloudConsentKey(effectiveStorageKey), 'true')
       }
@@ -262,8 +262,9 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
     try {
       await journalCloud.current?.importGuest()
       setGuestNotesAvailable(0)
-      setJournalCloudStatus('Guest workouts and Journal copied into this account. The guest copy is still on this device.')
+      setBackupMessage('Guest workouts and Journal copied into this account. The guest copy is still on this device.')
     } catch (error) {
+      setJournalCloudError(true)
       setJournalCloudStatus(error instanceof Error ? error.message : 'Guest workouts could not be copied. Their local copy was kept.')
     }
   }
