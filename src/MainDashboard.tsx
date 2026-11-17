@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Circle, ClipboardList, Flag, Github, GripHorizontal, History, ListTodo, Maximize2, Pause, Pencil, Play, Plus, Search, Settings2, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Circle, ClipboardList, Flag, Github, GripHorizontal, ListTodo, Maximize2, Pause, Pencil, Play, Plus, Search, Settings2, Trash2, X } from 'lucide-react'
 import { taskLists, type LifeOSData, type Task, type TaskList } from './data'
 import { todayTaskLimit } from './task-rules'
 import { translate } from './language'
@@ -12,7 +12,6 @@ interface MainDashboardProps {
   onReturnHome?: () => void
   returnLabel: string
   showTasksShortcut: boolean
-  showFocusShortcut: boolean
   searchIncludesJournal: boolean
   repoUrl: string
   hubUrl: string
@@ -31,10 +30,8 @@ interface MainDashboardProps {
   onOpenTask: (taskId: string) => void
   onDeleteTask: (id: string) => boolean
   onStart: (task: Task) => void
-  onStartOpenFocus: () => void
   onJournal?: () => void
   onAddExercise?: () => void
-  onFocusHistory: () => void
   onSettings: () => void
   onSearch: () => void
 }
@@ -86,7 +83,7 @@ function BreakCard({ taskTitle, activeTime, showTime, running, language, onPause
   </section>
 }
 
-export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, repoUrl, hubUrl, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, language = 'en', onPauseFocus, onContinueFocus, onReturnToFocus, onFinishPaused, onCancelFocus, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onAddExercise, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
+export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, searchIncludesJournal, repoUrl, hubUrl, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, language = 'en', onPauseFocus, onContinueFocus, onReturnToFocus, onFinishPaused, onCancelFocus, onUpdate, onOpenTask, onDeleteTask, onStart, onJournal, onAddExercise, onSettings, onSearch }: MainDashboardProps) {
   const t = (text: string) => translate(language, text)
   const [screen, setScreen] = useState(initialScreen)
   const [filter, setFilter] = useState<TaskList | 'completed'>('today')
@@ -255,18 +252,11 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
           <span className="life-main-shortcut-icon journal"><BookOpen size={21} aria-hidden="true" /></span>
           <strong>{t('Workout Tracker')}</strong>
         </button>}
-        {showFocusShortcut && <button type="button" onClick={breakCard ? onReturnToFocus : onStartOpenFocus}>
-          <span className="life-main-shortcut-icon focus"><Play size={21} aria-hidden="true" /></span>
-          <strong>{breakCard ? (language === 'ru' ? 'К таймеру' : 'Return to timer') : t('Start Focus')}</strong>
-        </button>}
         {onAddExercise && <button type="button" onClick={onAddExercise}>
           <span className="life-main-shortcut-icon journal"><Plus size={21} aria-hidden="true" /></span>
           <strong>{t('Add Exercise')}</strong>
         </button>}
       </nav>
-      <button type="button" className="life-main-text life-main-history-link" onClick={onFocusHistory}>
-        <History size={17} aria-hidden="true" /> {t('Focus history')} <ChevronRight size={15} aria-hidden="true" />
-      </button>
     </div>
   </main>
 

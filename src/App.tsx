@@ -725,7 +725,6 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
           onReturnHome={view === 'tasks' ? returnFromSection : undefined}
           returnLabel={returnLabel}
           showTasksShortcut={onHome('tasks')}
-          showFocusShortcut={onHome('focus')}
           searchIncludesJournal={showJournal}
           repoUrl={repoUrl}
           hubUrl={hubUrl}
@@ -744,10 +743,8 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
           onOpenTask={openTaskHistory}
           onDeleteTask={deleteTask}
           onStart={startFocus}
-          onStartOpenFocus={() => startFocus()}
           onJournal={onHome('journal') ? () => navigate('journal') : undefined}
           onAddExercise={onHome('journal') ? openAddExercise : undefined}
-          onFocusHistory={() => navigate('focus-history')}
           onSettings={() => navigate('settings')}
           onSearch={() => setSearchOpen(true)}
         />}
