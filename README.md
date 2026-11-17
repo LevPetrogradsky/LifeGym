@@ -1,8 +1,8 @@
-# Gmos
+# GymOS
 
-Gmos is a new project starting from the source code of [LifeOS-Public](https://github.com/ProgrammerLevpetrogradsky/LifeOS-Public). This repository is an independent copy, not a GitHub fork.
+GymOS is a new project starting from the source code of [LifeOS-Public](https://github.com/ProgrammerLevpetrogradsky/LifeOS-Public). This repository is an independent copy, not a GitHub fork.
 
-The code still contains LifeOS features and names. Gmos-specific features have not been built yet.
+The code still contains LifeOS features and names. GymOS-specific features have not been built yet.
 
 ## Run locally
 
