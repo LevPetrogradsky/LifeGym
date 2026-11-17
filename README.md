@@ -1,8 +1,8 @@
-# GymOS
+# LifeGym
 
-GymOS is a new project starting from the source code of [LifeOS-Public](https://github.com/ProgrammerLevpetrogradsky/LifeOS-Public). This repository is an independent copy, not a GitHub fork.
+LifeGym is a new project starting from the source code of [LifeOS-Public](https://github.com/ProgrammerLevpetrogradsky/LifeOS-Public). This repository is an independent copy, not a GitHub fork.
 
-The code still contains LifeOS features and names. GymOS-specific features have not been built yet.
+LifeGym adapts the original local-first app for planning workouts and recording exercises, sets, reps, weight, rest, and notes. Existing notes and saved data remain compatible. The public test demo is at [lifegym-preview.vercel.app](https://lifegym-preview.vercel.app/).
 
 ## Run locally
 

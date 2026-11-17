@@ -83,7 +83,7 @@ function DisplayNameForm({ name, onSave, language }: { name: string; onSave: (na
   )
 }
 
-const demoUrl = 'https://gymos-preview.vercel.app/'
+const demoUrl = 'https://lifegym-preview.vercel.app/'
 
 function AboutLifeOS({ repoUrl, language }: { repoUrl: string; language: AppLanguage }) {
   const [message, setMessage] = useState('')
@@ -368,7 +368,7 @@ export default function SettingsPage({
           </div>
         </details>
         <SettingsGroup id="settings-target-advanced" title={t('Advanced Options')} icon={<Github size={18} />} open={openSections.advanced} onOpenChange={open => setSection('advanced', open)}>
-          <a id="settings-target-fork-link" className="settings-page__action" href="https://github.com/ProgrammerLevpetrogradsky/GymOS/fork"
+          <a id="settings-target-fork-link" className="settings-page__action" href="https://github.com/ProgrammerLevpetrogradsky/LifeGym/fork"
             target="_blank" rel="noopener noreferrer">
             <Github size={17} aria-hidden="true" />{t('Fork on GitHub')}
             <ExternalLink className="settings-page__external" size={16} aria-hidden="true" />

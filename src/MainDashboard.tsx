@@ -231,7 +231,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
   if (screen === 'home') return <main className="life-main life-main-home">
     <header className="life-main-hero">
       <div><h1 ref={heading} tabIndex={-1}>{language === 'ru' ? 'Добро пожаловать' : 'Welcome'}{displayName?.trim() ? `, ${displayName.trim()}` : ''}!</h1>
-        <p className="life-main-thanks">{language === 'ru' ? 'GymOS: запланируйте занятие и сохраните запись о тренировке.' : 'GymOS: plan a session and keep a record of your workout.'}</p>
+        <p className="life-main-thanks">{language === 'ru' ? 'LifeGym: запланируйте занятие и сохраните запись о тренировке.' : 'LifeGym: plan a session and keep a record of your workout.'}</p>
         <a className="life-main-github" href={repoUrl} target="_blank" rel="noopener noreferrer">
           <Github size={15} aria-hidden="true" /> {t('View on GitHub')}
         </a>
