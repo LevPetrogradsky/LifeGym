@@ -129,6 +129,17 @@ export async function preserveInitialJournal(data: LifeOSData, remote: CloudItem
 
 function applyItems(data: LifeOSData, items: CloudItem[]): LifeOSData {
   const byKey = new Map(items.map(item => [`${item.kind}:${item.id}`, item]))
+  const pendingKeys = new Set(meta(data).pending.map(item => `${item.kind}:${item.id}`))
+  for (const [kind, saved] of [
+    ['folder', data.journalFolders ?? []], ['entry', data.journal], ['plan', data.plannedWorkouts ?? []],
+  ] as const) {
+    for (const item of saved) {
+      const key = `${kind}:${item.id}`
+      if (!byKey.has(key) && !pendingKeys.has(key)) {
+        throw new Error('Cloud storage omitted a local item. Your local copy was kept.')
+      }
+    }
+  }
   for (const item of meta(data).pending) byKey.set(`${item.kind}:${item.id}`, item)
   const folders = [...byKey.values()].filter((item): item is CloudItem & { kind: 'folder'; payload: JournalFolder } =>
     item.kind === 'folder' && !item.deleted && item.payload !== null).map(item => item.payload)
@@ -253,8 +264,16 @@ export class JournalCloudSync {
     const token = await this.requireToken()
     const original = this.client.getData()
     if (!meta(original).migrated || meta(original).endpoint !== 'gym-storage-v1') {
-      const preserved = await preserveInitialJournal(original, await this.list(token))
-      preserved.journalCloud = { ...meta(original), pending: [] }
+      const remote = await this.list(token)
+      let preserved: LifeOSData | null = null
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const current = this.client.getData()
+        const snapshot = JSON.stringify(current)
+        const candidate = await preserveInitialJournal(current, remote)
+        if (JSON.stringify(this.client.getData()) === snapshot) { preserved = candidate; break }
+      }
+      if (!preserved) throw new Error('Local workouts changed during cloud preparation. Your local copy was kept; retry sync.')
+      preserved.journalCloud = { ...meta(preserved), pending: [] }
       if (!this.client.save(preserved)) throw new Error('Could not prepare local Journal for cloud merge. Your notes were kept.')
       for (const operation of importOperations(preserved)) await this.send(token, operation)
       const current = this.client.getData()
@@ -263,10 +282,18 @@ export class JournalCloudSync {
       }
     }
     if (!meta(this.client.getData()).plansMigrated) {
-      const originalPlans = this.client.getData()
       const remote = await this.list(token)
-      const preserved = await preserveInitialJournal({ ...originalPlans, journal: [], journalFolders: [] }, remote)
-      const next = { ...originalPlans, plannedWorkouts: preserved.plannedWorkouts }
+      let next: LifeOSData | null = null
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const current = this.client.getData()
+        const snapshot = JSON.stringify(current)
+        const preserved = await preserveInitialJournal({ ...current, journal: [], journalFolders: [] }, remote)
+        if (JSON.stringify(this.client.getData()) === snapshot) {
+          next = { ...current, plannedWorkouts: preserved.plannedWorkouts }
+          break
+        }
+      }
+      if (!next) throw new Error('Local workout plans changed during cloud preparation. Your local copy was kept; retry sync.')
       if (!this.client.save(next)) throw new Error('Could not prepare workout plans for cloud merge. Your plans were kept.')
       for (const plan of next.plannedWorkouts ?? []) {
         await this.send(token, { mode: 'import', kind: 'plan', id: plan.id, deleted: false, payload: plan })

@@ -229,6 +229,46 @@ test('server error leaves the changed plan queued and retry saves it', async () 
   } finally { h.restore() }
 })
 
+test('a plan created while initial cloud fetch is pending is preserved', async () => {
+  const h = harness()
+  const serverFetch = globalThis.fetch
+  try {
+    const account = h.client('A')
+    let changed = false
+    globalThis.fetch = async (url, options) => {
+      if (!changed && !options?.method) {
+        changed = true
+        account.save({ ...account.getData(), plannedWorkouts: [plan('during-sync', 'Created during sync')] })
+      }
+      return serverFetch(url, options)
+    }
+    await new JournalCloudSync(account).sync()
+    assert.equal(account.getData().plannedWorkouts[0].title, 'Created during sync')
+    assert.equal(h.rows.get('A:plan:during-sync').payload.title, 'Created during sync')
+  } finally { h.restore() }
+})
+
+test('a partial server list cannot erase an already synced workout or plan', async () => {
+  const h = harness()
+  const serverFetch = globalThis.fetch
+  try {
+    const account = h.client('A', { ...emptyData(), plannedWorkouts: [plan('plan-1', 'Plan')], journal: [workout('session-1', 'Workout')] })
+    await new JournalCloudSync(account).sync()
+    globalThis.fetch = async (url, options) => {
+      if (!options?.method) {
+        const response = await serverFetch(url, options)
+        const body = await response.json()
+        return Response.json({ items: body.items.filter(item => item.kind === 'plan'), after: null })
+      }
+      return serverFetch(url, options)
+    }
+    await new JournalCloudSync(account).sync()
+    assert.match(account.statuses.at(-1), /omitted a local item/)
+    assert.equal(account.getData().plannedWorkouts.length, 1)
+    assert.equal(account.getData().journal.length, 1)
+  } finally { h.restore() }
+})
+
 test('server uses verified account identity and keeps accounts isolated', async () => {
   const h = harness()
   try {
