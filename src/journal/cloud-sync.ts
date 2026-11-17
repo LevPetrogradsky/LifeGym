@@ -19,17 +19,17 @@ function meta(data: LifeOSData): Meta {
   return value
 }
 
-function changes<T extends { id: string }>(kind: 'folder' | 'entry', before: T[], after: T[]): CloudOperation[] {
+function changes<T extends JournalFolder | JournalEntry>(kind: 'folder' | 'entry', before: T[], after: T[]): CloudOperation[] {
   const old = new Map(before.map(item => [item.id, item]))
   const next = new Map(after.map(item => [item.id, item]))
   const operations: CloudOperation[] = []
   for (const item of after) {
     if (JSON.stringify(old.get(item.id)) !== JSON.stringify(item)) {
-      operations.push({ mode: 'change', kind, id: item.id, deleted: false, payload: item } as unknown as CloudOperation)
+      operations.push({ mode: 'change', kind, id: item.id, deleted: false, payload: item, previous: old.get(item.id) ?? null } as unknown as CloudOperation)
     }
   }
   for (const item of before) {
-    if (!next.has(item.id)) operations.push({ mode: 'change', kind, id: item.id, deleted: true, payload: null })
+    if (!next.has(item.id)) operations.push({ mode: 'change', kind, id: item.id, deleted: true, payload: null, previous: item })
   }
   return operations
 }
@@ -54,6 +54,43 @@ function importOperations(data: LifeOSData): CloudOperation[] {
     ...(data.journalFolders ?? []).map((folder, order) => ({ mode: 'import', kind: 'folder', id: folder.id, deleted: false, payload: { ...folder, order } })),
     ...data.journal.map(payload => ({ mode: 'import', kind: 'entry', id: payload.id, deleted: false, payload })),
   ] as CloudOperation[]
+}
+
+export function preserveInitialJournal(data: LifeOSData, remote: CloudItem[]): LifeOSData {
+  const existing = new Map(remote.map(item => [`${item.kind}:${item.id}`, item]))
+  const remoteNames = new Set(remote.filter(item => item.kind === 'folder' && !item.deleted && item.payload)
+    .map(item => (item.payload as JournalFolder).name.toLocaleLowerCase()))
+  const folderIds = new Map<string, string>()
+  const folders = (data.journalFolders ?? []).map((folder, order) => {
+    const found = existing.get(`folder:${folder.id}`)
+    const collision = found && (found.deleted || JSON.stringify(found.payload) !== JSON.stringify({ ...folder, order }))
+    const id = collision ? crypto.randomUUID() : folder.id
+    if (collision) folderIds.set(folder.id, id)
+    let name = folder.name
+    if (remoteNames.has(name.toLocaleLowerCase()) && (!found || collision)) {
+      const base = name.slice(0, 45)
+      let suffix = 1
+      do { name = `${base} (local ${suffix++})` } while (remoteNames.has(name.toLocaleLowerCase()))
+    }
+    remoteNames.add(name.toLocaleLowerCase())
+    return { ...folder, id, name }
+  })
+  const entryIds = new Map<string, string>()
+  for (const entry of data.journal) {
+    const found = existing.get(`entry:${entry.id}`)
+    if (found && (found.deleted || JSON.stringify(found.payload) !== JSON.stringify(entry))) {
+      entryIds.set(entry.id, crypto.randomUUID())
+    }
+  }
+  const journal = data.journal.map(entry => ({
+    ...entry,
+    id: entryIds.get(entry.id) ?? entry.id,
+    ...(entry.folderId && folderIds.has(entry.folderId) ? { folderId: folderIds.get(entry.folderId) } : {}),
+    ...(entry.linkedEntryId && entryIds.has(entry.linkedEntryId) ? { linkedEntryId: entryIds.get(entry.linkedEntryId) } : {}),
+  }))
+  const result = { ...data, journalFolders: folders, journal }
+  if (!validateLifeOSData(result)) throw new Error('Local Journal could not be merged safely. Your notes were kept.')
+  return result
 }
 
 function applyItems(data: LifeOSData, items: CloudItem[]): LifeOSData {
@@ -118,7 +155,8 @@ export class JournalCloudSync {
     const guest = loadData()
     if (guest.error) throw new Error('Guest Journal is unreadable. Restore a backup first.')
     const token = await this.requireToken()
-    for (const operation of importOperations(guest.data)) await this.send(token, operation)
+    const preserved = preserveInitialJournal(guest.data, await this.list(token))
+    for (const operation of importOperations(preserved)) await this.send(token, operation)
     const items = await this.list(token)
     const current = this.client.getData()
     if (items.length === 0 && (guest.data.journal.length || guest.data.journalFolders?.length || current.journal.length)) {
@@ -129,7 +167,7 @@ export class JournalCloudSync {
 
   private async requireToken() {
     const token = await this.client.token()
-    if (!token) throw new Error('Sign in to sync Journal. Your local copy was kept.')
+    if (!token) throw new Error('Journal cloud access is unavailable. Your local copy was kept.')
     return token
   }
 
@@ -137,10 +175,11 @@ export class JournalCloudSync {
     if (!validCloudOperation(operation)) throw new Error('A local Journal item needs recovery before sync. It was kept.')
     const response = await fetch('/api/journal', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: token.startsWith('Guest ') ? token : `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(operation),
       cache: 'no-store',
     })
+    if (response.status === 409) throw new Error('Journal changed on another device. Both copies were kept; review this device before retrying.')
     if (!response.ok) throw new Error('Could not save Journal to the cloud. Your local copy was kept.')
   }
 
@@ -150,7 +189,7 @@ export class JournalCloudSync {
     const seen = new Set<string>()
     for (let page = 0; page < 10_000; page++) {
       const url: string = after ? `/api/journal?after=${encodeURIComponent(after)}` : '/api/journal'
-      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+      const response = await fetch(url, { headers: { Authorization: token.startsWith('Guest ') ? token : `Bearer ${token}` }, cache: 'no-store' })
       if (!response.ok) throw new Error('Could not load cloud Journal. Your local copy was kept.')
       const body: unknown = await response.json()
       if (!body || typeof body !== 'object' || !('items' in body) || !Array.isArray(body.items) ||
@@ -176,7 +215,10 @@ export class JournalCloudSync {
     const token = await this.requireToken()
     const original = this.client.getData()
     if (!meta(original).migrated) {
-      for (const operation of importOperations(original)) await this.send(token, operation)
+      const preserved = preserveInitialJournal(original, await this.list(token))
+      preserved.journalCloud = { ...meta(original), pending: [] }
+      if (!this.client.save(preserved)) throw new Error('Could not prepare local Journal for cloud merge. Your notes were kept.')
+      for (const operation of importOperations(preserved)) await this.send(token, operation)
       const current = this.client.getData()
       if (!this.client.save({ ...current, journalCloud: { ...meta(current), migrated: true } })) {
         throw new Error('Could not mark Journal migration complete. Your local copy was kept.')
@@ -204,7 +246,7 @@ export class JournalCloudSync {
     if (!this.client.save(applyItems(latest, items))) {
       throw new Error('Could not save cloud Journal locally. Your local copy was kept.')
     }
-    this.client.status('Journal saved in your account.')
+    this.client.status('Journal saved in cloud.')
   }
 }
 

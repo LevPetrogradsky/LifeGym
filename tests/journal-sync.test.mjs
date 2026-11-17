@@ -16,7 +16,10 @@ const photo = 'data:image/jpeg;base64,' + btoa(String.fromCharCode(
 
 function harness() {
   const rows = new Map()
+  const guests = new Set()
   const store = {
+    async guestExists(ownerId) { return guests.has(ownerId) },
+    async createGuest(ownerId) { guests.add(ownerId) },
     async list(userId, after) {
       const items = [...rows.values()].filter(row => row.userId === userId)
         .sort((a, b) => `${a.kind}:${a.id}`.localeCompare(`${b.kind}:${b.id}`))
@@ -27,6 +30,11 @@ function harness() {
     async write(userId, operation) {
       const key = `${userId}:${operation.kind}:${operation.id}`
       if (operation.mode === 'import' && rows.has(key)) return
+      const previous = rows.get(key)
+      if (operation.mode === 'change' && (operation.previous === undefined ||
+        (operation.previous === null ? Boolean(previous) : !previous || previous.deleted || JSON.stringify(previous.payload) !== JSON.stringify(operation.previous)))) {
+        throw new Error('Journal conflict')
+      }
       rows.set(key, { userId, kind: operation.kind, id: operation.id, deleted: operation.deleted, payload: operation.payload })
     },
   }
@@ -44,7 +52,7 @@ function harness() {
       statuses,
     }
   }
-  return { rows, client, restore: () => { globalThis.fetch = oldFetch } }
+  return { rows, guests, client, restore: () => { globalThis.fetch = oldFetch } }
 }
 
 test('same account migrates folders and entries once and opens them in another browser', async () => {
@@ -54,7 +62,7 @@ test('same account migrates folders and entries once and opens them in another b
     const sync = new JournalCloudSync(first)
     await sync.sync()
     assert.equal(first.getData().journalCloud.migrated, true)
-    assert.equal(first.statuses.at(-1), 'Journal saved in your account.')
+    assert.equal(first.statuses.at(-1), 'Journal saved in cloud.')
     assert.equal(h.rows.size, 2)
     await sync.sync()
     assert.equal(h.rows.size, 2)
@@ -89,6 +97,64 @@ test('server uses verified account identity and keeps accounts isolated', async 
     assert.equal(h.rows.get('B:entry:private'), undefined)
     const unauthorized = await fetch('/api/journal', { headers: { Authorization: 'Bearer fake' } })
     assert.equal(unauthorized.status, 401)
+  } finally { h.restore() }
+})
+
+test('two guest recovery codes restore only their own notes without an account', async () => {
+  const h = harness()
+  const codeA = 'a'.repeat(64)
+  const codeB = 'b'.repeat(64)
+  try {
+    const missing = await fetch('/api/journal?guest=status', { headers: { Authorization: `Guest ${codeA}` } })
+    assert.equal(missing.status, 404)
+    for (const code of [codeA, codeB]) {
+      const created = await fetch('/api/journal?guest=create', { method: 'POST', headers: { Authorization: `Guest ${code}` } })
+      assert.equal(created.status, 201)
+    }
+    const a = h.client(`Guest ${codeA}`, { ...emptyData(), journal: [entry('private', 'Guest A')] })
+    const b = h.client(`Guest ${codeB}`, { ...emptyData(), journal: [entry('private', 'Guest B')] })
+    await new JournalCloudSync(a).sync()
+    await new JournalCloudSync(b).sync()
+    const restoredA = h.client(`Guest ${codeA}`)
+    const restoredB = h.client(`Guest ${codeB}`)
+    await new JournalCloudSync(restoredA).sync()
+    await new JournalCloudSync(restoredB).sync()
+    assert.deepEqual(restoredA.getData().journal.map(item => item.text), ['Guest A'])
+    assert.deepEqual(restoredB.getData().journal.map(item => item.text), ['Guest B'])
+    const unknown = await fetch('/api/journal', { headers: { Authorization: `Guest ${'c'.repeat(64)}` } })
+    assert.equal(unknown.status, 404)
+    assert.equal((await fetch('/api/journal')).status, 401)
+  } finally { h.restore() }
+})
+
+test('recovery merge preserves different local and remote entries sharing an id', async () => {
+  const h = harness()
+  const code = 'd'.repeat(64)
+  try {
+    await fetch('/api/journal?guest=create', { method: 'POST', headers: { Authorization: `Guest ${code}` } })
+    const original = h.client(`Guest ${code}`, { ...emptyData(), journal: [entry('same', 'Remote note')] })
+    await new JournalCloudSync(original).sync()
+    const recovering = h.client(`Guest ${code}`, { ...emptyData(), journal: [entry('same', 'Local note')] })
+    await new JournalCloudSync(recovering).sync()
+    assert.deepEqual(recovering.getData().journal.map(item => item.text).sort(), ['Local note', 'Remote note'])
+    assert.equal(new Set(recovering.getData().journal.map(item => item.id)).size, 2)
+  } finally { h.restore() }
+})
+
+test('stale device cannot overwrite another device and keeps its local edit', async () => {
+  const h = harness()
+  try {
+    const first = h.client('A', { ...emptyData(), journal: [entry('same', 'Original')] })
+    await new JournalCloudSync(first).sync()
+    const second = h.client('A')
+    await new JournalCloudSync(second).sync()
+    first.save(withJournalChanges(first.getData(), { ...first.getData(), journal: [entry('same', 'First edit')] }))
+    await new JournalCloudSync(first).sync()
+    second.save(withJournalChanges(second.getData(), { ...second.getData(), journal: [entry('same', 'Second edit')] }))
+    await new JournalCloudSync(second).sync()
+    assert.match(second.statuses.at(-1), /another device/)
+    assert.equal(second.getData().journal[0].text, 'Second edit')
+    assert.equal(h.rows.get('A:entry:same').payload.text, 'First edit')
   } finally { h.restore() }
 })
 

@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
-import { ChevronRight, Cloud, Compass, Copy, Download, ExternalLink, Github, HardDrive, Info, Monitor, Moon, Palette, RotateCw, Search, Sun, Timer, Upload, UserRound, X } from 'lucide-react'
+import { ChevronRight, Compass, Copy, Download, ExternalLink, Github, HardDrive, Info, Monitor, Moon, Palette, Search, Sun, Timer, Upload, UserRound, X } from 'lucide-react'
 import { breakReminderMinutes, maxDisplayNameLength, visibleShortcuts, type BreakReminderMinutes, type PostFocusAction, type Shortcut, type ShortcutLocation, type Theme } from '../data'
 import { translate, type AppLanguage } from '../language'
 import InteractiveTip from '../InteractiveTip'
+import JournalCloudPanel, { type JournalCloudControls } from './JournalCloudPanel'
 import './settings.css'
 
 interface SettingsPageProps {
   account?: ReactNode
-  journalSync: { enabled: boolean; status: string; error: boolean; lastSavedAt: string | null; onRetry: () => void }
+  journalSync: JournalCloudControls
   theme: Theme
   language: 'en' | 'ru'
   timeFormat: '12' | '24'
@@ -248,21 +249,7 @@ export default function SettingsPage({
       <div className="settings-page__groups">
         <SettingsGroup id="settings-target-account" title={t('Account')} icon={<UserRound size={18} />} open={openSections.account} onOpenChange={open => setSection('account', open)}>
           {account}
-          <div id="settings-target-journal-storage" className="settings-page__journal-sync" role="status">
-            <strong><Cloud size={16} aria-hidden="true" />{language === 'ru' ? 'Сохранение Journal' : 'Journal storage'}</strong>
-            {journalSync.enabled ? <>
-              <span>{journalSync.error
-                ? (language === 'ru' ? 'Ошибка синхронизации. Записи остались на этом устройстве.' : 'Sync error. Your entries are still on this device.')
-                : journalSync.lastSavedAt && journalSync.status !== 'Syncing Journal…'
-                  ? (language === 'ru' ? 'Синхронизировано с аккаунтом' : 'Synced with account')
-                  : (language === 'ru' ? 'Проверяем синхронизацию…' : 'Checking sync…')}</span>
-              {journalSync.lastSavedAt && <small>{language === 'ru' ? 'Последнее успешное сохранение:' : 'Last successful save:'} {new Date(journalSync.lastSavedAt).toLocaleString(language === 'ru' ? 'ru-RU' : 'en-US')}</small>}
-              {journalSync.error && <button type="button" className="settings-page__action" onClick={journalSync.onRetry}><RotateCw size={15} aria-hidden="true" />{language === 'ru' ? 'Повторить' : 'Retry'}</button>}
-            </> : <>
-              <span>{language === 'ru' ? 'Только на этом устройстве. Синхронизация Journal пока недоступна.' : 'Saved on this device only. Journal sync is not available yet.'}</span>
-              <button type="button" className="settings-page__action" onClick={onExport}><Download size={15} aria-hidden="true" />{t('Save a copy')}</button>
-            </>}
-          </div>
+          <div id="settings-target-journal-storage"><JournalCloudPanel cloud={journalSync} language={language} onSaveCopy={onExport} /></div>
         </SettingsGroup>
         <SettingsGroup id="settings-target-profile" title={t('Profile & appearance')} icon={<Palette size={18} />} open={openSections.profile} onOpenChange={open => setSection('profile', open)}
           summary={t(themes.find(option => option.value === theme)?.label ?? '')}>

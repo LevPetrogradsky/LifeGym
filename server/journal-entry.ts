@@ -21,6 +21,7 @@ const handler = createJournalHandler(async token => {
 }, store ?? {
   list: async () => { throw new Error('Database unavailable') },
   write: async () => { throw new Error('Database unavailable') },
-}, () => process.env.VERCEL_ENV === 'preview' && process.env.JOURNAL_SYNC_PREVIEW_ENABLED === 'true')
+}, () => process.env.JOURNAL_SYNC_ENABLED === 'true' &&
+  (process.env.VERCEL_ENV === 'preview' || process.env.VERCEL_ENV === 'production'))
 
 export default { fetch: handler }

@@ -10,7 +10,7 @@ type CloudBase = {
 export type CloudItem =
   | (CloudBase & { kind: 'folder'; payload: JournalFolder | null })
   | (CloudBase & { kind: 'entry'; payload: JournalEntry | null })
-export type CloudOperation = CloudItem & { mode: 'import' | 'change' }
+export type CloudOperation = CloudItem & { mode: 'import' | 'change'; previous?: JournalFolder | JournalEntry | null }
 
 const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -50,6 +50,9 @@ export function validCloudItem(value: unknown): value is CloudItem {
 export function validCloudOperation(value: unknown): value is CloudOperation {
   if (!record(value)) return false
   const mode = value.mode
+  const previous = value.previous
   return (mode === 'import' || mode === 'change') &&
-    validCloudItem(value) && (mode !== 'import' || !value.deleted)
+    validCloudItem(value) && (mode !== 'import' || !value.deleted) &&
+    (previous === undefined || previous === null ||
+      (value.kind === 'folder' ? validCloudFolder(previous) : validCloudEntry(previous)))
 }

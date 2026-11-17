@@ -2,6 +2,7 @@ import App from './App'
 import { accountAuth, type AccountAuth } from './accounts'
 import AccountPanel from './settings/AccountPanel'
 import { STORAGE_KEY } from './data'
+import { readRecoveryCode } from './journal/guest-recovery'
 import { useState, type FormEvent } from 'react'
 import { translate } from './language'
 
@@ -48,8 +49,11 @@ function ResetPassword({ auth, token, onDone }: { auth: AccountAuth; token: stri
 
 function ConnectedApp({ auth }: { auth: AccountAuth }) {
   const { data, isPending, error, refetch } = auth.useSession()
+  const guestToken = import.meta.env.VITE_JOURNAL_SYNC_ENABLED === 'true'
+    ? async () => { const code = readRecoveryCode(); return code ? `Guest ${code}` : null }
+    : undefined
   if (isPending) return <main className="settings-page"><p role="status">Opening LifeOS...</p></main>
-  if (error) return <App account={language => <div className="settings-page__account">
+  if (error) return <App journalCloudToken={guestToken} guestCloud account={language => <div className="settings-page__account">
     <p className="settings-page__description" role="alert">{translate(language, 'Could not connect to your account. You can use LifeOS as a guest.')}</p>
     <button type="button" className="settings-page__action" onClick={() => void refetch()}>{translate(language, 'Try again')}</button>
   </div>} existingAccount />
@@ -57,11 +61,12 @@ function ConnectedApp({ auth }: { auth: AccountAuth }) {
   const user = data?.user
   const storageKey = user ? `${STORAGE_KEY}.neon.${user.id}` : undefined
   return <App key={storageKey ?? STORAGE_KEY} storageKey={storageKey} existingAccount={Boolean(user)}
-    journalCloudToken={user && import.meta.env.VITE_JOURNAL_SYNC_PREVIEW_ENABLED === 'true'
+    guestCloud={!user}
+    journalCloudToken={user && import.meta.env.VITE_JOURNAL_SYNC_ENABLED === 'true'
       ? async () => {
         const token = (await auth.getSession({ fetchOptions: { headers: { 'X-Force-Fetch': 'true' } } })).data?.session?.token
         return token?.split('.').length === 3 ? token : null
-      } : undefined}
+      } : guestToken}
     account={(language, initialMode) => <AccountPanel auth={auth} user={user} refreshSession={refetch} language={language} initialMode={initialMode} />} />
 }
 
@@ -74,5 +79,7 @@ export default function AccountApp() {
     window.history.replaceState(null, '', window.location.pathname)
     setReset(null)
   }} />
-  return accountAuth ? <ConnectedApp auth={accountAuth} /> : <App />
+  return accountAuth ? <ConnectedApp auth={accountAuth} /> : <App guestCloud journalCloudToken={import.meta.env.VITE_JOURNAL_SYNC_ENABLED === 'true'
+    ? async () => { const code = readRecoveryCode(); return code ? `Guest ${code}` : null }
+    : undefined} />
 }

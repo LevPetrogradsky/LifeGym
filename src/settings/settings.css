@@ -391,6 +391,30 @@
 .settings-page__journal-sync > span,
 .settings-page__journal-sync > small { color: var(--settings-muted); }
 .settings-page__journal-sync > .settings-page__action { width: fit-content; min-height: 36px; font-size: 12px; }
+.settings-page__cloud-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.settings-page__cloud-actions .settings-page__action,
+.settings-page__recovery-code .settings-page__action,
+.settings-page__cloud-confirm .settings-page__action { width: fit-content; min-height: 38px; font-size: 12px; cursor: pointer; }
+.settings-page__cloud-actions .settings-page__action:disabled { opacity: .55; cursor: not-allowed; }
+.settings-page__recovery-code,
+.settings-page__cloud-confirm { display: grid; gap: 9px; padding-top: 9px; border-top: 1px solid var(--settings-line); }
+.settings-page__cloud-confirm p { margin: 0; line-height: 1.5; }
+.settings-page__recovery-code input,
+.settings-page__cloud-confirm > input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--settings-line);
+  border-radius: 9px;
+  background: var(--settings-surface);
+  color: var(--settings-text);
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: .03em;
+}
+.settings-page__cloud-check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.settings-page__cloud-check input { width: 17px; height: 17px; accent-color: var(--settings-accent); }
 .settings-page__account-card .settings-page__account-submit {
   justify-content: center;
   border-color: var(--settings-accent);
