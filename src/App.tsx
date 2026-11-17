@@ -47,7 +47,6 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
   const dataRef = useRef(data)
   const hiddenSections = data.hiddenSections ?? []
   const showHome = !hiddenSections.includes('main')
-  const showAskLifeOS = data.askLifeOSInBar === true
   const onHome = (id: Shortcut) => shortcutVisible(data, id, 'home')
   const inBar = (id: Shortcut) => shortcutVisible(data, id, 'bar')
   const defaultView = showHome ? 'main' : (['journal', 'tasks'] as const).find(inBar) ?? 'settings'
@@ -656,7 +655,6 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
           else startFocus()
         }} />
     })}
-    {showAskLifeOS && <NavButton icon={<MessageCircle size={iconSize} />} label={t('Ask LifeOS')} selected={view === 'ask'} onClick={() => navigate('ask')} />}
     {bottom && <NavButton icon={<Settings2 size={iconSize} />} label={t('Settings')} selected={view === 'settings'} onClick={() => navigate('settings')} />}
   </>
 
@@ -868,8 +866,6 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
             onInteractiveTipsChange={interactiveTips => update(current => ({ ...current, interactiveTips }))}
             showHome={showHome}
             onHomeVisibilityChange={changeHomeVisibility}
-            showAskLifeOS={showAskLifeOS}
-            onAskLifeOSVisibilityChange={askLifeOSInBar => update(current => ({ ...current, askLifeOSInBar }))}
             shortcutVisible={(id, location) => location === 'home' ? onHome(id) : inBar(id)}
             onShortcutChange={changeShortcut}
             onExport={exportData}

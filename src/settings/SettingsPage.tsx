@@ -19,8 +19,6 @@ interface SettingsPageProps {
   onInteractiveTipsChange: (enabled: boolean) => void
   showHome: boolean
   onHomeVisibilityChange: (visible: boolean) => void
-  showAskLifeOS: boolean
-  onAskLifeOSVisibilityChange: (visible: boolean) => void
   shortcutVisible: (id: Shortcut, location: ShortcutLocation) => boolean
   onShortcutChange: (id: Shortcut, location: ShortcutLocation, visible: boolean) => void
   onExport: () => void
@@ -124,7 +122,7 @@ function AboutLifeOS({ repoUrl, language }: { repoUrl: string; language: AppLang
 export default function SettingsPage({
   account,
   journalSync,
-  theme, onThemeChange, language, onLanguageChange, timeFormat, onTimeFormatChange, interactiveTips, onInteractiveTipsChange, showHome, onHomeVisibilityChange, showAskLifeOS, onAskLifeOSVisibilityChange, shortcutVisible, onShortcutChange, onExport, onImport, repoUrl, focusCheckin, postFocusAction, onOpenPresets,
+  theme, onThemeChange, language, onLanguageChange, timeFormat, onTimeFormatChange, interactiveTips, onInteractiveTipsChange, showHome, onHomeVisibilityChange, shortcutVisible, onShortcutChange, onExport, onImport, repoUrl, focusCheckin, postFocusAction, onOpenPresets,
   reminderMinutes, onReminderMinutesChange, displayName, onDisplayNameChange, timerDefaultView, onTimerDefaultViewChange,
 }: SettingsPageProps) {
   const t = (text: string) => translate(language, text)
@@ -191,7 +189,6 @@ export default function SettingsPage({
     { title: t('More options'), section: 'more', target: 'more', keywords: 'additional settings дополнительно' },
     { title: t('Home & navigation'), section: 'navigation', target: 'navigation', keywords: 'shortcuts bar главная панель ярлыки' },
     { title: t('Home in bottom bar'), section: 'navigation', target: 'home-bar', keywords: 'navigation навигация' },
-    { title: t('Ask LifeOS in bottom bar'), section: 'navigation', target: 'ask-bar', keywords: 'navigation навигация' },
     ...visibleShortcuts.map(({ id, label }) => ({ title: t(label), section: 'navigation' as const, target: `shortcut-${id}`, keywords: 'shortcut home bar ярлык главная панель' })),
     { title: t('About'), section: 'about', target: 'about', keywords: 'version приложение версия' },
     { title: t('Demo link'), section: 'about', target: 'demo-link', keywords: 'share ссылка поделиться' },
@@ -357,11 +354,6 @@ export default function SettingsPage({
             <span className="settings-page__toggle-copy"><strong>{t('Home in bottom bar')}</strong></span>
             <input type="checkbox" role="switch" aria-label={t('Home in navigation bar')} checked={showHome}
               onChange={event => onHomeVisibilityChange(event.currentTarget.checked)} />
-          </label>
-          <label id="settings-target-ask-bar" className="settings-page__toggle settings-page__navigation-toggle">
-            <span className="settings-page__toggle-copy"><strong>{t('Ask LifeOS in bottom bar')}</strong></span>
-            <input type="checkbox" role="switch" aria-label={t('Ask LifeOS in navigation bar')} checked={showAskLifeOS}
-              onChange={event => onAskLifeOSVisibilityChange(event.currentTarget.checked)} />
           </label>
           {!showHome && <p className="settings-page__description">{t('Home shortcuts appear when Home is visible.')}</p>}
           {visibleShortcuts.map(({ id, label }) => <fieldset id={`settings-target-shortcut-${id}`} key={id} className="settings-page__shortcut">
