@@ -19,8 +19,6 @@ import { findFocusPreset } from './presets/focusPresets'
 import { useDeleteUndo } from './delete-undo'
 import UnifiedSearch from './search/UnifiedSearch'
 import type { AccountEntryMode } from './settings/AccountPanel'
-import WebOnboarding, { type OnboardingDestination } from './onboarding/WebOnboarding'
-import { completionKey, initialOnboardingMode } from './onboarding/state'
 import { translate, type AppLanguage } from './language'
 import './reflection-confirmation.css'
 import './mobile-navigation.css'
@@ -29,8 +27,9 @@ type View = Exclude<Shortcut, 'focus'> | 'main' | 'ask' | 'settings' | 'focus-hi
 const shortcutIcons = { tasks: ClipboardList, journal: BookOpen, focus: Play, flow: MessageCircle }
 const factors: Factor[] = ['Meaningful Goal', 'Personal Control', 'Fast Feedback', 'Other']
 const repoUrl = 'https://github.com/ProgrammerLevpetrogradsky/LifeGym'
+const hubUrl = 'https://lifeos-demo-kappa.vercel.app/'
 
-function App({ storageKey, account, existingAccount = false, journalCloudToken, guestCloud = false }: { storageKey?: string; account?: (language: AppLanguage, initialMode?: AccountEntryMode) => ReactNode; existingAccount?: boolean; journalCloudToken?: () => Promise<string | null>; guestCloud?: boolean }) {
+function App({ storageKey, account, journalCloudToken, guestCloud = false }: { storageKey?: string; account?: (language: AppLanguage, initialMode?: AccountEntryMode) => ReactNode; existingAccount?: boolean; journalCloudToken?: () => Promise<string | null>; guestCloud?: boolean }) {
   const effectiveStorageKey = storageKey ?? STORAGE_KEY
   const [cloudEnabled, setCloudEnabled] = useState(() => {
     try { return Boolean(journalCloudToken && localStorage.getItem(cloudConsentKey(effectiveStorageKey)) === 'true' && (!guestCloud || readRecoveryCode())) }
@@ -38,7 +37,6 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
   })
   const [recoveryCode, setRecoveryCode] = useState(() => guestCloud ? readRecoveryCode() : null)
   const [loadResult, setLoadResult] = useState(() => loadData(storageKey))
-  const [onboardingMode, setOnboardingMode] = useState(() => initialOnboardingMode(storageKey, localStorage, window.location.search, existingAccount))
   const data = loadResult.data
   const language = data.language ?? 'en'
   const timeFormat = data.timeFormat ?? (language === 'ru' ? '24' : '12')
@@ -650,29 +648,6 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
   const breakReminder = reminderDueAt !== null && <BreakReminder dueAt={reminderDueAt}
     onResume={resumeSession} onDismiss={dismissBreakReminder} />
 
-  const clearOnboardingPreviewUrl = () => {
-    const url = new URL(window.location.href)
-    if (!url.searchParams.has('onboarding')) return
-    url.searchParams.delete('onboarding')
-    window.history.replaceState(null, '', url.pathname + url.search + url.hash)
-  }
-
-  const finishOnboarding = (name: string, destination: OnboardingDestination) => {
-    if (onboardingMode === 'first-run') {
-      if (!update(current => ({ ...current, displayName: name || undefined }))) return false
-      try { localStorage.setItem(completionKey(storageKey), 'done') } catch { /* Saved data itself marks an existing user. */ }
-    }
-    clearOnboardingPreviewUrl()
-    setOnboardingMode(null)
-    if (destination === 'focus') startFocus()
-    else navigate(destination)
-    return true
-  }
-
-  if (onboardingMode) return <WebOnboarding mode={onboardingMode} displayName={data.displayName ?? ''} language={language}
-    account={account && !existingAccount ? mode => account(language, mode) : undefined}
-    onComplete={finishOnboarding} onClose={() => { clearOnboardingPreviewUrl(); setOnboardingMode(null) }} />
-
   if (data.activeSession && ((!pausedSession && minimizedFocusScreen !== data.activeSession.id) ||
     (pausedSession !== null && pausedFocusScreen === pausedSession.id))) return <>
     <MainFocus
@@ -753,12 +728,12 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
           showFocusShortcut={onHome('focus')}
           searchIncludesJournal={showJournal}
           repoUrl={repoUrl}
+          hubUrl={hubUrl}
           tasks={data.tasks}
           focusTaskTitle={data.activeSession?.taskTitle}
           focusRunning={Boolean(data.activeSession && !pausedSession)}
           pausedActiveTime={data.activeSession ? elapsedClock(focusedDuration(data.activeSession, now)) : undefined}
           showPausedTime={showTime}
-          displayName={data.displayName}
           language={data.language ?? 'en'}
           onPauseFocus={() => pauseSession(false, false)}
           onContinueFocus={() => resumeSession(true)}

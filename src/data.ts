@@ -26,7 +26,7 @@ export function shortcutVisible(data: LifeOSData, shortcut: Shortcut, location: 
   return data.shortcutPreferences?.[shortcut]?.[location] ?? (
     location === 'home'
       ? !((shortcut === 'journal' || shortcut === 'flow') && data.hiddenSections?.includes(shortcut))
-      : shortcut === 'journal' || shortcut === 'tasks'
+      : false
   )
 }
 export const breakReminderMinutes = [0, 5, 10, 15, 20] as const

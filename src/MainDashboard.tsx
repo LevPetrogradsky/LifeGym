@@ -15,12 +15,12 @@ interface MainDashboardProps {
   showFocusShortcut: boolean
   searchIncludesJournal: boolean
   repoUrl: string
+  hubUrl: string
   tasks: Task[]
   focusTaskTitle?: string
   focusRunning?: boolean
   pausedActiveTime?: string
   showPausedTime?: boolean
-  displayName?: string
   language?: 'en' | 'ru'
   onPauseFocus: () => void
   onContinueFocus: () => void
@@ -86,7 +86,7 @@ function BreakCard({ taskTitle, activeTime, showTime, running, language, onPause
   </section>
 }
 
-export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, repoUrl, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, displayName, language = 'en', onPauseFocus, onContinueFocus, onReturnToFocus, onFinishPaused, onCancelFocus, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onAddExercise, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
+export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, repoUrl, hubUrl, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, language = 'en', onPauseFocus, onContinueFocus, onReturnToFocus, onFinishPaused, onCancelFocus, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onAddExercise, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
   const t = (text: string) => translate(language, text)
   const [screen, setScreen] = useState(initialScreen)
   const [filter, setFilter] = useState<TaskList | 'completed'>('today')
@@ -119,9 +119,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
   const completed = tasks.filter(task => task.completedAt !== null)
     .sort((a, b) => Date.parse(b.completedAt!) - Date.parse(a.completedAt!))
   const doneToday = completed.filter(task => taskList(task) === 'today' && new Date(task.completedAt!).toDateString() === today)
-  const nextTask = activeToday[0]
   const todayIsFull = activeToday.length >= todayTaskLimit
-  const totalToday = activeToday.length + doneToday.length
   const editorTask = editor?.id ? tasks.find(task => task.id === editor.id) : undefined
   const cannotAddToToday = todayIsFull && !(editorTask && (editorTask.completedAt || taskList(editorTask) === 'today'))
   const visibleActive = filter === 'completed' ? [] : active.filter(task => taskList(task) === filter)
@@ -223,17 +221,15 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
 
   const breakCard = focusTaskTitle !== undefined && <BreakCard taskTitle={focusTaskTitle} activeTime={pausedActiveTime ?? '00:00:00'} showTime={showPausedTime} running={focusRunning} language={language}
     onPause={onPauseFocus} onContinue={onContinueFocus} onReturn={onReturnToFocus} onFinish={onFinishPaused} onCancel={onCancelFocus} />
-  const addTaskButton = <button type="button" className={`life-main-add-task${!nextTask && !breakCard ? ' life-main-add-task-inline' : ''}`} onClick={() => openTasks(true)}>
-    <span className="life-main-shortcut-icon add"><Plus size={21} aria-hidden="true" /></span>
-    <strong>{t('Add a task')}</strong>
-  </button>
-
   if (screen === 'home') return <main className="life-main life-main-home">
     <header className="life-main-hero">
-      <div><h1 ref={heading} tabIndex={-1}>{language === 'ru' ? 'Добро пожаловать' : 'Welcome'}{displayName?.trim() ? `, ${displayName.trim()}` : ''}!</h1>
+      <div><h1 ref={heading} tabIndex={-1}>LiveGym</h1>
         <p className="life-main-thanks">{language === 'ru' ? 'LifeGym: запланируйте занятие и сохраните запись о тренировке.' : 'LifeGym: plan a session and keep a record of your workout.'}</p>
         <a className="life-main-github" href={repoUrl} target="_blank" rel="noopener noreferrer">
           <Github size={15} aria-hidden="true" /> {t('View on GitHub')}
+        </a>
+        <a className="life-main-github" href={hubUrl}>
+          <ArrowLeft size={15} aria-hidden="true" /> {language === 'ru' ? 'Вернуться в LiveHub' : 'Back to LiveHub'}
         </a>
       </div>
       <div className="life-main-hero-actions">
@@ -248,32 +244,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
     </header>
 
     <div className="life-main-stack">
-      {breakCard || <section className="life-main-today" aria-labelledby="life-main-today">
-        <div className="life-main-today-heading">
-          <h2 id="life-main-today">{t('Today')}</h2>
-          {totalToday > 0 && <span>{doneToday.length} / {totalToday} {language === 'ru' ? 'выполнено' : 'done'}</span>}
-        </div>
-        {totalToday > 0 && <progress max={totalToday} value={doneToday.length} aria-label="Today’s task progress" />}
-        {nextTask ? <>
-          <div className="life-main-next">
-            <button type="button" className="life-main-complete" aria-label={`Complete ${nextTask.title}`} onClick={() => toggleTask(nextTask)}><Circle size={22} /></button>
-            <div>
-              <button type="button" className="life-main-task-link" aria-haspopup="dialog" onClick={() => onOpenTask(nextTask.id)}>
-                <span>{nextTask.title}</span><ChevronRight size={16} aria-hidden="true" />
-              </button>
-              <p>{t('Next up')}</p>
-            </div>
-            <button type="button" className="life-main-icon life-main-start-small" aria-label={`Start ${nextTask.title}`} onClick={() => onStart(nextTask)}>
-              <Play size={17} fill="currentColor" aria-hidden="true" />
-            </button>
-          </div>
-        </> : <div className="life-main-today-empty-state">
-          <p className="life-main-today-empty">{t(doneToday.length ? 'You’re all caught up' : 'No tasks for today')}</p>
-          {addTaskButton}
-        </div>}
-      </section>}
-
-      {(nextTask || breakCard) && addTaskButton}
+      {breakCard}
 
       <nav className="life-main-shortcuts" aria-label="Home shortcuts">
         {showTasksShortcut && <button type="button" onClick={() => openTasks()}>
