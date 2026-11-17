@@ -1,4 +1,4 @@
-import type { WorkoutExercise, WorkoutRecord, WorkoutSet } from './workout'
+import { emptyExercise, type WorkoutExercise, type WorkoutRecord, type WorkoutSet } from './workout'
 import type { AppLanguage } from '../language'
 
 interface Props {
@@ -6,8 +6,6 @@ interface Props {
   onChange: (workout?: WorkoutRecord) => void
   language: AppLanguage
 }
-
-const emptyExercise = (): WorkoutExercise => ({ name: '', sets: [{ reps: 0 }] })
 
 export default function WorkoutFields({ workout, onChange, language }: Props) {
   const ru = language === 'ru'
@@ -36,7 +34,7 @@ export default function WorkoutFields({ workout, onChange, language }: Props) {
       </div>
       <label>
         <span>{ru ? 'Название' : 'Name'}</span>
-        <input type="text" maxLength={120} value={exercise.name} placeholder={ru ? 'Например, жим ногами' : 'e.g. Leg press'}
+        <input type="text" data-workout-name maxLength={120} value={exercise.name} placeholder={ru ? 'Например, жим ногами' : 'e.g. Leg press'}
           aria-label={ru ? `Название упражнения ${exerciseIndex + 1}` : `Exercise ${exerciseIndex + 1} name`}
           onChange={event => changeExercise(exerciseIndex, { ...exercise, name: event.currentTarget.value })} />
       </label>

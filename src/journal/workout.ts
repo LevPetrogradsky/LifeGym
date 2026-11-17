@@ -13,6 +13,8 @@ export interface WorkoutRecord {
   exercises: WorkoutExercise[]
 }
 
+export const emptyExercise = (): WorkoutExercise => ({ name: '', sets: [{ reps: 0 }] })
+
 const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
 

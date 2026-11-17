@@ -33,7 +33,7 @@ interface MainDashboardProps {
   onStart: (task: Task) => void
   onStartOpenFocus: () => void
   onJournal?: () => void
-  onPresets: () => void
+  onAddExercise?: () => void
   onFocusHistory: () => void
   onSettings: () => void
   onSearch: () => void
@@ -86,7 +86,7 @@ function BreakCard({ taskTitle, activeTime, showTime, running, language, onPause
   </section>
 }
 
-export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, repoUrl, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, displayName, language = 'en', onPauseFocus, onContinueFocus, onReturnToFocus, onFinishPaused, onCancelFocus, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onPresets, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
+export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, repoUrl, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, displayName, language = 'en', onPauseFocus, onContinueFocus, onReturnToFocus, onFinishPaused, onCancelFocus, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onAddExercise, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
   const t = (text: string) => translate(language, text)
   const [screen, setScreen] = useState(initialScreen)
   const [filter, setFilter] = useState<TaskList | 'completed'>('today')
@@ -288,10 +288,10 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
           <span className="life-main-shortcut-icon focus"><Play size={21} aria-hidden="true" /></span>
           <strong>{breakCard ? (language === 'ru' ? 'К таймеру' : 'Return to timer') : t('Start Focus')}</strong>
         </button>}
-        <button type="button" onClick={onPresets}>
-          <span className="life-main-shortcut-icon focus"><Settings2 size={21} aria-hidden="true" /></span>
-          <strong>{t('Presets')}</strong>
-        </button>
+        {onAddExercise && <button type="button" onClick={onAddExercise}>
+          <span className="life-main-shortcut-icon journal"><Plus size={21} aria-hidden="true" /></span>
+          <strong>{t('Add Exercise')}</strong>
+        </button>}
       </nav>
       <button type="button" className="life-main-text life-main-history-link" onClick={onFocusHistory}>
         <History size={17} aria-hidden="true" /> {t('Focus history')} <ChevronRight size={15} aria-hidden="true" />

@@ -4,6 +4,7 @@ const russian: Record<string, string> = {
   'Home': 'Главная',
   'Tasks': 'Задачи',
   'Workout Tracker': 'Трекер тренировок',
+  'Add Exercise': 'Добавить упражнение',
   'Back to Workout Tracker': 'Вернуться к трекеру тренировок',
   'Settings': 'Настройки',
   'Ask LifeOS': 'Спросить LifeOS',

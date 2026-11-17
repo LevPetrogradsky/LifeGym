@@ -7,6 +7,7 @@ import { ArrowRight, BookOpen, ClipboardList, House, Leaf, MessageCircle, Play, 
 import { elapsedClock, focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, timerView, visibleShortcuts, STORAGE_KEY, type Factor, type JournalFolderAppearance, type LifeOSData, type Shortcut, type ShortcutLocation, type Task } from './data'
 import { base64ToBytes, buildNoteBlocks, makeImportedNote, type SourceIndex } from './notes'
 import JournalPage, { type JournalDraft } from './journal/JournalPage'
+import { emptyExercise } from './journal/workout'
 import { clearJournalDraft, readJournalDraft, writeJournalDraft } from './journal/drafts'
 import { JournalCloudSync, guestJournalCount, withJournalChanges } from './journal/cloud-sync'
 import { cloudConsentKey, guestRecoveryStorageKey, normalizeRecoveryCode, readRecoveryCode } from './journal/guest-recovery'
@@ -14,8 +15,7 @@ import FlowEnginePage from './flow/FlowEnginePage'
 import BreakReminder from './settings/BreakReminder'
 import SettingsPage from './settings/SettingsPage'
 import PostFocusChoice from './PostFocusChoice'
-import FocusPresets from './presets/PresetsPage'
-import { applyFocusPreset, findFocusPreset, type FocusPresetId } from './presets/focusPresets'
+import { findFocusPreset } from './presets/focusPresets'
 import { useDeleteUndo } from './delete-undo'
 import UnifiedSearch from './search/UnifiedSearch'
 import type { AccountEntryMode } from './settings/AccountPanel'
@@ -25,7 +25,7 @@ import { translate, type AppLanguage } from './language'
 import './reflection-confirmation.css'
 import './mobile-navigation.css'
 
-type View = Exclude<Shortcut, 'focus'> | 'main' | 'ask' | 'settings' | 'focus-history' | 'presets'
+type View = Exclude<Shortcut, 'focus'> | 'main' | 'ask' | 'settings' | 'focus-history'
 const shortcutIcons = { tasks: ClipboardList, journal: BookOpen, focus: Play, flow: MessageCircle }
 const factors: Factor[] = ['Meaningful Goal', 'Personal Control', 'Fast Feedback', 'Other']
 const repoUrl = 'https://github.com/ProgrammerLevpetrogradsky/GymOS'
@@ -55,7 +55,6 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     catch { return defaultView }
   })
   const [homeNavigationKey, setHomeNavigationKey] = useState(0)
-  const [presetsReturnView, setPresetsReturnView] = useState<View>(defaultView)
   const [reflectionReturnView, setReflectionReturnView] = useState<View>(defaultView)
   const [reflectionNotice, setReflectionNotice] = useState('')
   const [postFocusReflection, setPostFocusReflection] = useState(false)
@@ -87,6 +86,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
   const [taskHistoryId, setTaskHistoryId] = useState<string | null>(null)
   const [journalTaskId, setJournalTaskId] = useState<string | undefined>()
   const [journalDraft, setJournalDraft] = useState<JournalDraft>(() => readJournalDraft(storageKey) ?? { text: '' })
+  const [addExerciseRequest, setAddExerciseRequest] = useState(0)
   const [journalDraftError, setJournalDraftError] = useState(false)
   const journalDraftRef = useRef(journalDraft)
   const journalCloud = useRef<JournalCloudSync | null>(null)
@@ -572,45 +572,16 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const openPresets = () => {
-    setPresetsReturnView(view)
-    navigate('presets')
-  }
-
-  const applyPreset = (id: FocusPresetId) => {
-    const preset = findFocusPreset(id)
-    if (!preset) return false
-    const idle = !dataRef.current.activeSession && !dataRef.current.pendingSession
-    const startedAt = Date.now()
-    const sessionId = crypto.randomUUID()
-    const compact = timerView(dataRef.current) === 'compact'
-    const saved = update(current => {
-      const configured = applyFocusPreset(current, id)
-      if (!idle || configured.activeSession || configured.pendingSession) return configured
-      return {
-        ...configured,
-        activeSession: {
-          id: sessionId,
-          taskId: null,
-          taskTitle: preset.label,
-          startedAt: new Date(startedAt).toISOString(),
-          silenceBreakReminders: preset.silenceBreakReminders,
-        },
-      }
+  const openAddExercise = () => {
+    changeJournalDraft(current => {
+      const exercises = current.workout?.exercises ?? []
+      const lastExercise = exercises.at(-1)
+      if (lastExercise && !lastExercise.name.trim() && lastExercise.sets.every(set => !set.reps)) return current
+      if (exercises.length >= 20) return current
+      return { ...current, workout: { exercises: [...exercises, emptyExercise()] } }
     })
-    if (saved && idle) {
-      if (compact) {
-        try { localStorage.setItem(`${storageKey ?? STORAGE_KEY}.focus-minimized`, sessionId) } catch { setStorageError(true) }
-        setMinimizedFocusScreen(sessionId)
-        navigate(showHome ? 'main' : defaultView)
-      } else {
-        try { localStorage.removeItem(`${storageKey ?? STORAGE_KEY}.focus-minimized`) } catch { /* Focus still opens. */ }
-        setMinimizedFocusScreen(undefined)
-      }
-      setPausedFocusScreen(undefined)
-      setNow(startedAt)
-    }
-    return saved
+    setAddExerciseRequest(request => request + 1)
+    navigate('journal')
   }
 
   const returnLabel = showHome ? 'Back to Home' : 'Back to Settings'
@@ -693,7 +664,8 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     }
     clearOnboardingPreviewUrl()
     setOnboardingMode(null)
-    navigate(destination === 'focus' ? 'presets' : destination)
+    if (destination === 'focus') startFocus()
+    else navigate(destination)
     return true
   }
 
@@ -799,7 +771,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
           onStart={startFocus}
           onStartOpenFocus={() => startFocus()}
           onJournal={onHome('journal') ? () => navigate('journal') : undefined}
-          onPresets={openPresets}
+          onAddExercise={onHome('journal') ? openAddExercise : undefined}
           onFocusHistory={() => navigate('focus-history')}
           onSettings={() => navigate('settings')}
           onSearch={() => setSearchOpen(true)}
@@ -815,14 +787,6 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
           }} />
         </main>}
 
-        {view === 'presets' && <FocusPresets
-          language={data.language ?? 'en'}
-          appliedPresetId={data.focusPresetId}
-          sessionState={data.pendingSession ? 'pending' : data.activeSession ? 'active' : 'idle'}
-          onApply={applyPreset}
-          onBack={() => navigate(presetsReturnView)}
-        />}
-
         {(view === 'flow' || view === 'focus-history') && <FlowEnginePage key={view}
           timeFormat={timeFormat}
           language={language}
@@ -837,6 +801,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
 
         {view === 'journal' && (
           <JournalPage language={language} timeFormat={timeFormat} entries={data.journal} folders={data.journalFolders ?? []} draft={journalDraft} onDraftChange={changeJournalDraft}
+            focusExerciseRequest={addExerciseRequest}
             draftSaveError={journalDraftError}
             draftStorageKey={storageKey} onDraftStorageError={() => setStorageError(true)}
             cloudStatus={cloudEnabled ? journalCloudStatus : undefined}
@@ -885,7 +850,6 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
               value: data.postFocusAction,
               onChange: postFocusAction => update(current => ({ ...current, postFocusAction })),
             }}
-            onOpenPresets={openPresets}
           />
         )}
       </div>

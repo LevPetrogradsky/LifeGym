@@ -40,6 +40,7 @@ interface JournalPageProps {
   onDeleteFolder: (id: string) => boolean
   onMoveEntry: (id: string, folderId?: string) => boolean
   draft: JournalDraft
+  focusExerciseRequest?: number
   draftSaveError?: boolean
   onDraftChange: Dispatch<SetStateAction<JournalDraft>>
   draftStorageKey?: string
@@ -486,7 +487,7 @@ function JournalCard({ entry, entries, folders, onEdit, onDelete, onMove, onOpen
 export default function JournalPage({
   language = 'en', timeFormat,
   onReturn, returnLabel,
-  entries, folders, cloudStatus, guestImportCount = 0, onImportGuest, onSaveFolder, onReorderFolders, onDeleteFolder, onMoveEntry, draft, draftSaveError, onDraftChange, draftStorageKey, onDraftStorageError, linkedTaskTitle, onUnlinkTask, sessionPrompt, onDismissPrompt, onCreate, onEdit, onDelete, searchResult, onSelectSearchEntry,
+  entries, folders, cloudStatus, guestImportCount = 0, onImportGuest, onSaveFolder, onReorderFolders, onDeleteFolder, onMoveEntry, draft, draftSaveError, onDraftChange, focusExerciseRequest = 0, draftStorageKey, onDraftStorageError, linkedTaskTitle, onUnlinkTask, sessionPrompt, onDismissPrompt, onCreate, onEdit, onDelete, searchResult, onSelectSearchEntry,
 }: JournalPageProps) {
   const t = (text: string) => translate(language, text)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -504,6 +505,14 @@ export default function JournalPage({
   useEffect(() => {
     if (sessionPrompt) window.scrollTo(0, 0)
   }, [sessionPrompt])
+
+  useEffect(() => {
+    if (!focusExerciseRequest) return
+    const inputs = document.querySelectorAll<HTMLInputElement>('.journal-form-new [data-workout-name]')
+    const name = inputs.item(inputs.length - 1)
+    name?.focus({ preventScroll: true })
+    name?.scrollIntoView({ block: 'center' })
+  }, [focusExerciseRequest])
 
   useEffect(() => {
     if (!searchResult) return

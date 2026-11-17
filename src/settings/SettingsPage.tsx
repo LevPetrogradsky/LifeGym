@@ -30,7 +30,6 @@ interface SettingsPageProps {
   onDisplayNameChange: (name: string) => boolean
   focusCheckin?: { enabled: boolean; onChange: (enabled: boolean) => void }
   postFocusAction?: { value?: PostFocusAction; onChange: (action: PostFocusAction) => void }
-  onOpenPresets?: () => void
   timerDefaultView: 'full' | 'compact'
   onTimerDefaultViewChange: (view: 'full' | 'compact') => void
 }
@@ -122,7 +121,7 @@ function AboutLifeOS({ repoUrl, language }: { repoUrl: string; language: AppLang
 export default function SettingsPage({
   account,
   journalSync,
-  theme, onThemeChange, language, onLanguageChange, timeFormat, onTimeFormatChange, interactiveTips, onInteractiveTipsChange, showHome, onHomeVisibilityChange, shortcutVisible, onShortcutChange, onExport, onImport, repoUrl, focusCheckin, postFocusAction, onOpenPresets,
+  theme, onThemeChange, language, onLanguageChange, timeFormat, onTimeFormatChange, interactiveTips, onInteractiveTipsChange, showHome, onHomeVisibilityChange, shortcutVisible, onShortcutChange, onExport, onImport, repoUrl, focusCheckin, postFocusAction,
   reminderMinutes, onReminderMinutesChange, displayName, onDisplayNameChange, timerDefaultView, onTimerDefaultViewChange,
 }: SettingsPageProps) {
   const t = (text: string) => translate(language, text)
@@ -179,7 +178,6 @@ export default function SettingsPage({
     { title: t('Focus'), section: 'focus', target: 'focus', keywords: 'фокус timer таймер' },
     { title: language === 'ru' ? 'Вид таймера по умолчанию' : 'Default timer view', section: 'focus', target: 'timer-view', keywords: 'compact full screen компактный экран' },
     { title: t('Interactive tips'), section: 'focus', target: 'interactive-tips', keywords: 'hints подсказки' },
-    ...(onOpenPresets ? [{ title: t('Presets'), section: 'focus' as const, target: 'presets', keywords: 'режимы фокуса work rest' }] : []),
     ...(postFocusAction ? [{ title: t('After focus'), section: 'focus' as const, target: 'after-focus', keywords: 'reflection rating рефлексия оценка' }] : []),
     ...(focusCheckin && !postFocusAction?.value ? [{ title: t('More focus options'), section: 'focusOptions' as const, target: 'focus-options', keywords: 'quick rating оценка' }] : []),
     { title: t('Break reminder'), section: 'focus', target: 'break-reminder', keywords: 'break pause перерыв напоминание' },
@@ -299,9 +297,6 @@ export default function SettingsPage({
             <input type="checkbox" role="switch" aria-label={t('Interactive tips')} checked={interactiveTips}
               onChange={event => onInteractiveTipsChange(event.currentTarget.checked)} />
           </label>
-          {onOpenPresets && <button id="settings-target-presets" type="button" className="settings-page__action" onClick={onOpenPresets}>
-            {t('Presets')} <ChevronRight size={17} aria-hidden="true" />
-          </button>}
           {postFocusAction && <fieldset id="settings-target-after-focus" className="settings-page__post-focus">
             <legend>{t('After focus')}</legend>
             {([
