@@ -28,7 +28,7 @@ import './mobile-navigation.css'
 type View = Exclude<Shortcut, 'focus'> | 'main' | 'ask' | 'settings' | 'focus-history' | 'presets'
 const shortcutIcons = { tasks: ClipboardList, journal: BookOpen, focus: Play, flow: MessageCircle }
 const factors: Factor[] = ['Meaningful Goal', 'Personal Control', 'Fast Feedback', 'Other']
-const repoUrl = 'https://github.com/ProgrammerLevpetrogradsky/LifeOS-Public'
+const repoUrl = 'https://github.com/ProgrammerLevpetrogradsky/GymOS'
 
 function App({ storageKey, account, existingAccount = false, journalCloudToken, guestCloud = false }: { storageKey?: string; account?: (language: AppLanguage, initialMode?: AccountEntryMode) => ReactNode; existingAccount?: boolean; journalCloudToken?: () => Promise<string | null>; guestCloud?: boolean }) {
   const effectiveStorageKey = storageKey ?? STORAGE_KEY
@@ -661,9 +661,9 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
   </>
 
   const renderBrand = (size: number) => {
-    const logo = <><span className="brand-mark"><Leaf size={size} strokeWidth={2.4} /></span><span>LifeOS<span className="brand-dot">.</span></span></>
+    const logo = <><span className="brand-mark"><Leaf size={size} strokeWidth={2.4} /></span><span>GymOS<span className="brand-dot">.</span></span></>
     return showHome
-      ? <button className="brand" onClick={() => navigate('main')} aria-label="LifeOS home">{logo}</button>
+      ? <button className="brand" onClick={() => navigate('main')} aria-label="GymOS home">{logo}</button>
       : <div className="brand">{logo}</div>
   }
 
@@ -740,7 +740,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
   if (data.pendingSession) return (<>
     <main className="checkin-screen page-container">
       {storageError && <div className="storage-error" role="alert">{t('Your browser could not save the check-in. Your answers are still here. Check available storage and try again.')}</div>}
-      <div className="focus-top"><div className="brand-mark"><Leaf size={18} strokeWidth={2.3} /></div><span>{t('LifeOS / Check-in')}</span></div>
+      <div className="focus-top"><div className="brand-mark"><Leaf size={18} strokeWidth={2.3} /></div><span>{t('GymOS / Check-in')}</span></div>
       <div className="checkin-card">
         <div className="section-icon"><Sparkles size={20} /></div>
         <p className="eyebrow">{t('A MOMENT TO REFLECT')}</p>
@@ -766,7 +766,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
       <aside className="sidebar">
         {renderBrand(20)}
         <nav aria-label="Main navigation">{renderNavigation(19)}</nav>
-        <div className="sidebar-foot"><div className="sidebar-quote"><span>✳</span><p>{t('A little space for what matters.')}</p></div><span>LifeOS v0.1</span></div>
+        <div className="sidebar-foot"><div className="sidebar-quote"><span>✳</span><p>{t('A little space for what matters.')}</p></div><span>GymOS preview</span></div>
       </aside>
 
       <div className="main-area">

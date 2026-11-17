@@ -225,7 +225,7 @@ const russian: Record<string, string> = {
   'Earlier reflections': 'Ранние рефлексии',
   'Explore this reflection': 'Рассмотреть эту рефлексию',
   'Your browser could not save the check-in. Your answers are still here. Check available storage and try again.': 'Не удалось сохранить оценку в браузере. Ответы остались на экране. Проверьте доступное место и попробуйте ещё раз.',
-  'LifeOS / Check-in': 'LifeOS / Быстрая оценка',
+  'GymOS / Check-in': 'GymOS / Быстрая оценка',
   'A MOMENT TO REFLECT': 'МИНУТА ДЛЯ РЕФЛЕКСИИ',
   'How did it feel?': 'Как прошла сессия?',
   'Your focus session is complete.': 'Сессия фокуса завершена.',

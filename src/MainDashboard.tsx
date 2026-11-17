@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Circle, ClipboardList, Flag, Github, GripHorizontal, Heart, History, ListTodo, Maximize2, Pause, Pencil, Play, Plus, Search, Settings2, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Circle, ClipboardList, Flag, Github, GripHorizontal, History, ListTodo, Maximize2, Pause, Pencil, Play, Plus, Search, Settings2, Trash2, X } from 'lucide-react'
 import { taskLists, type LifeOSData, type Task, type TaskList } from './data'
 import { todayTaskLimit } from './task-rules'
 import { translate } from './language'
@@ -231,15 +231,9 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
   if (screen === 'home') return <main className="life-main life-main-home">
     <header className="life-main-hero">
       <div><h1 ref={heading} tabIndex={-1}>{language === 'ru' ? 'Добро пожаловать' : 'Welcome'}{displayName?.trim() ? `, ${displayName.trim()}` : ''}!</h1>
-        <p className="life-main-thanks">{language === 'ru' ? 'Спасибо' : 'Thank you'} <Heart size={13} fill="currentColor" aria-hidden="true" /></p>
-        <a className="life-main-discord" href="https://discord.gg/y4s67MzZr" target="_blank" rel="noopener noreferrer">
-          {language === 'ru' ? 'Вступить в Discord' : 'Join Discord'} <ArrowRight size={15} aria-hidden="true" />
-        </a>
+        <p className="life-main-thanks">{language === 'ru' ? 'GymOS: запланируйте занятие и сохраните запись о тренировке.' : 'GymOS: plan a session and keep a record of your workout.'}</p>
         <a className="life-main-github" href={repoUrl} target="_blank" rel="noopener noreferrer">
           <Github size={15} aria-hidden="true" /> {t('View on GitHub')}
-        </a>
-        <a className="life-main-support" href="https://ko-fi.com/lifeosapp" target="_blank" rel="noopener noreferrer">
-          <Heart size={15} aria-hidden="true" /> {language === 'ru' ? 'Поддержать LifeOS' : 'Support LifeOS'}
         </a>
       </div>
       <div className="life-main-hero-actions">
