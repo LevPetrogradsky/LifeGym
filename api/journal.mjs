@@ -50,7 +50,7 @@ function validApproximateLocation(value) {
 
 // src/data.ts
 var shortcuts = [
-  { id: "journal", label: "Journal" },
+  { id: "journal", label: "Workout Tracker" },
   { id: "tasks", label: "Tasks" },
   { id: "focus", label: "Focus" },
   { id: "flow", label: "3 questions" }

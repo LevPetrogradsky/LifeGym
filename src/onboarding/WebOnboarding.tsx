@@ -19,7 +19,7 @@ interface Props {
 
 const features = [
   { Icon: ClipboardList, title: 'Tasks', detail: 'Choose what matters today.' },
-  { Icon: BookOpen, title: 'Journal', detail: 'Keep a note when it comes to you.' },
+  { Icon: BookOpen, title: 'Workout Tracker', detail: 'Keep notes about your training.' },
   { Icon: Timer, title: 'Focus', detail: 'Give one thing your attention.' },
 ]
 

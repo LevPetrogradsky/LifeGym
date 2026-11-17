@@ -504,9 +504,9 @@ export default function JournalPage({
           <button type="button" className="journal-icon journal-search-toggle" aria-label={t(returnLabel)} onClick={onReturn}>
             <ArrowLeft size={21} aria-hidden="true" />
           </button>
-          <h1>{t('Journal')}</h1>
+          <h1>{t('Workout Tracker')}</h1>
         </div>
-        <button type="button" className="journal-icon journal-search-toggle" aria-label={t('Search journal')}
+        <button type="button" className="journal-icon journal-search-toggle" aria-label={t('Search workouts')}
           aria-haspopup="dialog" onClick={() => setSearchOpen(true)}>
           <Search size={21} aria-hidden="true" />
         </button>

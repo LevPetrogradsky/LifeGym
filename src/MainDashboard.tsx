@@ -244,7 +244,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
       </div>
       <div className="life-main-hero-actions">
         <span className="home-icon-action">
-          <button type="button" className="life-main-icon life-main-settings" aria-label={t(searchIncludesJournal ? 'Search tasks and journal' : 'Search tasks')}
+          <button type="button" className="life-main-icon life-main-settings" aria-label={t(searchIncludesJournal ? 'Search tasks and workouts' : 'Search tasks')}
             aria-haspopup="dialog" onClick={onSearch}><Search size={20} aria-hidden="true" /></button>
         </span>
         <span className="home-icon-action">
@@ -288,7 +288,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
         </button>}
         {onJournal && <button type="button" onClick={onJournal}>
           <span className="life-main-shortcut-icon journal"><BookOpen size={21} aria-hidden="true" /></span>
-          <strong>{t('Journal')}</strong>
+          <strong>{t('Workout Tracker')}</strong>
         </button>}
         {showFocusShortcut && <button type="button" onClick={breakCard ? onReturnToFocus : onStartOpenFocus}>
           <span className="life-main-shortcut-icon focus"><Play size={21} aria-hidden="true" /></span>

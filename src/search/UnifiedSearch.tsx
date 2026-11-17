@@ -42,7 +42,7 @@ export default function UnifiedSearch({ open, journalOnly, tasksOnly, tasks, ent
     ? `${entry.text} ${journalDayLabel(new Date(entry.createdAt), now, language)} ${journalDate(entry.createdAt, language)}`
     : entry.text)) : []
   const resultCount = taskMatches.length + entryMatches.length
-  const searchLabel = journalOnly ? 'Search journal entries' : tasksOnly ? 'Search tasks' : 'Search tasks and journal'
+  const searchLabel = journalOnly ? 'Search workout entries' : tasksOnly ? 'Search tasks' : 'Search tasks and workouts'
 
   useEffect(() => {
     const current = dialog.current
@@ -57,7 +57,7 @@ export default function UnifiedSearch({ open, journalOnly, tasksOnly, tasks, ent
   }
 
   return (
-    <dialog ref={dialog} className="unified-search" aria-label={t(journalOnly ? 'Search journal' : 'Search')}
+    <dialog ref={dialog} className="unified-search" aria-label={t(journalOnly ? 'Search workouts' : 'Search')}
       onClose={() => { setQuery(''); onClose() }}
       onClick={event => {
         if (event.target !== event.currentTarget) return
@@ -90,7 +90,7 @@ export default function UnifiedSearch({ open, journalOnly, tasksOnly, tasks, ent
           </li>)}</ul>
         </section>}
         {entryMatches.length > 0 && <section aria-labelledby={`${id}-journal`}>
-          <h3 id={`${id}-journal`}><BookOpen size={17} aria-hidden="true" />{t('Journal')}</h3>
+          <h3 id={`${id}-journal`}><BookOpen size={17} aria-hidden="true" />{t('Workout Tracker')}</h3>
           <ul>{entryMatches.map(entry => <li key={entry.id}>
             <button type="button" onClick={() => select(entry.id, onSelectEntry)}>
               <span><strong>{excerpt(entry.text, terms[0]) || t('Photo entry')}</strong><small>{journalDate(entry.createdAt, language)}</small></span>

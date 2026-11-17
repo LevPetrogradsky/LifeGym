@@ -618,7 +618,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
   const returnFromSection = () => navigate(showHome ? 'main' : 'settings')
   const reflectionReturnLabel = reflectionReturnView === 'main' ? 'Back to Home'
     : reflectionReturnView === 'ask' ? 'Back to Ask LifeOS'
-      : reflectionReturnView === 'journal' ? 'Back to Journal'
+      : reflectionReturnView === 'journal' ? 'Back to Workout Tracker'
         : reflectionReturnView === 'tasks' ? 'Back to Tasks' : 'Back to Settings'
 
   const openSearchEntry = (id: string) => {

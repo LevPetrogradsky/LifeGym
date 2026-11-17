@@ -6,11 +6,11 @@ export type Theme = 'light' | 'dark' | 'system'
 export const navigationSections = [
   { id: 'main', label: 'Home' },
   { id: 'flow', label: '3 questions' },
-  { id: 'journal', label: 'Journal' },
+  { id: 'journal', label: 'Workout Tracker' },
 ] as const
 export type NavigationSection = typeof navigationSections[number]['id']
 export const shortcuts = [
-  { id: 'journal', label: 'Journal' },
+  { id: 'journal', label: 'Workout Tracker' },
   { id: 'tasks', label: 'Tasks' },
   { id: 'focus', label: 'Focus' },
   { id: 'flow', label: '3 questions' },
