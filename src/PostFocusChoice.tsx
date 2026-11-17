@@ -22,7 +22,7 @@ export default function PostFocusChoice({ taskTitle, storageError, preferred, on
       <h1 id="post-focus-choice-title">{t('Focus session saved')}</h1>
       <p className="muted">{language === 'ru' ? `Сессия «${taskTitle}» сохранена в истории фокуса. Выберите, как её завершить.` : `Your session with “${taskTitle}” is in Focus history. Choose how to close this session.`}</p>
       <div className="post-focus-choice__options">
-        <button type="button" className="post-focus-choice__option" onClick={() => onChoose('reflection')}>
+        <button type="button" className={`post-focus-choice__option${preferred !== 'check-in' ? ' recommended' : ''}`} onClick={() => onChoose('reflection')}>
           <span className="post-focus-choice__icon"><MessageCircle size={22} aria-hidden="true" /></span>
           <span className="post-focus-choice__copy">
             <strong>{t('Write a reflection')} {preferred === 'reflection' && <span className="post-focus-choice__badge">{t('Preferred')}</span>}</strong>
@@ -30,7 +30,7 @@ export default function PostFocusChoice({ taskTitle, storageError, preferred, on
           </span>
           <ArrowRight size={20} aria-hidden="true" />
         </button>
-        <button type="button" className="post-focus-choice__option" onClick={() => onChoose('check-in')}>
+        <button type="button" className={`post-focus-choice__option${preferred === 'check-in' ? ' recommended' : ''}`} onClick={() => onChoose('check-in')}>
           <span className="post-focus-choice__icon"><Sparkles size={22} aria-hidden="true" /></span>
           <span className="post-focus-choice__copy">
             <strong>{t('Quick check-in')} {preferred === 'check-in' && <span className="post-focus-choice__badge">{t('Preferred')}</span>}</strong>

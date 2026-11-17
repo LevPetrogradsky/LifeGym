@@ -50,6 +50,113 @@ label.setting-link{position:relative;cursor:pointer}label.setting-link input[typ
   --peachText: #e4c9b5;
 }
 
+/* Quick check-in follows the same card and button language as Home. */
+.checkin-screen:has(.checkin-card) {
+  --checkin-ink: #172442;
+  --checkin-muted: #52617a;
+  --checkin-line: #dce5ef;
+  --checkin-surface: #fff;
+  --checkin-soft: #edf4fc;
+  --checkin-primary: #145adf;
+  --checkin-primary-hover: #0f4bbc;
+  --checkin-primary-text: #fff;
+  background: #f7f9fd;
+  color: var(--checkin-ink);
+}
+:root[data-theme=dark] .checkin-screen:has(.checkin-card) {
+  --checkin-ink: #ececec;
+  --checkin-muted: #b8b8b8;
+  --checkin-line: #3b3b3b;
+  --checkin-surface: #242424;
+  --checkin-soft: #303030;
+  --checkin-primary: #e2e2e2;
+  --checkin-primary-hover: #fff;
+  --checkin-primary-text: #202020;
+  background: #171717;
+}
+.checkin-screen:has(.checkin-card) .focus-top {
+  width: min(100%, 760px);
+  color: var(--checkin-muted);
+}
+.checkin-screen:has(.checkin-card) .focus-top .brand-mark {
+  background: var(--checkin-primary);
+  color: var(--checkin-primary-text);
+}
+.checkin-screen .checkin-card {
+  width: min(100%, 650px);
+  margin: clamp(34px, 7vh, 76px) auto 48px;
+  padding: clamp(24px, 5vw, 42px);
+  border: 1px solid var(--checkin-line);
+  border-radius: 24px;
+  background: var(--checkin-surface);
+  box-shadow: 0 16px 44px rgb(25 50 87 / 10%);
+}
+:root[data-theme=dark] .checkin-screen .checkin-card { box-shadow: 0 10px 28px rgb(0 0 0 / 13%); }
+.checkin-card .section-icon { background: var(--checkin-soft); color: var(--checkin-primary); }
+.checkin-card .eyebrow { color: var(--checkin-primary); }
+.checkin-card h1 {
+  color: var(--checkin-ink);
+  font-family: 'DM Sans', sans-serif;
+  font-size: clamp(32px, 6vw, 44px);
+  font-weight: 750;
+  letter-spacing: -.045em;
+  line-height: 1.08;
+}
+.checkin-card .muted { color: var(--checkin-muted); }
+.checkin-card .rating-field {
+  min-width: 0;
+  margin: 0 0 14px;
+  padding: 16px;
+  border: 1px solid var(--checkin-line);
+  border-radius: 16px;
+  background: var(--checkin-surface);
+}
+.checkin-card .rating-field legend { padding: 0 5px; color: var(--checkin-ink); }
+.checkin-card .rating-buttons button {
+  min-width: 0;
+  min-height: 48px;
+  border-color: var(--checkin-line);
+  border-radius: 11px;
+  background: var(--checkin-soft);
+  color: var(--checkin-ink);
+}
+.checkin-card .rating-buttons button.selected {
+  border-color: var(--checkin-primary);
+  background: var(--checkin-primary);
+  color: var(--checkin-primary-text);
+}
+.checkin-card .rating-ends { color: var(--checkin-muted); }
+.checkin-card .factor-field { margin: 28px 0 24px; }
+.checkin-card .factor-chip {
+  min-height: 44px;
+  padding: 9px 14px;
+  border-color: var(--checkin-line);
+  border-radius: 12px;
+  background: var(--checkin-surface);
+  color: var(--checkin-muted);
+}
+.checkin-card .factor-chip.selected {
+  border-color: var(--checkin-primary);
+  background: var(--checkin-soft);
+  color: var(--checkin-primary);
+}
+.checkin-card .checkin-submit {
+  min-height: 54px;
+  border-radius: 14px;
+  background: var(--checkin-primary);
+  color: var(--checkin-primary-text);
+  font-size: 15px;
+}
+.checkin-card .checkin-submit:not(:disabled):hover { background: var(--checkin-primary-hover); }
+.checkin-card .checkin-turn-off { color: var(--checkin-primary); }
+
+@media (max-width: 520px) {
+  .checkin-screen:has(.checkin-card) { padding: max(22px, env(safe-area-inset-top)) 20px 36px; }
+  .checkin-screen .checkin-card { margin-top: 30px; padding: 24px 20px; }
+  .checkin-card .rating-field { padding: 12px; }
+  .checkin-card .rating-buttons { gap: 6px; }
+}
+
 :root[data-theme=dark] .focus-screen {
   background: #171717;
   color: #ececec;

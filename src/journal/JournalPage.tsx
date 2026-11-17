@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type Dispatch, type SetStateAction } from 'react'
-import { ArrowLeft, BookOpen, ChevronDown, Folder, ImagePlus, MapPin, Mic, MoreHorizontal, Pencil, Search, Sparkles, Square, Trash2, X } from 'lucide-react'
+import { ArrowLeft, BookOpen, ChevronDown, Folder, ImagePlus, Link2, MapPin, Mic, MoreHorizontal, Pencil, Search, Sparkles, Square, Trash2, X } from 'lucide-react'
 import type { JournalEntry, JournalFolder, JournalFolderAppearance } from '../data'
 import JournalFolders from './JournalFolders'
 import EntryFolderDrag from './EntryFolderDrag'
@@ -19,6 +19,7 @@ export interface JournalDraft {
   text: string
   photo?: string
   location?: ApproximateLocation
+  linkedEntryId?: string
 }
 
 interface JournalPageProps {
@@ -61,12 +62,19 @@ interface JournalFormProps {
   folders?: JournalFolder[]
   folderId?: string
   onFolderChange?: (folderId: string) => void
+  entries: JournalEntry[]
+  currentEntryId?: string
   linkedTaskTitle?: string
   onUnlinkTask?: () => void
   onCancel?: () => void
 }
 
-function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folders, folderId, onFolderChange, linkedTaskTitle, onUnlinkTask, onCancel, language = 'en' }: JournalFormProps) {
+function entryLabel(entry: JournalEntry, language: AppLanguage) {
+  const excerpt = entry.text.trim().replace(/\s+/g, ' ').slice(0, 65)
+  return excerpt || `${language === 'ru' ? 'Запись от' : 'Entry from'} ${journalDate(entry.createdAt, language)}`
+}
+
+function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folders, folderId, onFolderChange, entries, currentEntryId, linkedTaskTitle, onUnlinkTask, onCancel, language = 'en' }: JournalFormProps) {
   const t = (text: string) => translate(language, text)
   const [photoError, setPhotoError] = useState('')
   const [saveError, setSaveError] = useState(false)
@@ -75,6 +83,7 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
   const [locating, setLocating] = useState(false)
   const [locationMessage, setLocationMessage] = useState('')
   const fileInput = useRef<HTMLInputElement>(null)
+  const linkDialog = useRef<HTMLDialogElement>(null)
   const textArea = useRef<HTMLTextAreaElement>(null)
   const languageMenu = useRef<HTMLDetailsElement>(null)
   const dictation = useJournalDictation(text => {
@@ -86,6 +95,7 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
   const dictating = dictation.status !== 'idle'
   const canSave = !loadingPhoto && (draft.text.trim().length > 0 || !!draft.photo)
   const selectedLanguage = dictationLanguages.find(([code]) => code === dictation.language) ?? dictationLanguages[0]
+  const selectedEntry = entries.find(entry => entry.id === draft.linkedEntryId)
 
   useEffect(() => {
     if (!onCancel || !textArea.current) return
@@ -200,10 +210,38 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
       />
       {!onCancel && folders && onFolderChange && <div className="journal-form-folder">
         <span className="journal-form-folder-label">{t('Save in folder')}</span>
-        <FolderPicker label={t('Save in folder')} value={folderId ?? ''}
+        <FolderPicker label={t('Save in folder')} value={folderId ?? ''} dialogClassName="journal-sheet--centered"
           options={[{ value: '', label: t('No folder') }, ...folders.map(folder => ({ value: folder.id, label: folder.name, folder }))]}
           onChange={onFolderChange} />
       </div>}
+      <div className="journal-note-link">
+        <button type="button" className="journal-folder-trigger journal-note-link-trigger" aria-haspopup="dialog"
+          onClick={() => linkDialog.current?.showModal()}>
+          <span className="journal-form-folder-label">{language === 'ru' ? 'Связать заметку' : 'Link a note'}</span>
+          <span className="journal-note-link-value">
+            <Link2 size={17} aria-hidden="true" />
+            <span>{selectedEntry ? entryLabel(selectedEntry, language) : (language === 'ru' ? 'Выбрать заметку' : 'Choose a note')}</span>
+            <ChevronDown size={16} aria-hidden="true" />
+          </span>
+        </button>
+        <JournalSheet dialog={linkDialog} label={language === 'ru' ? 'Связать заметку' : 'Link a note'}
+          closeLabel={language === 'ru' ? 'Закрыть выбор заметки' : 'Close note picker'} className="journal-sheet--centered">
+          {entries.filter(entry => entry.id !== currentEntryId).length === 0
+            ? <p className="journal-note-link-empty">{language === 'ru' ? 'Сначала сохраните другую заметку, чтобы связать её с этой.' : 'Save another note first, then link it here.'}</p>
+            : <ul>{entries.filter(entry => entry.id !== currentEntryId).map(entry => <li key={entry.id}>
+              <button type="button" aria-pressed={draft.linkedEntryId === entry.id} onClick={() => {
+                onDraftChange(current => ({ ...current, linkedEntryId: entry.id }))
+                linkDialog.current?.close()
+              }}><Link2 size={17} aria-hidden="true" /><span>{entryLabel(entry, language)}</span></button>
+            </li>)}</ul>}
+        </JournalSheet>
+        {draft.linkedEntryId && <div className="journal-note-link-selected">
+          <Link2 size={15} aria-hidden="true" />
+          <span>{selectedEntry ? entryLabel(selectedEntry, language) : (language === 'ru' ? 'Связанная заметка удалена' : 'Linked note was deleted')}</span>
+          <button type="button" className="journal-icon" aria-label={language === 'ru' ? 'Убрать связь' : 'Remove linked note'}
+            onClick={() => onDraftChange(current => ({ ...current, linkedEntryId: undefined }))}><X size={16} aria-hidden="true" /></button>
+        </div>}
+      </div>
       {draft.photo && (
         <div className="journal-photo-preview">
           <img src={draft.photo} alt={t('Attached photo preview')} />
@@ -271,14 +309,16 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
   )
 }
 
-function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult, draftStorageKey, onDraftStorageError, timeFormat, language = 'en' }: {
+function JournalCard({ entry, entries, folders, onEdit, onDelete, onMove, onOpenLinked, isSearchResult, draftStorageKey, onDraftStorageError, timeFormat, language = 'en' }: {
   language?: AppLanguage
   timeFormat: '12' | '24'
   entry: JournalEntry
+  entries: JournalEntry[]
   folders: JournalFolder[]
   onEdit: (draft: JournalDraft) => boolean
   onDelete: () => void
   onMove: (folderId?: string) => boolean
+  onOpenLinked: (id: string) => void
   isSearchResult: boolean
   draftStorageKey?: string
   onDraftStorageError?: () => void
@@ -286,9 +326,10 @@ function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult,
   const t = (text: string) => translate(language, text)
   const [action, setAction] = useState<'read' | 'edit' | 'delete'>(() => readOpenJournalEditor(draftStorageKey) === entry.id ? 'edit' : 'read')
   const folder = folders.find(folder => folder.id === entry.folderId)
+  const linkedEntry = entries.find(item => item.id === entry.linkedEntryId)
   const [draft, setDraft] = useState<JournalDraft>(() => readOpenJournalEditor(draftStorageKey) === entry.id
-    ? readJournalDraft(draftStorageKey, entry.id) ?? { text: entry.text, photo: entry.photo, location: entry.location }
-    : { text: entry.text, photo: entry.photo, location: entry.location })
+    ? readJournalDraft(draftStorageKey, entry.id) ?? { text: entry.text, photo: entry.photo, location: entry.location, linkedEntryId: entry.linkedEntryId }
+    : { text: entry.text, photo: entry.photo, location: entry.location, linkedEntryId: entry.linkedEntryId })
   const draftRef = useRef(draft)
   const [draftSaveError, setDraftSaveError] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -321,7 +362,7 @@ function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult,
       actionMenu.current.open = false
       actionMenu.current.querySelector('summary')?.focus()
     }
-    const next = readJournalDraft(draftStorageKey, entry.id) ?? { text: entry.text, photo: entry.photo, location: entry.location }
+    const next = readJournalDraft(draftStorageKey, entry.id) ?? { text: entry.text, photo: entry.photo, location: entry.location, linkedEntryId: entry.linkedEntryId }
     draftRef.current = next
     setDraft(next)
     if (!writeOpenJournalEditor(entry.id, draftStorageKey)) onDraftStorageError?.()
@@ -359,6 +400,11 @@ function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult,
             {folder && <span className="journal-entry-folder"><FolderGlyph {...folder} size={12} />{folder.name}</span>}
           </div>
           {entry.text && <p>{entry.text}</p>}
+          {entry.linkedEntryId && (linkedEntry
+            ? <button type="button" className="journal-entry-linked" onClick={() => onOpenLinked(linkedEntry.id)}>
+              <Link2 size={14} aria-hidden="true" />{entryLabel(linkedEntry, language)}
+            </button>
+            : <span className="journal-entry-linked journal-entry-linked-missing"><Link2 size={14} aria-hidden="true" />{language === 'ru' ? 'Связанная заметка удалена' : 'Linked note was deleted'}</span>)}
         </div>
         {action !== 'delete' && folders.length > 0 && <EntryFolderDrag folders={folders} entry={entry}
           onMove={onMove} onChooseFolder={() => {
@@ -408,7 +454,7 @@ function JournalCard({ entry, folders, onEdit, onDelete, onMove, isSearchResult,
         </div>
       )}
       <JournalSheet dialog={editDialog} label={t('Edit entry')} closeLabel={t('Close entry editor')} onRequestClose={closeEditor}>
-        {action === 'edit' && <JournalForm language={language} id={`journal-edit-${entry.id}`} draft={draft} draftSaveError={draftSaveError} onDraftChange={changeDraft}
+        {action === 'edit' && <JournalForm language={language} id={`journal-edit-${entry.id}`} draft={draft} draftSaveError={draftSaveError} onDraftChange={changeDraft} entries={entries} currentEntryId={entry.id}
           onSubmit={next => {
             const saved = onEdit(next)
             if (saved) {
@@ -482,7 +528,7 @@ export default function JournalPage({
         <span>{language === 'ru' ? `Гостевых записей на этом устройстве: ${guestImportCount}` : `Guest entries on this device: ${guestImportCount}`}</span>
         <button type="button" onClick={onImportGuest}>{language === 'ru' ? 'Импортировать в аккаунт' : 'Import into account'}</button>
       </div>}
-      <JournalForm language={language} id="journal-entry" draft={draft} draftSaveError={draftSaveError} onDraftChange={onDraftChange}
+      <JournalForm language={language} id="journal-entry" draft={draft} draftSaveError={draftSaveError} onDraftChange={onDraftChange} entries={entries}
         folders={folders} folderId={selectedFolderId} onFolderChange={setComposerFolderId}
         linkedTaskTitle={linkedTaskTitle} onUnlinkTask={onUnlinkTask} onSubmit={next => {
         const saved = onCreate(next, selectedFolderId || undefined)
@@ -515,7 +561,11 @@ export default function JournalPage({
             <h3>{group.label}</h3>
             <div className="journal-day-entries">
               {group.entries.map(entry => (
-                <JournalCard language={language} timeFormat={timeFormat} key={entry.id} entry={entry} folders={folders}
+                <JournalCard language={language} timeFormat={timeFormat} key={entry.id} entry={entry} entries={entries} folders={folders}
+                  onOpenLinked={id => {
+                    if (!scopedEntries.some(item => item.id === id)) setFolderFilter('all')
+                    onSelectSearchEntry(id)
+                  }}
                   draftStorageKey={draftStorageKey} onDraftStorageError={onDraftStorageError} onMove={folderId => {
                   const saved = onMoveEntry(entry.id, folderId)
                   if (saved) setNotice('Entry moved.')

@@ -68,7 +68,7 @@ function validCloudFolder(value) {
   return record(value) && id(value.id) && typeof value.name === "string" && value.name.length > 0 && value.name.length <= maxJournalFolderNameLength && value.name === value.name.trim() && (value.order === void 0 || typeof value.order === "number" && Number.isSafeInteger(value.order) && value.order >= 0) && (value.color === void 0 || journalFolderColors.some((color) => color === value.color)) && (value.icon === void 0 || journalFolderIcons.some((icon) => icon === value.icon));
 }
 function validCloudEntry(value) {
-  return record(value) && id(value.id) && typeof value.text === "string" && value.text.length <= 3e6 && timestamp(value.createdAt) && (value.updatedAt === void 0 || timestamp(value.updatedAt)) && (value.photo === void 0 || isJournalPhoto(value.photo)) && (value.taskId === void 0 || id(value.taskId)) && (value.location === void 0 || validApproximateLocation(value.location)) && (value.folderId === void 0 || id(value.folderId));
+  return record(value) && id(value.id) && typeof value.text === "string" && value.text.length <= 3e6 && timestamp(value.createdAt) && (value.updatedAt === void 0 || timestamp(value.updatedAt)) && (value.photo === void 0 || isJournalPhoto(value.photo)) && (value.taskId === void 0 || id(value.taskId)) && (value.linkedEntryId === void 0 || id(value.linkedEntryId) && value.linkedEntryId !== value.id) && (value.location === void 0 || validApproximateLocation(value.location)) && (value.folderId === void 0 || id(value.folderId));
 }
 function validCloudItem(value) {
   if (!record(value) || value.kind !== "folder" && value.kind !== "entry" || !id(value.id) || typeof value.deleted !== "boolean") return false;
@@ -214,7 +214,7 @@ var handler = createJournalHandler(async (token) => {
   write: async () => {
     throw new Error("Database unavailable");
   }
-}, () => process.env.VERCEL_ENV === "preview" && process.env.VERCEL_GIT_COMMIT_REF === "master" && process.env.JOURNAL_SYNC_PREVIEW_ENABLED === "true");
+}, () => process.env.VERCEL_ENV === "preview" && process.env.JOURNAL_SYNC_PREVIEW_ENABLED === "true");
 var journal_entry_default = { fetch: handler };
 export {
   journal_entry_default as default

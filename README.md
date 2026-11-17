@@ -4,6 +4,8 @@ LifeOS is a small, local-first space for moving from intention to focused action
 
 Try the [LifeOS demo](https://lifeos-demo-kappa.vercel.app/). LifeOS keeps the daily list short, leaves focus sessions open-ended, and helps you notice what supported your work. Email accounts are optional. Workspace data stays in the browser.
 
+For Windows, download [LifeOS Portable (x64)](https://github.com/ProgrammerLevpetrogradsky/LifeOS-Public/releases/download/portable-v0.1.0-windows/LifeOS-Portable-Windows-x64.zip). Extract the complete ZIP and run `LifeOS.exe`; its data stays in the extracted folder.
+
 ## Run locally
 
 Requirements: Node.js 22 or newer and npm.

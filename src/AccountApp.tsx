@@ -58,7 +58,10 @@ function ConnectedApp({ auth }: { auth: AccountAuth }) {
   const storageKey = user ? `${STORAGE_KEY}.neon.${user.id}` : undefined
   return <App key={storageKey ?? STORAGE_KEY} storageKey={storageKey} existingAccount={Boolean(user)}
     journalCloudToken={user && import.meta.env.VITE_JOURNAL_SYNC_PREVIEW_ENABLED === 'true'
-      ? async () => (await auth.getSession()).data?.session?.token ?? null : undefined}
+      ? async () => {
+        const token = (await auth.getSession({ fetchOptions: { headers: { 'X-Force-Fetch': 'true' } } })).data?.session?.token
+        return token?.split('.').length === 3 ? token : null
+      } : undefined}
     account={(language, initialMode) => <AccountPanel auth={auth} user={user} refreshSession={refetch} language={language} initialMode={initialMode} />} />
 }
 

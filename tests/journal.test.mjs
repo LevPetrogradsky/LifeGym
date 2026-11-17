@@ -21,6 +21,14 @@ test('version 1 journal backups still restore entries with no photo or edit time
   assert.deepEqual(parseBackup(JSON.stringify(backup)).journal, backup.journal)
 })
 
+test('linked Journal notes survive backup even if the original was deleted', () => {
+  const backup = emptyData()
+  backup.journal.push({ ...entry('linked', 'A related thought', new Date(2026, 10, 17, 12)), linkedEntryId: 'deleted-original' })
+  assert.deepEqual(parseBackup(JSON.stringify(backup)).journal, backup.journal)
+  backup.journal[0].linkedEntryId = 'linked'
+  assert.equal(validateLifeOSData(backup), false)
+})
+
 test('journal backups reject external, malformed, and oversized photo data', () => {
   const backup = emptyData()
   const saved = entry('photo', 'With a photo', new Date(2026, 10, 12, 17))

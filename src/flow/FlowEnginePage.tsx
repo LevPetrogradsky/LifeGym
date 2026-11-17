@@ -206,7 +206,7 @@ export default function FlowEnginePage({ data, onUpdate, onReturn, returnLabel, 
     <History size={18} aria-hidden="true" /> {t('History')}
   </button>
 
-  return <main ref={pageRef} className={`page-content flow-engine-page${stage === 'discover' || stage === 'review' ? ' flow-reflect-page' : ''}`}>
+  return <main ref={pageRef} className={`page-content flow-engine-page flow-stage-${stage}${stage === 'discover' || stage === 'review' ? ' flow-reflect-page' : ''}`}>
     <div className="flow-toolbar">
       <button type="button" className="flow-back" aria-label={t(backLabel)} onClick={goBack}><ArrowLeft size={21} /></button>
       {stage === 'discover' && <span>{step + 1} / {prompts.length}</span>}

@@ -85,6 +85,14 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
   const journalDraftRef = useRef(journalDraft)
   const journalCloud = useRef<JournalCloudSync | null>(null)
   const [journalCloudStatus, setJournalCloudStatus] = useState('')
+  const [journalCloudError, setJournalCloudError] = useState(false)
+  const [journalLastSavedAt, setJournalLastSavedAt] = useState<string | null>(() => {
+    if (!journalCloudToken || !storageKey) return null
+    try {
+      const value = localStorage.getItem(`${storageKey}.journal-last-synced`)
+      return value && Number.isFinite(Date.parse(value)) ? value : null
+    } catch { return null }
+  })
   const [guestNotesAvailable, setGuestNotesAvailable] = useState(() => journalCloudToken ? guestJournalCount(loadResult.data) : 0)
   const [journalPrompt, setJournalPrompt] = useState(false)
   const [backupMessage, setBackupMessage] = useState('')
@@ -172,7 +180,16 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
         return true
       },
       token: journalCloudToken,
-      status: setJournalCloudStatus,
+      status: message => {
+        setJournalCloudStatus(message)
+        if (message === 'Syncing Journal…') setJournalCloudError(false)
+        if (message === 'Journal saved in your account.') {
+          setJournalCloudError(false)
+          const savedAt = new Date().toISOString()
+          setJournalLastSavedAt(savedAt)
+          try { localStorage.setItem(`${storageKey}.journal-last-synced`, savedAt) } catch { /* Status remains visible for this session. */ }
+        } else if (message !== 'Syncing Journal…') setJournalCloudError(true)
+      },
     })
     journalCloud.current = sync
     sync.start()
@@ -360,6 +377,14 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
     setSelectedFactors([])
   }
 
+  const cancelSession = () => {
+    if (!dataRef.current.activeSession) return
+    if (!update(current => ({ ...current, activeSession: null }))) return
+    setPausedFocusScreen(undefined)
+    setMinimizedFocusScreen(undefined)
+    try { localStorage.removeItem(`${storageKey ?? STORAGE_KEY}.focus-minimized`) } catch { setStorageError(true) }
+  }
+
   const choosePostFocusAction = (action: 'reflection' | 'check-in') => {
     const pending = dataRef.current.pendingSession
     if (!pending) return
@@ -432,7 +457,8 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
 
   const editJournalEntry = (id: string, draft: JournalDraft) => update(current => ({
     ...current,
-    journal: current.journal.map(entry => entry.id === id ? { ...entry, text: draft.text, photo: draft.photo, location: draft.location, updatedAt: new Date().toISOString() } : entry),
+    journal: current.journal.map(entry => entry.id === id ? { ...entry, text: draft.text, photo: draft.photo, location: draft.location,
+      linkedEntryId: draft.linkedEntryId === id ? undefined : draft.linkedEntryId, updatedAt: new Date().toISOString() } : entry),
   }))
 
   const saveJournalFolder = (name: string, appearance: JournalFolderAppearance, id?: string) => {
@@ -714,6 +740,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
           onContinueFocus={() => resumeSession(true)}
           onReturnToFocus={returnToFocus}
           onFinishPaused={endSession}
+          onCancelFocus={cancelSession}
           onUpdate={update}
           onOpenTask={openTaskHistory}
           onDeleteTask={deleteTask}
@@ -728,7 +755,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
 
         {view === 'ask' && <main className="life-main life-main-guide-page">
           <h1>Ask LifeOS</h1>
-          <AskLifeOS actions={{
+          <AskLifeOS language={language} actions={{
             tasks: () => navigate('tasks'),
             journal: showJournal ? () => navigate('journal') : undefined,
             focus: data.activeSession ? returnToFocus : () => { startFocus() },
@@ -773,6 +800,9 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken }
         {view === 'settings' && (
           <SettingsPage
             account={accountContent}
+            journalSync={{ enabled: Boolean(journalCloudToken), status: journalCloudStatus,
+              error: journalCloudError, lastSavedAt: journalLastSavedAt,
+              onRetry: () => void journalCloud.current?.sync() }}
             theme={data.theme}
             language={data.language ?? 'en'}
             timeFormat={timeFormat}

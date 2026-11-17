@@ -99,6 +99,7 @@ export interface JournalEntry {
   updatedAt?: string
   photo?: string
   taskId?: string
+  linkedEntryId?: string
   folderId?: string
   location?: ApproximateLocation
 }
@@ -320,6 +321,7 @@ export function validateLifeOSData(value: unknown): value is LifeOSData {
   const validJournal = (item: unknown) => isRecord(item) && isString(item.id) && isString(item.text) && isTimestamp(item.createdAt) &&
     (item.updatedAt === undefined || isTimestamp(item.updatedAt)) && (item.photo === undefined || isJournalPhoto(item.photo)) &&
     (item.taskId === undefined || isString(item.taskId)) &&
+    (item.linkedEntryId === undefined || (isString(item.linkedEntryId) && item.linkedEntryId.length > 0 && item.linkedEntryId.length <= 200 && item.linkedEntryId !== item.id)) &&
     (item.location === undefined || validApproximateLocation(item.location)) &&
     (item.folderId === undefined || (isString(item.folderId) && folderIds.has(item.folderId)))
   const flowEngine = value.flowEngine

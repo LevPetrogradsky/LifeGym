@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BookOpen, Check, ChevronRight, Circle, ClipboardList, Flag, Github, GripHorizontal, Heart, History, ListTodo, Maximize2, Pause, Pencil, Play, Plus, Search, Settings2, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Circle, ClipboardList, Flag, Github, GripHorizontal, Heart, History, ListTodo, Maximize2, Pause, Pencil, Play, Plus, Search, Settings2, Trash2, X } from 'lucide-react'
 import { taskLists, type LifeOSData, type Task, type TaskList } from './data'
 import { todayTaskLimit } from './task-rules'
 import { translate } from './language'
@@ -26,6 +26,7 @@ interface MainDashboardProps {
   onContinueFocus: () => void
   onReturnToFocus: () => void
   onFinishPaused: () => void
+  onCancelFocus: () => void
   onUpdate: (change: (current: LifeOSData) => LifeOSData) => boolean
   onOpenTask: (taskId: string) => void
   onDeleteTask: (id: string) => boolean
@@ -43,7 +44,7 @@ const taskList = (task: Task): TaskList => task.list ?? 'today'
 
 type TaskEditor = { id: string | null; title: string; list: TaskList }
 
-function BreakCard({ taskTitle, activeTime, showTime, running, language, onPause, onContinue, onReturn, onFinish }: {
+function BreakCard({ taskTitle, activeTime, showTime, running, language, onPause, onContinue, onReturn, onFinish, onCancel }: {
   taskTitle: string
   activeTime: string
   showTime: boolean
@@ -53,8 +54,10 @@ function BreakCard({ taskTitle, activeTime, showTime, running, language, onPause
   onContinue: () => void
   onReturn: () => void
   onFinish: () => void
+  onCancel: () => void
 }) {
   const t = (text: string) => translate(language, text)
+  const [confirmCancel, setConfirmCancel] = useState(false)
   return <section className="life-main-today life-main-break" aria-labelledby="life-main-break-title">
     <div className="life-main-break-heading">
       <Pause size={20} aria-hidden="true" />
@@ -73,17 +76,22 @@ function BreakCard({ taskTitle, activeTime, showTime, running, language, onPause
       </button>
       <button type="button" onClick={onReturn}><Maximize2 size={16} aria-hidden="true" /> {language === 'ru' ? 'К таймеру' : 'Return to timer'}</button>
       <button type="button" onClick={onFinish}><Flag size={16} aria-hidden="true" /> {language === 'ru' ? 'Завершить' : 'Finish'}</button>
+      <button type="button" className="life-main-break-cancel" onClick={() => setConfirmCancel(true)}><X size={15} aria-hidden="true" /> {language === 'ru' ? 'Отменить' : 'Cancel'}</button>
     </div>
+    {confirmCancel && <div className="life-main-break-confirm">
+      <span>{language === 'ru' ? 'Отменить сессию без записи в истории?' : 'Cancel this session without saving it to history?'}</span>
+      <button type="button" onClick={() => setConfirmCancel(false)}>{language === 'ru' ? 'Назад' : 'Keep session'}</button>
+      <button type="button" onClick={onCancel}>{language === 'ru' ? 'Отменить сессию' : 'Cancel session'}</button>
+    </div>}
   </section>
 }
 
-export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, repoUrl, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, displayName, language = 'en', onPauseFocus, onContinueFocus, onReturnToFocus, onFinishPaused, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onPresets, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
+export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, repoUrl, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, displayName, language = 'en', onPauseFocus, onContinueFocus, onReturnToFocus, onFinishPaused, onCancelFocus, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onPresets, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
   const t = (text: string) => translate(language, text)
   const [screen, setScreen] = useState(initialScreen)
   const [filter, setFilter] = useState<TaskList | 'completed'>('today')
   const [editor, setEditor] = useState<TaskEditor | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
-  const [actions, setActions] = useState<string | null>(null)
   const [dragging, setDragging] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
   const [orderStatus, setOrderStatus] = useState('')
@@ -128,7 +136,6 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
   const showList = (list: TaskList | 'completed') => {
     setFilter(list)
     setEditor(null)
-    setActions(null)
     setDeleting(null)
     setOrderStatus('')
   }
@@ -176,7 +183,6 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
       ...current,
       tasks: current.tasks.map(item => item.id === task.id ? { ...item, completedAt } : item),
     }))) {
-      setActions(null)
       setDeleting(null)
       if (filter === 'completed') showList(taskList(task))
     }
@@ -197,6 +203,15 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
     })) setOrderStatus(`${task.title} moved to position ${position + 1}.`)
   }
 
+  const moveTask = (task: Task, target: TaskList | 'completed') => {
+    if (target === 'today' && (task.completedAt || taskList(task) !== 'today') && todayIsFull) return
+    const saved = onUpdate(current => ({ ...current, tasks: current.tasks.map(item => item.id === task.id
+      ? { ...item, list: target === 'completed' ? taskList(item) : target,
+        completedAt: target === 'completed' ? (item.completedAt ?? new Date().toISOString()) : null }
+      : item) }))
+    if (saved) showList(target)
+  }
+
   const clearDrag = () => {
     setDragging(null)
     setDropTarget(null)
@@ -207,7 +222,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
   }
 
   const breakCard = focusTaskTitle !== undefined && <BreakCard taskTitle={focusTaskTitle} activeTime={pausedActiveTime ?? '00:00:00'} showTime={showPausedTime} running={focusRunning} language={language}
-    onPause={onPauseFocus} onContinue={onContinueFocus} onReturn={onReturnToFocus} onFinish={onFinishPaused} />
+    onPause={onPauseFocus} onContinue={onContinueFocus} onReturn={onReturnToFocus} onFinish={onFinishPaused} onCancel={onCancelFocus} />
   const addTaskButton = <button type="button" className={`life-main-add-task${!nextTask && !breakCard ? ' life-main-add-task-inline' : ''}`} onClick={() => openTasks(true)}>
     <span className="life-main-shortcut-icon add"><Plus size={21} aria-hidden="true" /></span>
     <strong>{t('Add a task')}</strong>
@@ -372,28 +387,36 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
               {task.completedAt && <small>{t(listLabels[taskList(task)])} · {new Date(task.completedAt).toLocaleDateString(language, { month: 'short', day: 'numeric', year: 'numeric' })}</small>}
             </span>
             {!task.completedAt && !breakCard && <button type="button" className="life-main-icon life-main-start-small" aria-label={`Start ${task.title}`} onClick={() => onStart(task)}><Play size={17} fill="currentColor" /></button>}
-            <button type="button" className="life-main-icon life-main-task-actions-toggle" aria-label={`Actions for ${task.title}`}
-              aria-expanded={actions === task.id} title={canReorder ? 'Task actions · drag to reorder' : 'Task actions'} draggable={canReorder}
-              onClick={() => { setActions(actions === task.id ? null : task.id); setDeleting(null) }}
+            {canReorder && <button type="button" className="life-main-icon life-main-task-drag" aria-label={`${language === 'ru' ? 'Изменить порядок:' : 'Reorder:'} ${task.title}`}
+              title={language === 'ru' ? 'Перетащите или используйте стрелки вверх/вниз' : 'Drag or use up/down arrows'} draggable
+              onKeyDown={event => {
+                const neighbor = event.key === 'ArrowUp' ? previous : event.key === 'ArrowDown' ? next : undefined
+                if (neighbor) { event.preventDefault(); reorder(task.id, neighbor.id) }
+              }}
               onDragStart={event => {
                 event.dataTransfer.setData('text/plain', task.id)
                 event.dataTransfer.effectAllowed = 'move'
                 setDragging(task.id)
               }}
-              onDragEnd={clearDrag}><GripHorizontal size={21} /></button>
+              onDragEnd={clearDrag}><GripHorizontal size={21} /></button>}
           </div>
-          {actions === task.id && <div className="life-main-task-actions">
-            <button type="button" className="life-main-text" aria-haspopup="dialog" onClick={event => {
-              event.currentTarget.closest('.life-main-task')?.querySelector<HTMLButtonElement>('.life-main-task-actions-toggle')?.focus()
+          <div className="life-main-task-actions">
+            <button type="button" className="life-main-text" aria-haspopup="dialog" onClick={() => {
               setEditor({ id: task.id, title: task.title, list: taskList(task) })
-              setActions(null)
-            }}><Pencil size={15} /> {t('Edit or move')}</button>
-            {canReorder && <>
-              <button type="button" className="life-main-text" aria-disabled={!previous} onClick={() => { if (previous) reorder(task.id, previous.id) }}><ArrowUp size={15} /> {t('Move up')}</button>
-              <button type="button" className="life-main-text" aria-disabled={!next} onClick={() => { if (next) reorder(task.id, next.id) }}><ArrowDown size={15} /> {t('Move down')}</button>
-            </>}
-            <button type="button" className="life-main-text life-main-task-delete" onClick={() => { setDeleting(task.id); setActions(null) }}><Trash2 size={15} /> {t('Delete')}</button>
-          </div>}
+            }}><Pencil size={15} /> {language === 'ru' ? 'Редактировать' : 'Edit'}</button>
+            <details className="life-main-task-move">
+              <summary className="life-main-text"><ArrowRight size={15} /> {language === 'ru' ? 'Переместить' : 'Move'}</summary>
+              <div className="life-main-task-move-options">
+                {(['today', 'someday', 'completed'] as const).filter(target => task.completedAt ? target !== 'completed' : target !== taskList(task)).map(target =>
+                  <button type="button" key={target} disabled={target === 'today' && todayIsFull && (Boolean(task.completedAt) || taskList(task) !== 'today')}
+                    onClick={event => {
+                      event.currentTarget.closest('details')?.removeAttribute('open')
+                      moveTask(task, target)
+                    }}>{t(target === 'completed' ? 'Done' : listLabels[target])}</button>)}
+              </div>
+            </details>
+            <button type="button" className="life-main-text life-main-task-delete" onClick={() => setDeleting(task.id)}><Trash2 size={15} /> {t('Delete')}</button>
+          </div>
           {deleting === task.id && <div className="life-main-delete">
             <span>{t('Delete this task?')}</span>
             <button type="button" className="life-main-icon" aria-label="Cancel deletion" onClick={() => setDeleting(null)}><X size={16} /></button>

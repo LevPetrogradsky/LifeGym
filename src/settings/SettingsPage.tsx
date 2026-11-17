@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent, type ReactNode } from 'react'
-import { ChevronRight, Compass, Copy, Download, ExternalLink, Github, HardDrive, Info, Monitor, Moon, Palette, Sun, Timer, Upload, UserRound } from 'lucide-react'
+import { ChevronRight, Cloud, Compass, Copy, Download, ExternalLink, Github, HardDrive, Info, Monitor, Moon, Palette, RotateCw, Sun, Timer, Upload, UserRound } from 'lucide-react'
 import { breakReminderMinutes, maxDisplayNameLength, visibleShortcuts, type BreakReminderMinutes, type PostFocusAction, type Shortcut, type ShortcutLocation, type Theme } from '../data'
 import { translate, type AppLanguage } from '../language'
 import InteractiveTip from '../InteractiveTip'
@@ -7,6 +7,7 @@ import './settings.css'
 
 interface SettingsPageProps {
   account?: ReactNode
+  journalSync: { enabled: boolean; status: string; error: boolean; lastSavedAt: string | null; onRetry: () => void }
   theme: Theme
   language: 'en' | 'ru'
   timeFormat: '12' | '24'
@@ -120,6 +121,7 @@ function AboutLifeOS({ repoUrl, language }: { repoUrl: string; language: AppLang
 
 export default function SettingsPage({
   account,
+  journalSync,
   theme, onThemeChange, language, onLanguageChange, timeFormat, onTimeFormatChange, interactiveTips, onInteractiveTipsChange, showHome, onHomeVisibilityChange, showAskLifeOS, onAskLifeOSVisibilityChange, shortcutVisible, onShortcutChange, onExport, onImport, repoUrl, focusCheckin, postFocusAction, onOpenPresets,
   reminderMinutes, onReminderMinutesChange, displayName, onDisplayNameChange, timerDefaultView, onTimerDefaultViewChange,
 }: SettingsPageProps) {
@@ -129,7 +131,7 @@ export default function SettingsPage({
     backups: false, more: false, navigation: false, about: false, advanced: false,
   })
   const sectionIds: SettingsSection[] = [
-    ...(account ? ['account' as const] : []), 'profile', 'focus',
+    'account', 'profile', 'focus',
     ...(focusCheckin && !postFocusAction?.value ? ['focusOptions' as const] : []),
     'more', 'backups', 'navigation', 'about', 'advanced',
   ]
@@ -153,7 +155,24 @@ export default function SettingsPage({
       </div>
 
       <div className="settings-page__groups">
-        {account && <SettingsGroup title={t('Account')} icon={<UserRound size={18} />} open={openSections.account} onOpenChange={open => setSection('account', open)}>{account}</SettingsGroup>}
+        <SettingsGroup title={t('Account')} icon={<UserRound size={18} />} open={openSections.account} onOpenChange={open => setSection('account', open)}>
+          {account}
+          <div className="settings-page__journal-sync" role="status">
+            <strong><Cloud size={16} aria-hidden="true" />{language === 'ru' ? 'Сохранение Journal' : 'Journal storage'}</strong>
+            {journalSync.enabled ? <>
+              <span>{journalSync.error
+                ? (language === 'ru' ? 'Ошибка синхронизации. Записи остались на этом устройстве.' : 'Sync error. Your entries are still on this device.')
+                : journalSync.lastSavedAt && journalSync.status !== 'Syncing Journal…'
+                  ? (language === 'ru' ? 'Синхронизировано с аккаунтом' : 'Synced with account')
+                  : (language === 'ru' ? 'Проверяем синхронизацию…' : 'Checking sync…')}</span>
+              {journalSync.lastSavedAt && <small>{language === 'ru' ? 'Последнее успешное сохранение:' : 'Last successful save:'} {new Date(journalSync.lastSavedAt).toLocaleString(language === 'ru' ? 'ru-RU' : 'en-US')}</small>}
+              {journalSync.error && <button type="button" className="settings-page__action" onClick={journalSync.onRetry}><RotateCw size={15} aria-hidden="true" />{language === 'ru' ? 'Повторить' : 'Retry'}</button>}
+            </> : <>
+              <span>{language === 'ru' ? 'Только на этом устройстве. Синхронизация Journal пока недоступна.' : 'Saved on this device only. Journal sync is not available yet.'}</span>
+              <button type="button" className="settings-page__action" onClick={onExport}><Download size={15} aria-hidden="true" />{t('Save a copy')}</button>
+            </>}
+          </div>
+        </SettingsGroup>
         <SettingsGroup title={t('Profile & appearance')} icon={<Palette size={18} />} open={openSections.profile} onOpenChange={open => setSection('profile', open)}
           summary={t(themes.find(option => option.value === theme)?.label ?? '')}>
           <fieldset className="settings-page__themes">

@@ -116,7 +116,7 @@ export default function MainFocus({
     }
   }
 
-  return <main className="life-main-focus">
+  return <main className="life-main-focus" data-paused={paused}>
     {storageError && <p className="life-main-focus-error" role="alert">{t('Your session is still here. Check available storage and try again.')}</p>}
     <header className="life-main-focus-top">
       <button type="button" aria-label={language === 'ru' ? `${paused ? 'Вернуться' : 'Поставить на паузу и вернуться'}: ${t(returnDestination)}` : paused ? `Back to ${returnDestination}` : `Pause and return to ${returnDestination}`}

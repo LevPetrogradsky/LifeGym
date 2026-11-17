@@ -33,6 +33,7 @@ export function validCloudEntry(value: unknown): value is JournalEntry {
     (value.updatedAt === undefined || timestamp(value.updatedAt)) &&
     (value.photo === undefined || isJournalPhoto(value.photo)) &&
     (value.taskId === undefined || id(value.taskId)) &&
+    (value.linkedEntryId === undefined || (id(value.linkedEntryId) && value.linkedEntryId !== value.id)) &&
     (value.location === undefined || validApproximateLocation(value.location)) &&
     (value.folderId === undefined || id(value.folderId))
 }

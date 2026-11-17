@@ -274,6 +274,21 @@
   border-radius: 14px;
   background: var(--settings-tint);
 }
+
+.settings-page__journal-sync {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--settings-line);
+  border-radius: 12px;
+  background: var(--settings-tint);
+  font-size: 13px;
+}
+.settings-page__journal-sync > strong { display: flex; align-items: center; gap: 7px; }
+.settings-page__journal-sync > span,
+.settings-page__journal-sync > small { color: var(--settings-muted); }
+.settings-page__journal-sync > .settings-page__action { width: fit-content; min-height: 36px; font-size: 12px; }
 .settings-page__account-card .settings-page__account-submit {
   justify-content: center;
   border-color: var(--settings-accent);
