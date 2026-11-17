@@ -108,7 +108,7 @@ const russian: Record<string, string> = {
   'View on GitHub': 'Открыть на GitHub',
   'Demo link copied.': 'Ссылка на демо скопирована.',
   'Select the demo link to copy it.': 'Выделите ссылку на демо, чтобы скопировать её.',
-  'Your account works on other devices. Tasks and notes stay in this browser.': 'Аккаунт доступен на других устройствах. Задачи и заметки остаются в этом браузере.',
+  'Your account works on other devices. Turn on cloud storage below to sync workouts and plans.': 'Аккаунт доступен на других устройствах. Включите облачное хранение ниже, чтобы синхронизировать тренировки и планы.',
   'A little space for what matters.': 'Немного места для того, что важно.',
   'Search tasks and workouts': 'Поиск по задачам и тренировкам',
   'Search tasks': 'Поиск задач',

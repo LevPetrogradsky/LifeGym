@@ -59,7 +59,7 @@ export default function JournalCloudPanel({ cloud, language, onSaveCopy }: {
     setBusy(true); setMessage('')
     try {
       if (await cloud.onVerifyRecovery(code)) setVerifiedCode(code)
-      else setMessage(ru ? 'Такой код не найден. Записи на этом устройстве не изменены.' : 'Code not found. Notes on this device were not changed.')
+      else setMessage(ru ? 'Такой код не найден. Данные Gym на этом устройстве не изменены.' : 'Code not found. Gym data on this device was not changed.')
     } finally { setBusy(false) }
   }
   const recover = async () => {
@@ -67,7 +67,7 @@ export default function JournalCloudPanel({ cloud, language, onSaveCopy }: {
     setBusy(true); setMessage('')
     try {
       if (await cloud.onRecover(verifiedCode)) setMode(null)
-      else setMessage(ru ? 'Не удалось подключить облако. Записи на этом устройстве не изменены.' : 'Could not connect cloud storage. Notes on this device were not changed.')
+      else setMessage(ru ? 'Не удалось подключить облако. Данные Gym на этом устройстве не изменены.' : 'Could not connect cloud storage. Gym data on this device was not changed.')
     } finally { setBusy(false) }
   }
 
@@ -82,7 +82,7 @@ export default function JournalCloudPanel({ cloud, language, onSaveCopy }: {
       {cloud.error && cloud.status && <small role="alert">{cloud.status}</small>}
       {cloud.lastSavedAt && <small>{ru ? 'Последнее сохранение:' : 'Last saved:'} {new Date(cloud.lastSavedAt).toLocaleString(ru ? 'ru-RU' : 'en-US')}</small>}
       {cloud.guest && cloud.code && <div className="settings-page__recovery-code">
-        <span>{ru ? 'Код восстановления — храните приватно. Любой, у кого есть код, сможет открыть ваши записи.' : 'Recovery code — keep it private. Anyone with this code can open your notes.'}</span>
+        <span>{ru ? 'Код восстановления — храните приватно. Любой, у кого есть код, сможет открыть ваши тренировки и планы.' : 'Recovery code — keep it private. Anyone with this code can open your workouts and plans.'}</span>
         <input readOnly aria-label={ru ? 'Код восстановления' : 'Recovery code'} value={formatRecoveryCode(cloud.code)} onFocus={event => event.currentTarget.select()} />
         <button type="button" className="settings-page__action" onClick={() => void copyCode(cloud.code!)}><Copy size={15} />{ru ? 'Скопировать код' : 'Copy code'}</button>
       </div>}
@@ -99,8 +99,8 @@ export default function JournalCloudPanel({ cloud, language, onSaveCopy }: {
     </>}
     {mode === 'enable' && !cloud.enabled && <div className="settings-page__cloud-confirm">
       <p>{cloud.guest
-        ? (ru ? 'После включения тренировки, планы и записи Journal загрузятся в облако. На другом устройстве они откроются по этому секретному коду, без аккаунта.' : 'Turning this on uploads workouts, plans and Journal entries to cloud storage. Use this secret code to restore them on another device, without an account.')
-        : (ru ? 'После включения тренировки, планы и записи Journal загрузятся в аккаунт и будут доступны на других устройствах после входа.' : 'Turning this on uploads workouts, plans and Journal entries to your account, so they are available after sign-in on another device.')}</p>
+        ? (ru ? 'После включения тренировки, планы и записи трекера загрузятся в облако. На другом устройстве они откроются по этому секретному коду, без аккаунта.' : 'Turning this on uploads workouts, plans and tracker entries to cloud storage. Use this secret code to restore them on another device, without an account.')
+        : (ru ? 'После включения тренировки, планы и записи трекера загрузятся в аккаунт и будут доступны на других устройствах после входа.' : 'Turning this on uploads workouts, plans and tracker entries to your account, so they are available after sign-in on another device.')}</p>
       {cloud.guest && <>
         <input readOnly aria-label={ru ? 'Новый код восстановления' : 'New recovery code'} value={formatRecoveryCode(newCode)} onFocus={event => event.currentTarget.select()} />
         <button type="button" className="settings-page__action" onClick={() => void copyCode(newCode)}><Copy size={15} />{ru ? 'Скопировать код' : 'Copy code'}</button>
@@ -112,7 +112,7 @@ export default function JournalCloudPanel({ cloud, language, onSaveCopy }: {
       </div>
     </div>}
     {mode === 'recover' && cloud.guest && !cloud.enabled && <div className="settings-page__cloud-confirm">
-      <p>{ru ? 'Введите секретный код с другого устройства. Местные записи останутся и будут объединены с облачными после вашего подтверждения.' : 'Enter the secret code from your other device. Notes here will be kept and merged with cloud notes after you confirm.'}</p>
+      <p>{ru ? 'Введите секретный код с другого устройства. Местные данные Gym останутся и будут объединены с облачными после вашего подтверждения.' : 'Enter the secret code from your other device. Local Gym data will be kept and merged with cloud data after you confirm.'}</p>
       <input aria-label={ru ? 'Введите код восстановления' : 'Enter recovery code'} autoComplete="off" spellCheck={false} value={recoveryInput}
         onChange={event => { setRecoveryInput(event.currentTarget.value); setVerifiedCode(null) }} />
       <div className="settings-page__cloud-actions">
