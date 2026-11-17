@@ -851,29 +851,14 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
             onTimeFormatChange={timeFormat => update(current => ({ ...current, timeFormat }))}
             onLanguageChange={language => update(current => ({ ...current, language }))}
             onThemeChange={theme => update(current => ({ ...current, theme }))}
-            interactiveTips={data.interactiveTips !== false}
-            onInteractiveTipsChange={interactiveTips => update(current => ({ ...current, interactiveTips }))}
             showHome={showHome}
             onHomeVisibilityChange={changeHomeVisibility}
             shortcutVisible={(id, location) => location === 'home' ? onHome(id) : inBar(id)}
             onShortcutChange={changeShortcut}
             onExport={exportData}
             onImport={importBackup}
-            repoUrl={repoUrl}
             displayName={data.displayName ?? ''}
             onDisplayNameChange={displayName => update(current => ({ ...current, displayName: displayName || undefined }))}
-            reminderMinutes={reminderMinutes}
-            timerDefaultView={timerView(data)}
-            onTimerDefaultViewChange={timerDefaultView => update(current => ({ ...current, timerDefaultView }))}
-            onReminderMinutesChange={breakReminderMinutes => update(current => ({ ...current, breakReminderMinutes, focusPresetId: undefined }))}
-            focusCheckin={{
-              enabled: data.focusCheckinEnabled !== false,
-              onChange: focusCheckinEnabled => update(current => ({ ...current, focusCheckinEnabled })),
-            }}
-            postFocusAction={{
-              value: data.postFocusAction,
-              onChange: postFocusAction => update(current => ({ ...current, postFocusAction })),
-            }}
           />
         )}
       </div>
