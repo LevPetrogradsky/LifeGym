@@ -46,18 +46,7 @@ export function withJournalChanges(before: LifeOSData, after: LifeOSData): LifeO
   ]
   if (!pending.length) return after
   const previous = meta(before)
-  const queue = new Map(previous.pending.map(item => [`${item.kind}:${item.id}`, item]))
-  for (const operation of pending) {
-    const key = `${operation.kind}:${operation.id}`
-    const earlier = queue.get(key)
-    const base = earlier?.mode === 'change' ? earlier.previous : operation.previous
-    if (base === null && operation.deleted || (!operation.deleted && base && JSON.stringify(base) === JSON.stringify(operation.payload))) {
-      queue.delete(key)
-    } else {
-      queue.set(key, { ...operation, previous: base })
-    }
-  }
-  return { ...ordered, journalCloud: { ...previous, pending: [...queue.values()] } }
+  return { ...ordered, journalCloud: { ...previous, pending: [...previous.pending, ...pending] } }
 }
 
 const priority = (item: CloudItem) =>
@@ -310,8 +299,10 @@ export class JournalCloudSync {
       const operation = pending[0]
       await this.send(token, operation)
       const latest = this.client.getData()
-      const nextPending = meta(latest).pending.filter(item =>
-        item.kind !== operation.kind || item.id !== operation.id || JSON.stringify(item) !== JSON.stringify(operation))
+      const nextPending = [...meta(latest).pending]
+      const completedIndex = nextPending.findIndex(item => JSON.stringify(item) === JSON.stringify(operation))
+      if (completedIndex < 0) throw new Error('A local change was replaced during sync. Your local copy was kept.')
+      nextPending.splice(completedIndex, 1)
       if (!this.client.save({ ...latest, journalCloud: { ...meta(latest), pending: nextPending } })) {
         throw new Error('Could not confirm Journal sync locally. Your local copy was kept.')
       }

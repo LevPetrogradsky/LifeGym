@@ -171,7 +171,7 @@ test('offline plan and workout changes remain local and synchronize after reconn
   } finally { h.restore() }
 })
 
-test('multiple offline edits keep the remote base and canceled plans do not reach the server', async () => {
+test('multiple offline edits keep their order and canceled plans stay deleted', async () => {
   const h = harness()
   try {
     const account = h.client('A', { ...emptyData(), plannedWorkouts: [plan('steady', 'Original')], journal: [workout('session', 'Original session')] })
@@ -182,11 +182,42 @@ test('multiple offline edits keep the remote base and canceled plans do not reac
     account.save(withJournalChanges(account.getData(), { ...account.getData(),
       plannedWorkouts: [{ ...plan('steady', 'Original'), title: 'Final edit' }],
       journal: [{ ...workout('session', 'Original session'), text: 'Final edit' }] }))
-    assert.equal(account.getData().journalCloud.pending.length, 2)
+    assert.equal(account.getData().journalCloud.pending.length, 6)
     await new JournalCloudSync(account).sync()
     assert.equal(h.rows.get('A:plan:steady').payload.title, 'Final edit')
     assert.equal(h.rows.get('A:entry:session').payload.text, 'Final edit')
-    assert.equal(h.rows.has('A:plan:temporary'), false)
+    assert.equal(h.rows.get('A:plan:temporary').deleted, true)
+  } finally { h.restore() }
+})
+
+test('finishing a plan while its creation is in flight does not revive it on another device', async () => {
+  const h = harness()
+  const serverFetch = globalThis.fetch
+  try {
+    const account = h.client('A')
+    await new JournalCloudSync(account).sync()
+    account.save(withJournalChanges(account.getData(), { ...account.getData(), plannedWorkouts: [plan('fast', 'Fast plan')] }))
+    let releaseCreate
+    const heldCreate = new Promise(resolve => { releaseCreate = resolve })
+    let creationStarted
+    const started = new Promise(resolve => { creationStarted = resolve })
+    globalThis.fetch = async (url, options) => {
+      if (options?.method === 'POST' && JSON.parse(options.body).kind === 'plan' && !JSON.parse(options.body).deleted) {
+        creationStarted()
+        await heldCreate
+      }
+      return serverFetch(url, options)
+    }
+    const syncing = new JournalCloudSync(account).sync()
+    await started
+    account.save(withJournalChanges(account.getData(), { ...account.getData(), plannedWorkouts: [], journal: [workout('fast-session', 'Fast plan')] }))
+    releaseCreate()
+    await syncing
+    assert.equal(account.getData().journalCloud.pending.length, 0)
+    const second = h.client('A')
+    await new JournalCloudSync(second).sync()
+    assert.deepEqual(second.getData().plannedWorkouts, [])
+    assert.deepEqual(second.getData().journal.map(item => item.id), ['fast-session'])
   } finally { h.restore() }
 })
 
