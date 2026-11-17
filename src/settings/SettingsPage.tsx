@@ -1,5 +1,5 @@
-import { useState, type ChangeEvent, type ReactNode } from 'react'
-import { ChevronRight, Cloud, Compass, Copy, Download, ExternalLink, Github, HardDrive, Info, Monitor, Moon, Palette, RotateCw, Sun, Timer, Upload, UserRound } from 'lucide-react'
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+import { ChevronRight, Cloud, Compass, Copy, Download, ExternalLink, Github, HardDrive, Info, Monitor, Moon, Palette, RotateCw, Search, Sun, Timer, Upload, UserRound, X } from 'lucide-react'
 import { breakReminderMinutes, maxDisplayNameLength, visibleShortcuts, type BreakReminderMinutes, type PostFocusAction, type Shortcut, type ShortcutLocation, type Theme } from '../data'
 import { translate, type AppLanguage } from '../language'
 import InteractiveTip from '../InteractiveTip'
@@ -44,7 +44,8 @@ const themes = [
 
 type SettingsSection = 'account' | 'profile' | 'focus' | 'focusOptions' | 'backups' | 'more' | 'navigation' | 'about' | 'advanced'
 
-function SettingsGroup({ title, icon, summary, open, onOpenChange, children }: {
+function SettingsGroup({ id, title, icon, summary, open, onOpenChange, children }: {
+  id?: string
   title: string
   icon: ReactNode
   summary?: string
@@ -53,7 +54,7 @@ function SettingsGroup({ title, icon, summary, open, onOpenChange, children }: {
   children: ReactNode
 }) {
   return (
-    <details className="settings-page__group" open={open}>
+    <details id={id} className="settings-page__group" open={open}>
       <summary className="settings-page__row" onClick={event => { event.preventDefault(); onOpenChange(!open) }}>
         <span className="settings-page__icon" aria-hidden="true">{icon}</span>
         <span className="settings-page__label">{title}</span>
@@ -109,7 +110,7 @@ function AboutLifeOS({ repoUrl, language }: { repoUrl: string; language: AppLang
         <button type="button" className="settings-page__action" onClick={copyLink}>
           <Copy size={17} aria-hidden="true" /> {t('Copy demo link')}
         </button>
-        <a className="settings-page__action" href={repoUrl} target="_blank" rel="noreferrer">
+        <a id="settings-target-github-link" className="settings-page__action" href={repoUrl} target="_blank" rel="noreferrer">
           <Github size={17} aria-hidden="true" /> {t('View on GitHub')}
           <ExternalLink className="settings-page__external" size={15} aria-hidden="true" />
         </a>
@@ -141,10 +142,78 @@ export default function SettingsPage({
   const toggleAll = () => setOpenSections(current => ({ ...current,
     ...Object.fromEntries(sectionIds.map(id => [id, !anyOpen])),
   }))
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [scrollTarget, setScrollTarget] = useState('')
+  const searchInput = useRef<HTMLInputElement>(null)
+  const jumpTo = (section: SettingsSection, target: string = section) => {
+    setOpenSections(current => ({ ...current, [section]: true,
+      ...(section === 'backups' || section === 'navigation' || section === 'about' ? { more: true } : {}),
+      ...(section === 'focusOptions' ? { focus: true } : {}),
+    }))
+    setSearchOpen(false)
+    setSearchQuery('')
+    setScrollTarget(target)
+  }
+  useEffect(() => {
+    if (searchOpen) searchInput.current?.focus()
+  }, [searchOpen])
+  useEffect(() => {
+    if (!scrollTarget) return
+    const frame = requestAnimationFrame(() => {
+      const element = document.getElementById(`settings-target-${scrollTarget}`)
+      element?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' })
+      const focusable = element?.matches('input, select, button, summary, a') ? element : element?.querySelector('summary, input, select, button, a')
+      if (focusable instanceof HTMLElement) focusable.focus({ preventScroll: true })
+      setScrollTarget('')
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [scrollTarget, openSections])
+  const searchItems: { title: string; section: SettingsSection; target: string; keywords?: string }[] = [
+    { title: t('Account'), section: 'account', target: 'account', keywords: 'sign in register email password аккаунт вход пароль' },
+    { title: language === 'ru' ? 'Сохранение Journal' : 'Journal storage', section: 'account', target: 'journal-storage', keywords: 'sync backup журнал синхронизация' },
+    { title: t('Profile & appearance'), section: 'profile', target: 'profile', keywords: 'profile appearance профиль оформление' },
+    { title: t('Theme'), section: 'profile', target: 'theme', keywords: 'light dark system светлая темная системная' },
+    { title: language === 'ru' ? 'Формат времени' : 'Time format', section: 'profile', target: 'time-format', keywords: '12 24 часы clock' },
+    { title: t('Language / Язык'), section: 'profile', target: 'language', keywords: 'english русский перевод' },
+    { title: t('Display name'), section: 'profile', target: 'display-name', keywords: 'name имя' },
+    { title: t('Focus'), section: 'focus', target: 'focus', keywords: 'фокус timer таймер' },
+    { title: language === 'ru' ? 'Вид таймера по умолчанию' : 'Default timer view', section: 'focus', target: 'timer-view', keywords: 'compact full screen компактный экран' },
+    { title: t('Interactive tips'), section: 'focus', target: 'interactive-tips', keywords: 'hints подсказки' },
+    ...(onOpenPresets ? [{ title: t('Presets'), section: 'focus' as const, target: 'presets', keywords: 'режимы фокуса work rest' }] : []),
+    ...(postFocusAction ? [{ title: t('After focus'), section: 'focus' as const, target: 'after-focus', keywords: 'reflection rating рефлексия оценка' }] : []),
+    ...(focusCheckin && !postFocusAction?.value ? [{ title: t('More focus options'), section: 'focusOptions' as const, target: 'focus-options', keywords: 'quick rating оценка' }] : []),
+    { title: t('Break reminder'), section: 'focus', target: 'break-reminder', keywords: 'break pause перерыв напоминание' },
+    { title: t('Backups'), section: 'backups', target: 'backups', keywords: 'export import restore копия восстановить' },
+    { title: t('Save a copy'), section: 'backups', target: 'save-copy', keywords: 'export backup экспорт скачать' },
+    { title: t('Restore from a copy'), section: 'backups', target: 'restore-copy', keywords: 'import backup импорт json' },
+    { title: t('More options'), section: 'more', target: 'more', keywords: 'additional settings дополнительно' },
+    { title: t('Home & navigation'), section: 'navigation', target: 'navigation', keywords: 'shortcuts bar главная панель ярлыки' },
+    { title: t('Home in bottom bar'), section: 'navigation', target: 'home-bar', keywords: 'navigation навигация' },
+    { title: t('Ask LifeOS in bottom bar'), section: 'navigation', target: 'ask-bar', keywords: 'navigation навигация' },
+    ...visibleShortcuts.map(({ id, label }) => ({ title: t(label), section: 'navigation' as const, target: `shortcut-${id}`, keywords: 'shortcut home bar ярлык главная панель' })),
+    { title: t('About'), section: 'about', target: 'about', keywords: 'version приложение версия' },
+    { title: t('Demo link'), section: 'about', target: 'demo-link', keywords: 'share ссылка поделиться' },
+    { title: t('View on GitHub'), section: 'about', target: 'github-link', keywords: 'source code исходный код' },
+    { title: t('Advanced Options'), section: 'advanced', target: 'advanced', keywords: 'fork github расширенные' },
+    { title: t('Fork on GitHub'), section: 'advanced', target: 'fork-link', keywords: 'source code исходный код' },
+  ]
+  const sectionTitle = (section: SettingsSection) => t({
+    account: 'Account', profile: 'Profile & appearance', focus: 'Focus', focusOptions: 'Focus',
+    more: 'More options', backups: 'Backups', navigation: 'Home & navigation', about: 'About', advanced: 'Advanced Options',
+  }[section])
+  const normalizedQuery = searchQuery.trim().toLocaleLowerCase()
+  const results = normalizedQuery ? searchItems.filter(item =>
+    `${item.title} ${sectionTitle(item.section)} ${item.keywords ?? ''}`.toLocaleLowerCase().includes(normalizedQuery)) : []
   return (
     <main className="settings-page" aria-labelledby="settings-page-title">
       <div className="settings-page__header">
         <h1 id="settings-page-title">{t('Settings')}</h1>
+        <div className="settings-page__header-actions">
+          <button type="button" className="settings-page__search-toggle" aria-label={language === 'ru' ? 'Поиск по настройкам' : 'Search settings'}
+            aria-expanded={searchOpen} aria-controls="settings-search" onClick={() => { setSearchOpen(value => !value); setSearchQuery('') }}>
+            {searchOpen ? <X size={19} aria-hidden="true" /> : <Search size={19} aria-hidden="true" />}
+          </button>
         <div className="settings-page__toggle-all-wrap">
           <button type="button" className="settings-page__toggle-all" onClick={toggleAll}>
             {t(anyOpen ? 'Collapse All' : 'Expand All')}
@@ -152,12 +221,34 @@ export default function SettingsPage({
           {interactiveTips && <InteractiveTip className="settings-page__toggle-tip"
             label={t(anyOpen ? 'Collapse all sections' : 'Expand all sections')} />}
         </div>
+        </div>
       </div>
 
+      <nav className="settings-page__quick-nav" aria-label={language === 'ru' ? 'Быстрый переход по настройкам' : 'Settings quick links'}>
+        <button type="button" onClick={() => jumpTo('account')}><UserRound size={16} aria-hidden="true" />{t('Account')}</button>
+        <button type="button" onClick={() => jumpTo('focus')}><Timer size={16} aria-hidden="true" />{t('Focus')}</button>
+        <button type="button" onClick={() => jumpTo('more')}><Compass size={16} aria-hidden="true" />{t('More options')}</button>
+      </nav>
+
+      {searchOpen && <div id="settings-search" className="settings-page__search" role="search" onKeyDown={event => {
+        if (event.key === 'Escape') { setSearchOpen(false); setSearchQuery('') }
+      }}>
+        <label htmlFor="settings-search-input">{language === 'ru' ? 'Найти настройку' : 'Find a setting'}</label>
+        <input ref={searchInput} id="settings-search-input" type="search" value={searchQuery}
+          placeholder={language === 'ru' ? 'Например, тема или резервная копия' : 'Try theme or backup'}
+          onChange={event => setSearchQuery(event.currentTarget.value)} />
+        {normalizedQuery ? <div className="settings-page__search-results" aria-live="polite">
+          {results.length ? results.map(item => <button type="button" key={`${item.section}-${item.target}-${item.title}`}
+            onClick={() => jumpTo(item.section, item.target)}>
+            <span>{item.title}</span>{sectionTitle(item.section) !== item.title && <small>{sectionTitle(item.section)}</small>}
+          </button>) : <p>{language === 'ru' ? 'Ничего не найдено. Попробуйте другое слово.' : 'No settings found. Try another word.'}</p>}
+        </div> : <p className="settings-page__search-hint">{language === 'ru' ? 'Поиск охватывает и свернутые разделы.' : 'Search includes collapsed sections.'}</p>}
+      </div>}
+
       <div className="settings-page__groups">
-        <SettingsGroup title={t('Account')} icon={<UserRound size={18} />} open={openSections.account} onOpenChange={open => setSection('account', open)}>
+        <SettingsGroup id="settings-target-account" title={t('Account')} icon={<UserRound size={18} />} open={openSections.account} onOpenChange={open => setSection('account', open)}>
           {account}
-          <div className="settings-page__journal-sync" role="status">
+          <div id="settings-target-journal-storage" className="settings-page__journal-sync" role="status">
             <strong><Cloud size={16} aria-hidden="true" />{language === 'ru' ? 'Сохранение Journal' : 'Journal storage'}</strong>
             {journalSync.enabled ? <>
               <span>{journalSync.error
@@ -173,9 +264,9 @@ export default function SettingsPage({
             </>}
           </div>
         </SettingsGroup>
-        <SettingsGroup title={t('Profile & appearance')} icon={<Palette size={18} />} open={openSections.profile} onOpenChange={open => setSection('profile', open)}
+        <SettingsGroup id="settings-target-profile" title={t('Profile & appearance')} icon={<Palette size={18} />} open={openSections.profile} onOpenChange={open => setSection('profile', open)}
           summary={t(themes.find(option => option.value === theme)?.label ?? '')}>
-          <fieldset className="settings-page__themes">
+          <fieldset id="settings-target-theme" className="settings-page__themes">
             <legend>{t('Theme')}</legend>
             <div className="settings-page__theme-options">
               {themes.map(({ value, label, Icon }) => (
@@ -187,7 +278,7 @@ export default function SettingsPage({
               ))}
             </div>
           </fieldset>
-          <fieldset className="settings-page__themes">
+          <fieldset id="settings-target-time-format" className="settings-page__themes">
             <legend>{language === 'ru' ? 'Формат времени' : 'Time format'}</legend>
             <div className="settings-page__theme-options">
               {(['12', '24'] as const).map(value => <label className="settings-page__theme" key={value}>
@@ -196,7 +287,7 @@ export default function SettingsPage({
               </label>)}
             </div>
           </fieldset>
-          <fieldset className="settings-page__themes">
+          <fieldset id="settings-target-language" className="settings-page__themes">
             <legend>{t('Language / Язык')}</legend>
             <div className="settings-page__theme-options">
               {(['en', 'ru'] as const).map(value => <label className="settings-page__theme" key={value}>
@@ -205,11 +296,11 @@ export default function SettingsPage({
               </label>)}
             </div>
           </fieldset>
-          <DisplayNameForm key={displayName} name={displayName} onSave={onDisplayNameChange} language={language} />
+          <div id="settings-target-display-name"><DisplayNameForm key={displayName} name={displayName} onSave={onDisplayNameChange} language={language} /></div>
         </SettingsGroup>
 
-        <SettingsGroup title={t('Focus')} icon={<Timer size={18} />} open={openSections.focus} onOpenChange={open => setSection('focus', open)}>
-          <fieldset className="settings-page__themes">
+        <SettingsGroup id="settings-target-focus" title={t('Focus')} icon={<Timer size={18} />} open={openSections.focus} onOpenChange={open => setSection('focus', open)}>
+          <fieldset id="settings-target-timer-view" className="settings-page__themes">
             <legend>{language === 'ru' ? 'Вид таймера по умолчанию' : 'Default timer view'}</legend>
             <div className="settings-page__theme-options">
               {(['full', 'compact'] as const).map(value => <label className="settings-page__theme" key={value}>
@@ -219,15 +310,15 @@ export default function SettingsPage({
               </label>)}
             </div>
           </fieldset>
-          <label className="settings-page__toggle">
+          <label id="settings-target-interactive-tips" className="settings-page__toggle">
             <span className="settings-page__toggle-copy"><strong>{t('Interactive tips')}</strong><span>{t('Show hints for focus actions on Home and Tasks.')}</span></span>
             <input type="checkbox" role="switch" aria-label={t('Interactive tips')} checked={interactiveTips}
               onChange={event => onInteractiveTipsChange(event.currentTarget.checked)} />
           </label>
-          {onOpenPresets && <button type="button" className="settings-page__action" onClick={onOpenPresets}>
+          {onOpenPresets && <button id="settings-target-presets" type="button" className="settings-page__action" onClick={onOpenPresets}>
             {t('Presets')} <ChevronRight size={17} aria-hidden="true" />
           </button>}
-          {postFocusAction && <fieldset className="settings-page__post-focus">
+          {postFocusAction && <fieldset id="settings-target-after-focus" className="settings-page__post-focus">
             <legend>{t('After focus')}</legend>
             {([
               { value: 'reflection', title: 'Reflection', description: 'Think about what helped.' },
@@ -239,7 +330,7 @@ export default function SettingsPage({
               <span><strong>{t(option.title)}</strong><small>{t(option.description)}</small></span>
             </label>)}
           </fieldset>}
-          {focusCheckin && !postFocusAction?.value && <details className="settings-page__submore" open={openSections.focusOptions}>
+          {focusCheckin && !postFocusAction?.value && <details id="settings-target-focus-options" className="settings-page__submore" open={openSections.focusOptions}>
             <summary onClick={event => { event.preventDefault(); setSection('focusOptions', !openSections.focusOptions) }}>{t('More focus options')}</summary>
             <label className="settings-page__toggle">
               <span className="settings-page__toggle-copy"><strong>{t('Offer a quick rating')}</strong></span>
@@ -247,7 +338,7 @@ export default function SettingsPage({
                 onChange={event => focusCheckin.onChange(event.currentTarget.checked)} />
             </label>
           </details>}
-          <label className="settings-page__field">
+          <label id="settings-target-break-reminder" className="settings-page__field">
             <strong>{t('Break reminder')}</strong>
             <select value={reminderMinutes} onChange={event => {
               const selected = breakReminderMinutes.find(minutes => String(minutes) === event.currentTarget.value)
@@ -260,33 +351,33 @@ export default function SettingsPage({
           </label>
         </SettingsGroup>
 
-        <details className="settings-page__more" open={openSections.more}>
+        <details id="settings-target-more" className="settings-page__more" open={openSections.more}>
           <summary onClick={event => { event.preventDefault(); setSection('more', !openSections.more) }}>{t('More options')} <ChevronRight size={18} aria-hidden="true" /></summary>
           <div className="settings-page__more-content">
-        <SettingsGroup title={t('Backups')} icon={<HardDrive size={18} />} open={openSections.backups} onOpenChange={open => setSection('backups', open)}>
+        <SettingsGroup id="settings-target-backups" title={t('Backups')} icon={<HardDrive size={18} />} open={openSections.backups} onOpenChange={open => setSection('backups', open)}>
           <div className="settings-page__actions">
-            <button type="button" className="settings-page__action" onClick={onExport}>
+            <button id="settings-target-save-copy" type="button" className="settings-page__action" onClick={onExport}>
               <Download size={17} aria-hidden="true" />{t('Save a copy')}
             </button>
-            <label className="settings-page__action settings-page__upload">
+            <label id="settings-target-restore-copy" className="settings-page__action settings-page__upload">
               <Upload size={17} aria-hidden="true" />{t('Restore from a copy')}
               <input type="file" accept="application/json,.json" onChange={onImport} />
             </label>
           </div>
         </SettingsGroup>
-        <SettingsGroup title={t('Home & navigation')} icon={<Compass size={18} />} open={openSections.navigation} onOpenChange={open => setSection('navigation', open)}>
-          <label className="settings-page__toggle settings-page__navigation-toggle">
+        <SettingsGroup id="settings-target-navigation" title={t('Home & navigation')} icon={<Compass size={18} />} open={openSections.navigation} onOpenChange={open => setSection('navigation', open)}>
+          <label id="settings-target-home-bar" className="settings-page__toggle settings-page__navigation-toggle">
             <span className="settings-page__toggle-copy"><strong>{t('Home in bottom bar')}</strong></span>
             <input type="checkbox" role="switch" aria-label={t('Home in navigation bar')} checked={showHome}
               onChange={event => onHomeVisibilityChange(event.currentTarget.checked)} />
           </label>
-          <label className="settings-page__toggle settings-page__navigation-toggle">
+          <label id="settings-target-ask-bar" className="settings-page__toggle settings-page__navigation-toggle">
             <span className="settings-page__toggle-copy"><strong>{t('Ask LifeOS in bottom bar')}</strong></span>
             <input type="checkbox" role="switch" aria-label={t('Ask LifeOS in navigation bar')} checked={showAskLifeOS}
               onChange={event => onAskLifeOSVisibilityChange(event.currentTarget.checked)} />
           </label>
           {!showHome && <p className="settings-page__description">{t('Home shortcuts appear when Home is visible.')}</p>}
-          {visibleShortcuts.map(({ id, label }) => <fieldset key={id} className="settings-page__shortcut">
+          {visibleShortcuts.map(({ id, label }) => <fieldset id={`settings-target-shortcut-${id}`} key={id} className="settings-page__shortcut">
             <legend>{t(label)}</legend>
             {([['home', 'On Home'], ['bar', 'In navigation bar']] as const).map(([location, text]) => <label
               className="settings-page__toggle settings-page__shortcut-option" key={location}>
@@ -297,13 +388,13 @@ export default function SettingsPage({
           </fieldset>)}
         </SettingsGroup>
 
-        <SettingsGroup title={t('About')} icon={<Info size={18} />} summary="v0.1" open={openSections.about} onOpenChange={open => setSection('about', open)}>
-          <AboutLifeOS repoUrl={repoUrl} language={language} />
+        <SettingsGroup id="settings-target-about" title={t('About')} icon={<Info size={18} />} summary="v0.1" open={openSections.about} onOpenChange={open => setSection('about', open)}>
+          <div id="settings-target-demo-link"><AboutLifeOS repoUrl={repoUrl} language={language} /></div>
         </SettingsGroup>
           </div>
         </details>
-        <SettingsGroup title={t('Advanced Options')} icon={<Github size={18} />} open={openSections.advanced} onOpenChange={open => setSection('advanced', open)}>
-          <a className="settings-page__action" href="https://github.com/ProgrammerLevpetrogradsky/LifeOS-Public/fork"
+        <SettingsGroup id="settings-target-advanced" title={t('Advanced Options')} icon={<Github size={18} />} open={openSections.advanced} onOpenChange={open => setSection('advanced', open)}>
+          <a id="settings-target-fork-link" className="settings-page__action" href="https://github.com/ProgrammerLevpetrogradsky/LifeOS-Public/fork"
             target="_blank" rel="noopener noreferrer">
             <Github size={17} aria-hidden="true" />{t('Fork on GitHub')}
             <ExternalLink className="settings-page__external" size={16} aria-hidden="true" />
