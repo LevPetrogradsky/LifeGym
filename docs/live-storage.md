@@ -30,10 +30,8 @@ remain readable; older synced accounts import their local plans once.
 
 Before publishing, verify the shared account session and account isolation on
 the existing demo, create the Gym tables, and test a real save on one device
-followed by a read on another. The current LifeGym project has no production
-or preview environment variables; its deployed Journal API returns 404. Until
-these prerequisites are met, the UI must report local-only storage and no
-cloud success.
+followed by a read on another. If the backend is unavailable, the UI must
+report local-only storage and no cloud success.
 
 Use disposable accounts and workout records for the release check:
 
