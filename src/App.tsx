@@ -26,7 +26,7 @@ import './mobile-navigation.css'
 type View = Exclude<Shortcut, 'focus'> | 'main' | 'ask' | 'settings' | 'focus-history'
 const shortcutIcons = { tasks: ClipboardList, journal: BookOpen, focus: Play, flow: MessageCircle }
 const factors: Factor[] = ['Meaningful Goal', 'Personal Control', 'Fast Feedback', 'Other']
-const repoUrl = 'https://github.com/ProgrammerLevpetrogradsky/LifeGym'
+const repoUrl = 'https://github.com/LevPetrogradsky/LifeGym'
 const hubUrl = 'https://lifeos-demo-kappa.vercel.app/'
 
 function App({ storageKey, account, journalCloudToken, guestCloud = false }: { storageKey?: string; account?: (language: AppLanguage, initialMode?: AccountEntryMode) => ReactNode; existingAccount?: boolean; journalCloudToken?: () => Promise<string | null>; guestCloud?: boolean }) {
