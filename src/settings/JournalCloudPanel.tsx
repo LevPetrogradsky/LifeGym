@@ -11,6 +11,7 @@ export type JournalCloudControls = {
   status: string
   error: boolean
   lastSavedAt: string | null
+  pending: number
   onRetry: () => void
   onEnable: (code: string | null) => Promise<boolean>
   onVerifyRecovery: (code: string) => Promise<boolean>
@@ -49,7 +50,7 @@ export default function JournalCloudPanel({ cloud, language, onSaveCopy }: {
     setBusy(true); setMessage('')
     try {
       if (await cloud.onEnable(cloud.guest ? newCode : null)) setMode(null)
-      else setMessage(ru ? 'Не удалось включить облако. Записи остались на устройстве.' : 'Cloud storage could not be enabled. Your notes stayed on this device.')
+      else setMessage(ru ? 'Не удалось включить облако. Тренировки и планы остались на устройстве.' : 'Cloud storage could not be enabled. Your workouts and plans stayed on this device.')
     } finally { setBusy(false) }
   }
   const verify = async () => {
@@ -70,12 +71,12 @@ export default function JournalCloudPanel({ cloud, language, onSaveCopy }: {
     } finally { setBusy(false) }
   }
 
-  return <div className="settings-page__journal-sync" role="region" aria-label={ru ? 'Сохранение Journal' : 'Journal storage'}>
-    <strong><Cloud size={16} aria-hidden="true" />{ru ? 'Сохранение Journal' : 'Journal storage'}</strong>
+  return <div className="settings-page__journal-sync" role="region" aria-label={ru ? 'Хранение тренировок' : 'Workout storage'}>
+    <strong><Cloud size={16} aria-hidden="true" />{ru ? 'Хранение тренировок' : 'Workout storage'}</strong>
     {cloud.enabled ? <>
       <span>{cloud.error
-        ? (ru ? 'Ошибка синхронизации. Записи остались на этом устройстве.' : 'Sync error. Your notes are still on this device.')
-        : cloud.lastSavedAt && cloud.status !== 'Syncing Journal…'
+        ? (ru ? 'Ошибка синхронизации. Тренировки и планы остались на этом устройстве.' : 'Sync error. Your workouts and plans are still on this device.')
+        : cloud.lastSavedAt && cloud.status === 'Live Storage saved in cloud.' && cloud.pending === 0
           ? (ru ? 'Синхронизировано с облаком' : 'Synced with cloud storage')
           : (ru ? 'Проверяем синхронизацию…' : 'Checking sync…')}</span>
       {cloud.lastSavedAt && <small>{ru ? 'Последнее сохранение:' : 'Last saved:'} {new Date(cloud.lastSavedAt).toLocaleString(ru ? 'ru-RU' : 'en-US')}</small>}
@@ -87,8 +88,8 @@ export default function JournalCloudPanel({ cloud, language, onSaveCopy }: {
       {cloud.error && <button type="button" className="settings-page__action" onClick={cloud.onRetry}><RotateCw size={15} />{ru ? 'Повторить' : 'Retry'}</button>}
     </> : <>
       <span>{cloud.available
-        ? (ru ? 'Сейчас записи только на этом устройстве. Облако включается по вашему выбору.' : 'Notes are on this device only. You choose whether to turn on cloud storage.')
-        : (ru ? 'Только на этом устройстве. Синхронизация Journal пока недоступна.' : 'Saved on this device only. Journal sync is not available yet.')}</span>
+        ? (ru ? 'Тренировки и планы сейчас только на этом устройстве. Облако включается по вашему выбору.' : 'Workouts and plans are on this device only. You choose whether to turn on cloud storage.')
+        : (ru ? 'Тренировки и планы только на этом устройстве. Облако пока недоступно.' : 'Workouts and plans are on this device only. Cloud storage is not available yet.')}</span>
       {cloud.available && <div className="settings-page__cloud-actions">
         <button type="button" className="settings-page__action" onClick={startEnable}>{ru ? 'Включить облако' : 'Turn on cloud storage'}</button>
         {cloud.guest && <button type="button" className="settings-page__action" onClick={startRecover}>{ru ? 'У меня есть код' : 'I have a recovery code'}</button>}
@@ -97,15 +98,15 @@ export default function JournalCloudPanel({ cloud, language, onSaveCopy }: {
     </>}
     {mode === 'enable' && !cloud.enabled && <div className="settings-page__cloud-confirm">
       <p>{cloud.guest
-        ? (ru ? 'После включения ваши записи и папки Journal загрузятся в облако. На другом устройстве они откроются по этому секретному коду, без аккаунта.' : 'Turning this on uploads your Journal notes and folders to cloud storage. Use this secret code to restore them on another device, without an account.')
-        : (ru ? 'После включения ваши записи и папки Journal загрузятся в аккаунт и будут доступны на других устройствах после входа.' : 'Turning this on uploads your Journal notes and folders to your account, so they are available after sign-in on another device.')}</p>
+        ? (ru ? 'После включения тренировки, планы и записи Journal загрузятся в облако. На другом устройстве они откроются по этому секретному коду, без аккаунта.' : 'Turning this on uploads workouts, plans and Journal entries to cloud storage. Use this secret code to restore them on another device, without an account.')
+        : (ru ? 'После включения тренировки, планы и записи Journal загрузятся в аккаунт и будут доступны на других устройствах после входа.' : 'Turning this on uploads workouts, plans and Journal entries to your account, so they are available after sign-in on another device.')}</p>
       {cloud.guest && <>
         <input readOnly aria-label={ru ? 'Новый код восстановления' : 'New recovery code'} value={formatRecoveryCode(newCode)} onFocus={event => event.currentTarget.select()} />
         <button type="button" className="settings-page__action" onClick={() => void copyCode(newCode)}><Copy size={15} />{ru ? 'Скопировать код' : 'Copy code'}</button>
         <label className="settings-page__cloud-check"><input type="checkbox" checked={codeSaved} onChange={event => setCodeSaved(event.currentTarget.checked)} />{ru ? 'Я сохранил код в приватном месте' : 'I saved the code somewhere private'}</label>
       </>}
       <div className="settings-page__cloud-actions">
-        <button type="button" className="settings-page__action" disabled={busy || (cloud.guest && !codeSaved)} onClick={() => void enable()}>{ru ? 'Включить и загрузить записи' : 'Turn on and upload notes'}</button>
+        <button type="button" className="settings-page__action" disabled={busy || (cloud.guest && !codeSaved)} onClick={() => void enable()}>{ru ? 'Включить и загрузить тренировки' : 'Turn on and upload workouts'}</button>
         <button type="button" className="settings-page__action" disabled={busy} onClick={() => setMode(null)}>{ru ? 'Отмена' : 'Cancel'}</button>
       </div>
     </div>}

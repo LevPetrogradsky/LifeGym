@@ -187,13 +187,13 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
       token: journalCloudToken,
       status: message => {
         setJournalCloudStatus(message)
-        if (message === 'Syncing Journal…') setJournalCloudError(false)
-        if (message === 'Journal saved in cloud.') {
+        if (message === 'Syncing Live Storage…') setJournalCloudError(false)
+        if (message === 'Live Storage saved in cloud.') {
           setJournalCloudError(false)
           const savedAt = new Date().toISOString()
           setJournalLastSavedAt(savedAt)
           try { localStorage.setItem(`${effectiveStorageKey}.journal-last-synced`, savedAt) } catch { /* Status remains visible for this session. */ }
-        } else if (message !== 'Syncing Journal…') setJournalCloudError(true)
+        } else if (message !== 'Syncing Live Storage…') setJournalCloudError(true)
       },
     })
     journalCloud.current = sync
@@ -226,7 +226,13 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
         setRecoveryCode(normalized)
       } catch { return false }
     } else {
-      try { localStorage.setItem(cloudConsentKey(effectiveStorageKey), 'true') }
+      try {
+        const token = await journalCloudToken()
+        if (!token) return false
+        const response = await fetch('/api/journal', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+        if (!response.ok) return false
+        localStorage.setItem(cloudConsentKey(effectiveStorageKey), 'true')
+      }
       catch { return false }
     }
     setCloudEnabled(true)
@@ -252,13 +258,13 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
   }
 
   const importGuestJournal = async () => {
-    if (!window.confirm('Copy guest Journal entries and folders into this account? The guest copy will stay on this device.')) return
+    if (!window.confirm('Copy guest workouts, workout plans, and Journal entries into this account? The guest copy will stay on this device.')) return
     try {
       await journalCloud.current?.importGuest()
       setGuestNotesAvailable(0)
-      setJournalCloudStatus('Guest Journal copied into this account. The guest copy is still on this device.')
+      setJournalCloudStatus('Guest workouts and Journal copied into this account. The guest copy is still on this device.')
     } catch (error) {
-      setJournalCloudStatus(error instanceof Error ? error.message : 'Guest Journal could not be copied. Its local copy was kept.')
+      setJournalCloudStatus(error instanceof Error ? error.message : 'Guest workouts could not be copied. Their local copy was kept.')
     }
   }
 
@@ -820,7 +826,7 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
             draftSaveError={journalDraftError}
             draftStorageKey={storageKey} onDraftStorageError={() => setStorageError(true)}
             cloudStatus={cloudEnabled ? journalCloudStatus : undefined}
-            guestImportCount={cloudEnabled ? guestNotesAvailable : 0} onImportGuest={cloudEnabled && !guestCloud ? importGuestJournal : undefined}
+            guestImportCount={0}
             onReturn={returnFromSection} returnLabel={returnLabel}
             onSaveFolder={saveJournalFolder} onReorderFolders={reorderJournalFolders} onDeleteFolder={deleteJournalFolder} onMoveEntry={moveJournalEntry}
             linkedTaskTitle={linkedTaskTitle} onUnlinkTask={() => setJournalTaskId(undefined)}
@@ -832,8 +838,10 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
         {view === 'settings' && (
           <SettingsPage
             account={accountContent}
+            guestImportCount={cloudEnabled && !guestCloud ? guestNotesAvailable : 0}
+            onImportGuest={cloudEnabled && !guestCloud ? importGuestJournal : undefined}
             journalSync={{ available: Boolean(journalCloudToken), enabled: cloudEnabled, guest: guestCloud, code: recoveryCode, status: journalCloudStatus,
-              error: journalCloudError, lastSavedAt: journalLastSavedAt,
+              error: journalCloudError, lastSavedAt: journalLastSavedAt, pending: data.journalCloud?.pending.length ?? 0,
               onRetry: () => void journalCloud.current?.sync(), onEnable: enableJournalCloud,
               onVerifyRecovery: verifyRecoveryCode, onRecover: recoverJournalCloud }}
             theme={data.theme}

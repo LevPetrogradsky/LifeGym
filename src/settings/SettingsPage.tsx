@@ -9,6 +9,8 @@ import './settings.css'
 interface SettingsPageProps {
   account?: ReactNode
   journalSync: JournalCloudControls
+  guestImportCount?: number
+  onImportGuest?: () => void
   theme: Theme
   language: 'en' | 'ru'
   timeFormat: '12' | '24'
@@ -121,6 +123,8 @@ function AboutLifeOS({ repoUrl, language }: { repoUrl: string; language: AppLang
 export default function SettingsPage({
   account,
   journalSync,
+  guestImportCount = 0,
+  onImportGuest,
   theme, onThemeChange, language, onLanguageChange, timeFormat, onTimeFormatChange, interactiveTips, onInteractiveTipsChange, showHome, onHomeVisibilityChange, shortcutVisible, onShortcutChange, onExport, onImport, repoUrl, focusCheckin, postFocusAction,
   reminderMinutes, onReminderMinutesChange, displayName, onDisplayNameChange, timerDefaultView, onTimerDefaultViewChange,
 }: SettingsPageProps) {
@@ -168,8 +172,8 @@ export default function SettingsPage({
     return () => cancelAnimationFrame(frame)
   }, [scrollTarget, openSections])
   const searchItems: { title: string; section: SettingsSection; target: string; keywords?: string }[] = [
-    { title: t('Account'), section: 'account', target: 'account', keywords: 'sign in register email password аккаунт вход пароль' },
-    { title: language === 'ru' ? 'Сохранение Journal' : 'Journal storage', section: 'account', target: 'journal-storage', keywords: 'sync backup журнал синхронизация' },
+    { title: 'Live Storage', section: 'account', target: 'account', keywords: 'sign in register email password аккаунт вход пароль' },
+    { title: language === 'ru' ? 'Хранение тренировок' : 'Workout storage', section: 'account', target: 'journal-storage', keywords: 'sync backup тренировки планы синхронизация' },
     { title: t('Profile & appearance'), section: 'profile', target: 'profile', keywords: 'profile appearance профиль оформление' },
     { title: t('Theme'), section: 'profile', target: 'theme', keywords: 'light dark system светлая темная системная' },
     { title: language === 'ru' ? 'Формат времени' : 'Time format', section: 'profile', target: 'time-format', keywords: '12 24 часы clock' },
@@ -195,7 +199,7 @@ export default function SettingsPage({
     { title: t('Fork on GitHub'), section: 'advanced', target: 'fork-link', keywords: 'source code исходный код' },
   ]
   const sectionTitle = (section: SettingsSection) => t({
-    account: 'Account', profile: 'Profile & appearance', focus: 'Focus', focusOptions: 'Focus',
+    account: 'Live Storage', profile: 'Profile & appearance', focus: 'Focus', focusOptions: 'Focus',
     more: 'More options', backups: 'Backups', navigation: 'Home & navigation', about: 'About', advanced: 'Advanced Options',
   }[section])
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase()
@@ -221,7 +225,7 @@ export default function SettingsPage({
       </div>
 
       <nav className="settings-page__quick-nav" aria-label={language === 'ru' ? 'Быстрый переход по настройкам' : 'Settings quick links'}>
-        <button type="button" onClick={() => jumpTo('account')}><UserRound size={16} aria-hidden="true" />{t('Account')}</button>
+        <button type="button" onClick={() => jumpTo('account')}><UserRound size={16} aria-hidden="true" />Live Storage</button>
         <button type="button" onClick={() => jumpTo('focus')}><Timer size={16} aria-hidden="true" />{t('Focus')}</button>
         <button type="button" onClick={() => jumpTo('more')}><Compass size={16} aria-hidden="true" />{t('More options')}</button>
       </nav>
@@ -242,9 +246,13 @@ export default function SettingsPage({
       </div>}
 
       <div className="settings-page__groups">
-        <SettingsGroup id="settings-target-account" title={t('Account')} icon={<UserRound size={18} />} open={openSections.account} onOpenChange={open => setSection('account', open)}>
+        <SettingsGroup id="settings-target-account" title="Live Storage" icon={<UserRound size={18} />} open={openSections.account} onOpenChange={open => setSection('account', open)}>
           {account}
           <div id="settings-target-journal-storage"><JournalCloudPanel cloud={journalSync} language={language} onSaveCopy={onExport} /></div>
+          {guestImportCount > 0 && onImportGuest && <div className="journal-guest-import">
+            <span>{language === 'ru' ? `Гостевых тренировок, планов и записей на этом устройстве: ${guestImportCount}` : `Guest workouts, plans and entries on this device: ${guestImportCount}`}</span>
+            <button type="button" onClick={onImportGuest}>{language === 'ru' ? 'Скопировать в этот аккаунт' : 'Copy into this account'}</button>
+          </div>}
         </SettingsGroup>
         <SettingsGroup id="settings-target-profile" title={t('Profile & appearance')} icon={<Palette size={18} />} open={openSections.profile} onOpenChange={open => setSection('profile', open)}
           summary={t(themes.find(option => option.value === theme)?.label ?? '')}>

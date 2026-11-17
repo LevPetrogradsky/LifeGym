@@ -77,16 +77,23 @@ function validCloudFolder(value) {
 function validCloudEntry(value) {
   return record2(value) && id(value.id) && typeof value.text === "string" && value.text.length <= 3e6 && timestamp(value.createdAt) && (value.updatedAt === void 0 || timestamp(value.updatedAt)) && (value.photo === void 0 || isJournalPhoto(value.photo)) && (value.taskId === void 0 || id(value.taskId)) && (value.linkedEntryId === void 0 || id(value.linkedEntryId) && value.linkedEntryId !== value.id) && (value.location === void 0 || validApproximateLocation(value.location)) && (value.workout === void 0 || validWorkout(value.workout)) && (value.folderId === void 0 || id(value.folderId));
 }
+function validCloudPlan(value) {
+  if (!record2(value) || !id(value.id) || typeof value.title !== "string" || !value.title.trim() || value.title.length > 140 || !timestamp(value.createdAt)) return false;
+  if (value.plannedFor === void 0) return true;
+  if (typeof value.plannedFor !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value.plannedFor)) return false;
+  const date = /* @__PURE__ */ new Date(`${value.plannedFor}T00:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value.plannedFor;
+}
 function validCloudItem(value) {
-  if (!record2(value) || value.kind !== "folder" && value.kind !== "entry" || !id(value.id) || typeof value.deleted !== "boolean") return false;
+  if (!record2(value) || value.kind !== "folder" && value.kind !== "entry" && value.kind !== "plan" || !id(value.id) || typeof value.deleted !== "boolean") return false;
   if (value.deleted) return value.payload === null;
-  return value.kind === "folder" ? validCloudFolder(value.payload) && value.payload.id === value.id : validCloudEntry(value.payload) && value.payload.id === value.id;
+  return value.kind === "folder" ? validCloudFolder(value.payload) && value.payload.id === value.id : value.kind === "entry" ? validCloudEntry(value.payload) && value.payload.id === value.id : validCloudPlan(value.payload) && value.payload.id === value.id;
 }
 function validCloudOperation(value) {
   if (!record2(value)) return false;
   const mode = value.mode;
   const previous = value.previous;
-  return (mode === "import" || mode === "change") && validCloudItem(value) && (mode !== "import" || !value.deleted) && (previous === void 0 || previous === null || (value.kind === "folder" ? validCloudFolder(previous) : validCloudEntry(previous)));
+  return (mode === "import" || mode === "change") && validCloudItem(value) && (mode !== "import" || !value.deleted) && (previous === void 0 || previous === null || (value.kind === "folder" ? validCloudFolder(previous) : value.kind === "entry" ? validCloudEntry(previous) : validCloudPlan(previous)));
 }
 
 // server/journal-handler.ts
@@ -99,7 +106,7 @@ function cursorFromUrl(url) {
   const raw = url.searchParams.get("after");
   if (!raw) return null;
   const decoded = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
-  if (!Array.isArray(decoded) || decoded.length !== 2 || decoded[0] !== "folder" && decoded[0] !== "entry" || typeof decoded[1] !== "string" || decoded[1].length > 200) throw new Error("Invalid cursor");
+  if (!Array.isArray(decoded) || decoded.length !== 2 || decoded[0] !== "folder" && decoded[0] !== "entry" && decoded[0] !== "plan" || typeof decoded[1] !== "string" || decoded[1].length > 200) throw new Error("Invalid cursor");
   return [decoded[0], decoded[1]];
 }
 function createJournalHandler(verify, store2, enabled) {

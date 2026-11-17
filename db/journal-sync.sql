@@ -1,7 +1,7 @@
 -- Run on the matching Neon branch before enabling cloud Journal in that environment.
 CREATE TABLE IF NOT EXISTS lifeos_journal_items (
   user_id text NOT NULL,
-  kind text NOT NULL CHECK (kind IN ('folder', 'entry')),
+  kind text NOT NULL CHECK (kind IN ('folder', 'entry', 'plan')),
   id text NOT NULL,
   payload jsonb,
   deleted boolean NOT NULL DEFAULT false,
