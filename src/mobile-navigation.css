@@ -45,6 +45,8 @@
     align-items: stretch;
     gap: 4px;
     height: var(--life-mobile-nav-height);
+    top: calc(100dvh - var(--life-mobile-nav-height));
+    bottom: auto;
     padding: 7px max(8px, env(safe-area-inset-right))
       calc(8px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
     border-top: 0;
@@ -94,7 +96,7 @@
     outline-offset: -2px;
   }
 
-  .app-shell .mobile-nav:has(> :nth-child(6)) {
+  .app-shell .mobile-nav:has(> :nth-child(7)) {
     grid-auto-columns: 64px;
     overflow-x: auto;
     overscroll-behavior-inline: contain;
@@ -102,11 +104,11 @@
     scrollbar-width: none;
   }
 
-  .app-shell .mobile-nav:has(> :nth-child(6))::-webkit-scrollbar {
+  .app-shell .mobile-nav:has(> :nth-child(7))::-webkit-scrollbar {
     display: none;
   }
 
-  .app-shell .mobile-nav:has(> :nth-child(6)) .nav-button {
+  .app-shell .mobile-nav:has(> :nth-child(7)) .nav-button {
     scroll-snap-align: center;
   }
 }

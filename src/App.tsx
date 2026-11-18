@@ -3,7 +3,7 @@ import MainFocus from './MainFocus'
 import TaskHistory from './TaskHistory'
 import AskLifeOS from './home/AskLifeOS'
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode, type SetStateAction } from 'react'
-import { ArrowRight, BookOpen, ClipboardList, House, Leaf, MessageCircle, Play, Settings2, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, ClipboardList, House, Leaf, MessageCircle, Play, Settings2, Sparkles } from 'lucide-react'
 import { elapsedClock, focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, timerView, visibleShortcuts, STORAGE_KEY, type Factor, type JournalFolderAppearance, type LifeOSData, type PlannedWorkout, type Shortcut, type ShortcutLocation, type Task } from './data'
 import { base64ToBytes, buildNoteBlocks, makeImportedNote, type SourceIndex } from './notes'
 import JournalPage, { type JournalDraft } from './journal/JournalPage'
@@ -666,6 +666,11 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
         }} />
     })}
     {bottom && <NavButton icon={<Settings2 size={iconSize} />} label={t('Settings')} selected={view === 'settings'} onClick={() => navigate('settings')} />}
+    {bottom && <a className="nav-button mobile-nav-hub-return" href={hubUrl}
+      aria-label={language === 'ru' ? 'Вернуться в LiveHub' : 'Back to LiveHub'}>
+      <ArrowLeft size={iconSize} aria-hidden="true" />
+      <span>{language === 'ru' ? 'В LiveHub' : 'Back to LiveHub'}</span>
+    </a>}
   </>
 
   const renderBrand = (size: number) => {
@@ -905,8 +910,10 @@ function NavButton({ icon, label, selected, onClick }: { icon: React.ReactNode; 
   const button = useRef<HTMLButtonElement>(null)
 
   useLayoutEffect(() => {
-    if (selected && button.current?.closest('.mobile-nav')) {
-      button.current.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    const nav = button.current?.closest('.mobile-nav')
+    if (selected && nav && nav.scrollWidth > nav.clientWidth) {
+      const center = button.current!.offsetLeft + button.current!.offsetWidth / 2 - nav.clientWidth / 2
+      nav.scrollTo({ left: center, behavior: 'smooth' })
     }
   })
 
