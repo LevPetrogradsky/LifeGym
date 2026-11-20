@@ -6,6 +6,7 @@ import './settings.css'
 
 interface SettingsPageProps {
   account?: ReactNode
+  workoutStorage?: ReactNode
   theme: Theme
   language: 'en' | 'ru'
   timeFormat: '12' | '24'
@@ -42,7 +43,7 @@ function DisplayNameForm({ name, onSave, language }: { name: string; onSave: (na
 }
 
 export default function SettingsPage({
-  account, theme, onThemeChange, language, onLanguageChange,
+  account, workoutStorage, theme, onThemeChange, language, onLanguageChange,
   timeFormat, onTimeFormatChange, displayName, onDisplayNameChange,
 }: SettingsPageProps) {
   const t = (text: string) => translate(language, text)
@@ -53,6 +54,7 @@ export default function SettingsPage({
       </div>
       <div className="settings-page__group">
         <div className="settings-page__panel">
+          {workoutStorage}
           <fieldset className="settings-page__themes">
             <legend>{t('Theme')}</legend>
             <div className="settings-page__theme-options">

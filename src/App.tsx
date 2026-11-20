@@ -30,7 +30,14 @@ type View = Exclude<Shortcut, 'focus'> | 'main' | 'ask' | 'settings' | 'focus-hi
 const shortcutIcons = { tasks: ClipboardList, journal: BookOpen, focus: Play, flow: MessageCircle }
 const factors: Factor[] = ['Meaningful Goal', 'Personal Control', 'Fast Feedback', 'Other']
 
-function App({ storageKey, account, existingAccount = false, journalCloudToken, guestCloud = false }: { storageKey?: string; account?: (language: AppLanguage, initialMode?: AccountEntryMode) => ReactNode; existingAccount?: boolean; journalCloudToken?: () => Promise<string | null>; guestCloud?: boolean }) {
+async function guestStorageToken() {
+  const code = readRecoveryCode()
+  return code ? `Guest ${code}` : null
+}
+
+function App({ storageKey, account, existingAccount = false, journalCloudToken: accountCloudToken, guestCloud = false }: { storageKey?: string; account?: (language: AppLanguage, initialMode?: AccountEntryMode) => ReactNode; existingAccount?: boolean; journalCloudToken?: () => Promise<string | null>; guestCloud?: boolean }) {
+  const journalCloudToken = guestCloud && import.meta.env.VITE_GYM_STORAGE_ENABLED === 'true'
+    ? guestStorageToken : accountCloudToken
   const effectiveStorageKey = storageKey ?? STORAGE_KEY
   const [cloudEnabled, setCloudEnabled] = useState(() => {
     try { return Boolean(journalCloudToken && localStorage.getItem(cloudConsentKey(effectiveStorageKey)) === 'true' && (!guestCloud || readRecoveryCode())) }
@@ -572,7 +579,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
   }
 
   const saveWorkoutsToCloud = async () => {
-    if (!journalCloudToken) { navigate('settings'); return }
+    if (!journalCloudToken || (guestCloud && !cloudEnabled)) { navigate('settings'); return }
     if (cloudSaveBusy) return
     setCloudSaveBusy(true)
     setJournalCloudError(false)
@@ -700,6 +707,12 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     setOnboardingMode(null)
   }
 
+  const workoutStorage = <JournalCloudPanel cloud={{ available: Boolean(journalCloudToken),
+    enabled: cloudEnabled, guest: guestCloud, code: recoveryCode, status: journalCloudStatus,
+    error: journalCloudError, lastSavedAt: journalLastSavedAt, pending: data.journalCloud?.pending.length ?? 0,
+    onRetry: () => void journalCloud.current?.sync(), onEnable: enableJournalCloud,
+    onVerifyRecovery: verifyRecoveryCode, onRecover: recoverJournalCloud }} language={language} />
+
   if (onboardingMode) return <ServiceOnboarding mode={onboardingMode} language={language}
     hubReturn={renderHubReturn(18, 'service-onboarding__note')}
     onClose={closeOnboarding} onComplete={() => {
@@ -817,10 +830,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
           <details className="settings-page__group">
             <summary className="settings-page__row">{language === 'ru' ? 'Синхронизация тренировок' : 'Workout sync'}</summary>
             <div className="settings-page__panel">
-              <JournalCloudPanel cloud={{ available: Boolean(journalCloudToken), enabled: cloudEnabled, guest: guestCloud, code: recoveryCode, status: journalCloudStatus,
-              error: journalCloudError, lastSavedAt: journalLastSavedAt, pending: data.journalCloud?.pending.length ?? 0,
-              onRetry: () => void journalCloud.current?.sync(), onEnable: enableJournalCloud,
-              onVerifyRecovery: verifyRecoveryCode, onRecover: recoverJournalCloud }} language={language} />
+              {workoutStorage}
               {cloudEnabled && !guestCloud && guestNotesAvailable > 0 && <div className="journal-guest-import">
                 <span>{language === 'ru' ? `Гостевых тренировок, планов и записей на этом устройстве: ${guestNotesAvailable}` : `Guest workouts, plans and entries on this device: ${guestNotesAvailable}`}</span>
                 <button type="button" onClick={importGuestJournal}>{language === 'ru' ? 'Скопировать в этот аккаунт' : 'Copy into this account'}</button>
@@ -869,6 +879,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
         {view === 'settings' && (
           <SettingsPage
             account={accountContent}
+            workoutStorage={workoutStorage}
             theme={data.theme}
             language={data.language ?? 'en'}
             timeFormat={timeFormat}

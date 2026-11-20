@@ -314,7 +314,7 @@ test('server uses verified account identity and keeps accounts isolated', async 
   } finally { h.restore() }
 })
 
-test('two guest recovery codes restore only their own notes without an account', async () => {
+test('two guest recovery codes restore only their own workouts and keep the original', async () => {
   const h = harness()
   const codeA = 'a'.repeat(64)
   const codeB = 'b'.repeat(64)
@@ -325,8 +325,9 @@ test('two guest recovery codes restore only their own notes without an account',
       const created = await fetch('/api/gym-storage?guest=create', { method: 'POST', headers: { Authorization: `Guest ${code}` } })
       assert.equal(created.status, 201)
     }
-    const a = h.client(`Guest ${codeA}`, { ...emptyData(), journal: [entry('private', 'Guest A')] })
-    const b = h.client(`Guest ${codeB}`, { ...emptyData(), journal: [entry('private', 'Guest B')] })
+    const originalWorkout = workout('private', 'Guest A')
+    const a = h.client(`Guest ${codeA}`, { ...emptyData(), journal: [originalWorkout] })
+    const b = h.client(`Guest ${codeB}`, { ...emptyData(), journal: [workout('private', 'Guest B')] })
     await new JournalCloudSync(a).sync()
     await new JournalCloudSync(b).sync()
     const restoredA = h.client(`Guest ${codeA}`)
@@ -334,6 +335,8 @@ test('two guest recovery codes restore only their own notes without an account',
     await new JournalCloudSync(restoredA).sync()
     await new JournalCloudSync(restoredB).sync()
     assert.deepEqual(restoredA.getData().journal.map(item => item.text), ['Guest A'])
+    assert.deepEqual(restoredA.getData().journal[0].workout, originalWorkout.workout)
+    assert.deepEqual(a.getData().journal[0].workout, originalWorkout.workout)
     assert.deepEqual(restoredB.getData().journal.map(item => item.text), ['Guest B'])
     const unknown = await fetch('/api/gym-storage', { headers: { Authorization: `Guest ${'c'.repeat(64)}` } })
     assert.equal(unknown.status, 404)
