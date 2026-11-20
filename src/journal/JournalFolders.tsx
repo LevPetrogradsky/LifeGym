@@ -99,7 +99,7 @@ export default function JournalFolders({ folders, entries, filter, onFilterChang
     setError('')
   }
 
-  return <section className="journal-folders" aria-label={t('Journal folders')}>
+  return <section className="journal-folders" aria-label={t('Workout folders')}>
     <div className="journal-folder-toolbar">
       <FolderPicker label={t('Show entries')} value={filter} onChange={onFilterChange} dialogClassName="journal-sheet--centered" options={[
         { value: 'all', label: t('All entries'), icon: Archive },

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Circle, ClipboardList, Flag, Github, GripHorizontal, Heart, History, ListTodo, Maximize2, Pause, Pencil, Play, Plus, Search, Settings2, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Circle, ClipboardList, Dumbbell, Flag, Github, GripHorizontal, ListTodo, Maximize2, Pause, Pencil, Play, Plus, Search, Settings2, Trash2, X } from 'lucide-react'
 import { taskLists, type LifeOSData, type Task, type TaskList } from './data'
 import { todayTaskLimit } from './task-rules'
 import { translate } from './language'
@@ -12,7 +12,6 @@ interface MainDashboardProps {
   onReturnHome?: () => void
   returnLabel: string
   showTasksShortcut: boolean
-  showFocusShortcut: boolean
   searchIncludesJournal: boolean
   repoUrl: string
   tasks: Task[]
@@ -20,7 +19,6 @@ interface MainDashboardProps {
   focusRunning?: boolean
   pausedActiveTime?: string
   showPausedTime?: boolean
-  displayName?: string
   language?: 'en' | 'ru'
   onPauseFocus: () => void
   onContinueFocus: () => void
@@ -31,10 +29,9 @@ interface MainDashboardProps {
   onOpenTask: (taskId: string) => void
   onDeleteTask: (id: string) => boolean
   onStart: (task: Task) => void
-  onStartOpenFocus: () => void
   onJournal?: () => void
-  onPresets: () => void
-  onFocusHistory: () => void
+  onAddExercise?: () => void
+  onWorkouts: () => void
   onSettings: () => void
   onSearch: () => void
 }
@@ -86,7 +83,7 @@ function BreakCard({ taskTitle, activeTime, showTime, running, language, onPause
   </section>
 }
 
-export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, repoUrl, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, displayName, language = 'en', onPauseFocus, onContinueFocus, onReturnToFocus, onFinishPaused, onCancelFocus, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onPresets, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
+export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, searchIncludesJournal, repoUrl, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, language = 'en', onPauseFocus, onContinueFocus, onReturnToFocus, onFinishPaused, onCancelFocus, onUpdate, onOpenTask, onDeleteTask, onStart, onJournal, onAddExercise, onWorkouts, onSettings, onSearch }: MainDashboardProps) {
   const t = (text: string) => translate(language, text)
   const [screen, setScreen] = useState(initialScreen)
   const [filter, setFilter] = useState<TaskList | 'completed'>('today')
@@ -119,9 +116,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
   const completed = tasks.filter(task => task.completedAt !== null)
     .sort((a, b) => Date.parse(b.completedAt!) - Date.parse(a.completedAt!))
   const doneToday = completed.filter(task => taskList(task) === 'today' && new Date(task.completedAt!).toDateString() === today)
-  const nextTask = activeToday[0]
   const todayIsFull = activeToday.length >= todayTaskLimit
-  const totalToday = activeToday.length + doneToday.length
   const editorTask = editor?.id ? tasks.find(task => task.id === editor.id) : undefined
   const cannotAddToToday = todayIsFull && !(editorTask && (editorTask.completedAt || taskList(editorTask) === 'today'))
   const visibleActive = filter === 'completed' ? [] : active.filter(task => taskList(task) === filter)
@@ -223,28 +218,17 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
 
   const breakCard = focusTaskTitle !== undefined && <BreakCard taskTitle={focusTaskTitle} activeTime={pausedActiveTime ?? '00:00:00'} showTime={showPausedTime} running={focusRunning} language={language}
     onPause={onPauseFocus} onContinue={onContinueFocus} onReturn={onReturnToFocus} onFinish={onFinishPaused} onCancel={onCancelFocus} />
-  const addTaskButton = <button type="button" className={`life-main-add-task${!nextTask && !breakCard ? ' life-main-add-task-inline' : ''}`} onClick={() => openTasks(true)}>
-    <span className="life-main-shortcut-icon add"><Plus size={21} aria-hidden="true" /></span>
-    <strong>{t('Add a task')}</strong>
-  </button>
-
   if (screen === 'home') return <main className="life-main life-main-home">
     <header className="life-main-hero">
-      <div><h1 ref={heading} tabIndex={-1}>{language === 'ru' ? 'Добро пожаловать' : 'Welcome'}{displayName?.trim() ? `, ${displayName.trim()}` : ''}!</h1>
-        <p className="life-main-thanks">{language === 'ru' ? 'Спасибо' : 'Thank you'} <Heart size={13} fill="currentColor" aria-hidden="true" /></p>
-        <a className="life-main-discord" href="https://discord.gg/y4s67MzZr" target="_blank" rel="noopener noreferrer">
-          {language === 'ru' ? 'Вступить в Discord' : 'Join Discord'} <ArrowRight size={15} aria-hidden="true" />
-        </a>
+      <div><h1 ref={heading} tabIndex={-1}>LifeGym</h1>
+        <p className="life-main-thanks">{language === 'ru' ? 'LifeGym: запланируйте занятие и сохраните запись о тренировке.' : 'LifeGym: plan a session and keep a record of your workout.'}</p>
         <a className="life-main-github" href={repoUrl} target="_blank" rel="noopener noreferrer">
           <Github size={15} aria-hidden="true" /> {t('View on GitHub')}
-        </a>
-        <a className="life-main-support" href="https://ko-fi.com/lifeosapp" target="_blank" rel="noopener noreferrer">
-          <Heart size={15} aria-hidden="true" /> {language === 'ru' ? 'Поддержать LifeOS' : 'Support LifeOS'}
         </a>
       </div>
       <div className="life-main-hero-actions">
         <span className="home-icon-action">
-          <button type="button" className="life-main-icon life-main-settings" aria-label={t(searchIncludesJournal ? 'Search tasks and journal' : 'Search tasks')}
+          <button type="button" className="life-main-icon life-main-settings" aria-label={t(searchIncludesJournal ? 'Search tasks and workouts' : 'Search tasks')}
             aria-haspopup="dialog" onClick={onSearch}><Search size={20} aria-hidden="true" /></button>
         </span>
         <span className="home-icon-action">
@@ -254,54 +238,26 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
     </header>
 
     <div className="life-main-stack">
-      {breakCard || <section className="life-main-today" aria-labelledby="life-main-today">
-        <div className="life-main-today-heading">
-          <h2 id="life-main-today">{t('Today')}</h2>
-          {totalToday > 0 && <span>{doneToday.length} / {totalToday} {language === 'ru' ? 'выполнено' : 'done'}</span>}
-        </div>
-        {totalToday > 0 && <progress max={totalToday} value={doneToday.length} aria-label="Today’s task progress" />}
-        {nextTask ? <>
-          <div className="life-main-next">
-            <button type="button" className="life-main-complete" aria-label={`Complete ${nextTask.title}`} onClick={() => toggleTask(nextTask)}><Circle size={22} /></button>
-            <div>
-              <button type="button" className="life-main-task-link" aria-haspopup="dialog" onClick={() => onOpenTask(nextTask.id)}>
-                <span>{nextTask.title}</span><ChevronRight size={16} aria-hidden="true" />
-              </button>
-              <p>{t('Next up')}</p>
-            </div>
-            <button type="button" className="life-main-icon life-main-start-small" aria-label={`Start ${nextTask.title}`} onClick={() => onStart(nextTask)}>
-              <Play size={17} fill="currentColor" aria-hidden="true" />
-            </button>
-          </div>
-        </> : <div className="life-main-today-empty-state">
-          <p className="life-main-today-empty">{t(doneToday.length ? 'You’re all caught up' : 'No tasks for today')}</p>
-          {addTaskButton}
-        </div>}
-      </section>}
-
-      {(nextTask || breakCard) && addTaskButton}
+      {breakCard}
 
       <nav className="life-main-shortcuts" aria-label="Home shortcuts">
         {showTasksShortcut && <button type="button" onClick={() => openTasks()}>
           <span className="life-main-shortcut-icon tasks"><ClipboardList size={21} aria-hidden="true" /></span>
           <strong>{t('Tasks')}</strong>
         </button>}
+        <button type="button" onClick={onWorkouts}>
+          <span className="life-main-shortcut-icon tasks"><Dumbbell size={21} aria-hidden="true" /></span>
+          <strong>{language === 'ru' ? 'Тренировки' : 'Workouts'}</strong>
+        </button>
         {onJournal && <button type="button" onClick={onJournal}>
           <span className="life-main-shortcut-icon journal"><BookOpen size={21} aria-hidden="true" /></span>
-          <strong>{t('Journal')}</strong>
+          <strong>{t('Workout Tracker')}</strong>
         </button>}
-        {showFocusShortcut && <button type="button" onClick={breakCard ? onReturnToFocus : onStartOpenFocus}>
-          <span className="life-main-shortcut-icon focus"><Play size={21} aria-hidden="true" /></span>
-          <strong>{breakCard ? (language === 'ru' ? 'К таймеру' : 'Return to timer') : t('Start Focus')}</strong>
+        {onAddExercise && <button type="button" onClick={onAddExercise}>
+          <span className="life-main-shortcut-icon journal"><Plus size={21} aria-hidden="true" /></span>
+          <strong>{t('Add Exercise')}</strong>
         </button>}
-        <button type="button" onClick={onPresets}>
-          <span className="life-main-shortcut-icon focus"><Settings2 size={21} aria-hidden="true" /></span>
-          <strong>{t('Presets')}</strong>
-        </button>
       </nav>
-      <button type="button" className="life-main-text life-main-history-link" onClick={onFocusHistory}>
-        <History size={17} aria-hidden="true" /> {t('Focus history')} <ChevronRight size={15} aria-hidden="true" />
-      </button>
     </div>
   </main>
 

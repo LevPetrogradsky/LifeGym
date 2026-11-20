@@ -26,6 +26,47 @@ test('tasks, sessions, journal, and active focus survive a save and reload', () 
   assert.deepEqual(loadData().data, data)
 })
 
+test('structured workouts survive save, reload, and backup while old notes remain valid', () => {
+  const memory = new Map()
+  globalThis.localStorage = {
+    getItem: key => memory.get(key) ?? null,
+    setItem: (key, value) => memory.set(key, value),
+  }
+  const data = emptyData()
+  data.journal.push({ id: 'old-note', text: 'Keep this note', createdAt: '2026-10-21T10:00:00.000Z' })
+  data.journal.push({ id: 'workout', text: '', createdAt: '2026-10-21T11:00:00.000Z', workout: {
+    exercises: [{ name: 'Leg press', restSeconds: 90, sets: [{ reps: 10, weightKg: 80 }, { reps: 8, weightKg: 90 }] }],
+  } })
+  assert.equal(saveData(data), true)
+  assert.deepEqual(loadData().data.journal, data.journal)
+  assert.deepEqual(parseBackup(JSON.stringify(data)).journal, data.journal)
+  const invalid = structuredClone(data)
+  invalid.journal[1].workout.exercises[0].sets[0].reps = 0
+  assert.throws(() => parseBackup(JSON.stringify(invalid)), /valid LifeOS backup structure/)
+})
+
+test('planned workouts survive backups without changing legacy tasks or workout history', () => {
+  const data = emptyData()
+  data.tasks.push({ id: 'general-task', title: 'Buy groceries', createdAt: '2026-11-17T10:00:00.000Z', completedAt: null })
+  data.plannedWorkouts.push({ id: 'plan-1', title: 'Leg day', createdAt: '2026-11-17T10:00:00.000Z', plannedFor: '2026-11-18' })
+  data.journal.push({ id: 'workout-1', text: 'Earlier session', createdAt: '2026-11-16T10:00:00.000Z', workout: {
+    exercises: [{ name: 'Squat', sets: [{ reps: 8, weightKg: 40 }] }],
+  } })
+  assert.deepEqual(parseBackup(JSON.stringify(data)), data)
+  const older = structuredClone(data)
+  delete older.plannedWorkouts
+  assert.deepEqual(parseBackup(JSON.stringify(older)), older)
+  for (const change of [
+    plans => { plans[0].title = '' },
+    plans => { plans[0].plannedFor = '2026-02-31' },
+    plans => { plans.push({ ...plans[0] }) },
+  ]) {
+    const invalid = structuredClone(data)
+    change(invalid.plannedWorkouts)
+    assert.throws(() => parseBackup(JSON.stringify(invalid)), /valid LifeOS backup structure/)
+  }
+})
+
 test('language preference survives reload without changing saved task titles', () => {
   const memory = new Map()
   globalThis.localStorage = {

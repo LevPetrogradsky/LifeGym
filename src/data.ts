@@ -1,16 +1,17 @@
 import { isJournalPhoto } from './journal/photo.ts'
 import { validApproximateLocation, type ApproximateLocation } from './journal/location.ts'
 import type { CloudOperation } from './journal/cloud-model.ts'
+import { validWorkout, type WorkoutRecord } from './journal/workout.ts'
 
 export type Theme = 'light' | 'dark' | 'system'
 export const navigationSections = [
   { id: 'main', label: 'Home' },
   { id: 'flow', label: '3 questions' },
-  { id: 'journal', label: 'Journal' },
+  { id: 'journal', label: 'Workout Tracker' },
 ] as const
 export type NavigationSection = typeof navigationSections[number]['id']
 export const shortcuts = [
-  { id: 'journal', label: 'Journal' },
+  { id: 'journal', label: 'Workout Tracker' },
   { id: 'tasks', label: 'Tasks' },
   { id: 'focus', label: 'Focus' },
   { id: 'flow', label: '3 questions' },
@@ -25,7 +26,7 @@ export function shortcutVisible(data: LifeOSData, shortcut: Shortcut, location: 
   return data.shortcutPreferences?.[shortcut]?.[location] ?? (
     location === 'home'
       ? !((shortcut === 'journal' || shortcut === 'flow') && data.hiddenSections?.includes(shortcut))
-      : shortcut === 'journal' || shortcut === 'tasks'
+      : false
   )
 }
 export const breakReminderMinutes = [0, 5, 10, 15, 20] as const
@@ -46,6 +47,13 @@ export interface Task {
   createdAt: string
   completedAt: string | null
   list?: TaskList
+}
+
+export interface PlannedWorkout {
+  id: string
+  title: string
+  createdAt: string
+  plannedFor?: string
 }
 
 export interface FocusSession {
@@ -102,6 +110,7 @@ export interface JournalEntry {
   linkedEntryId?: string
   folderId?: string
   location?: ApproximateLocation
+  workout?: WorkoutRecord
 }
 
 export type FlowSignal = Exclude<Factor, 'Other'>
@@ -175,12 +184,13 @@ export interface NoteBlock {
 export interface LifeOSData {
   version: 1
   tasks: Task[]
+  plannedWorkouts?: PlannedWorkout[]
   sessions: FocusSession[]
   journal: JournalEntry[]
   journalFolders?: JournalFolder[]
   timeFormat?: '12' | '24'
   // Account-local sync queue. Saved with the Journal so a reload cannot lose pending edits.
-  journalCloud?: { version: 1; migrated: boolean; pending: CloudOperation[] }
+  journalCloud?: { version: 1; migrated: boolean; plansMigrated?: boolean; endpoint?: 'gym-storage-v1'; pending: CloudOperation[] }
   importedNotes: ImportedNote[]
   activeSession: ActiveSession | null
   pendingSession: PendingSession | null
@@ -210,6 +220,7 @@ export type LoadResult = { data: LifeOSData; error: string | null }
 export const emptyData = (): LifeOSData => ({
   version: 1,
   tasks: [],
+  plannedWorkouts: [],
   sessions: [],
   journal: [],
   importedNotes: [],
@@ -295,6 +306,14 @@ export function validateLifeOSData(value: unknown): value is LifeOSData {
         (location === 'home' || location === 'bar') && typeof enabled === 'boolean')))) return false
   const validTask = (item: unknown) => isRecord(item) && isString(item.id) && isString(item.title) && isTimestamp(item.createdAt) && (item.completedAt === null || isTimestamp(item.completedAt)) &&
     (item.list === undefined || taskLists.some(list => list === item.list))
+  if (value.plannedWorkouts !== undefined && (!Array.isArray(value.plannedWorkouts) ||
+    new Set(value.plannedWorkouts.map(item => isRecord(item) ? item.id : undefined)).size !== value.plannedWorkouts.length ||
+    !value.plannedWorkouts.every(item => isRecord(item) && isString(item.id) && item.id.length > 0 &&
+      isString(item.title) && item.title.trim().length > 0 && item.title.length <= 140 &&
+      isTimestamp(item.createdAt) && (item.plannedFor === undefined ||
+        (isString(item.plannedFor) && /^\d{4}-\d{2}-\d{2}$/.test(item.plannedFor) &&
+          Number.isFinite(Date.parse(`${item.plannedFor}T00:00:00Z`)) &&
+          new Date(`${item.plannedFor}T00:00:00Z`).toISOString().slice(0, 10) === item.plannedFor))))) return false
   const validSessionRatings = (item: Record<string, unknown>) => {
     const ratings = [item.interest, item.continueDesire, item.progress]
     return ratings.every(value => value === null) ||
@@ -323,6 +342,7 @@ export function validateLifeOSData(value: unknown): value is LifeOSData {
     (item.taskId === undefined || isString(item.taskId)) &&
     (item.linkedEntryId === undefined || (isString(item.linkedEntryId) && item.linkedEntryId.length > 0 && item.linkedEntryId.length <= 200 && item.linkedEntryId !== item.id)) &&
     (item.location === undefined || validApproximateLocation(item.location)) &&
+    (item.workout === undefined || validWorkout(item.workout)) &&
     (item.folderId === undefined || (isString(item.folderId) && folderIds.has(item.folderId)))
   const flowEngine = value.flowEngine
   let validFlowEngine = flowEngine === undefined

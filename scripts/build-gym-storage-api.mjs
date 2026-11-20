@@ -2,7 +2,7 @@ import { build } from 'esbuild'
 
 await build({
   entryPoints: ['server/journal-entry.ts'],
-  outfile: 'api/journal.mjs',
+  outfile: 'api/gym-storage.mjs',
   bundle: true,
   platform: 'node',
   format: 'esm',

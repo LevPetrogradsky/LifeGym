@@ -99,6 +99,6 @@ export default function AccountPanel({ auth, user, refreshSession, language, ini
     </form>}
     {notice && <p className="settings-page__description" role="status">{t(notice)}</p>}
     {error && <p className="settings-page__description" role="alert">{t(error)}</p>}
-    <p className="settings-page__description">{t('Your account works on other devices. Tasks and notes stay in this browser.')}</p>
+    <p className="settings-page__description">{t('Your account works on other devices. Turn on cloud storage below to sync workouts and plans.')}</p>
   </div>
 }

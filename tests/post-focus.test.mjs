@@ -2,13 +2,14 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { emptyData, loadData, parseBackup, recordUnratedSession, shortcutVisible, timerView, validateLifeOSData } from '../src/data.ts'
 
-test('new navigation defaults preserve explicit shortcut choices', () => {
+test('new navigation defaults to Home and Settings while preserving explicit shortcut choices', () => {
   const fresh = emptyData()
-  assert.equal(shortcutVisible(fresh, 'journal', 'bar'), true)
-  assert.equal(shortcutVisible(fresh, 'tasks', 'bar'), true)
+  assert.equal(shortcutVisible(fresh, 'journal', 'bar'), false)
+  assert.equal(shortcutVisible(fresh, 'tasks', 'bar'), false)
   assert.equal(shortcutVisible(fresh, 'focus', 'bar'), false)
-  const existing = { ...fresh, shortcutPreferences: { journal: { bar: false }, focus: { bar: true } } }
-  assert.equal(shortcutVisible(existing, 'journal', 'bar'), false)
+  assert.equal(shortcutVisible(fresh, 'journal', 'home'), true)
+  const existing = { ...fresh, shortcutPreferences: { journal: { bar: true }, focus: { bar: true } } }
+  assert.equal(shortcutVisible(existing, 'journal', 'bar'), true)
   assert.equal(shortcutVisible(existing, 'focus', 'bar'), true)
 })
 

@@ -48,9 +48,16 @@ function validApproximateLocation(value) {
   return typeof latitude === "number" && typeof longitude === "number" && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180 && Math.abs(latitude * 10 - Math.round(latitude * 10)) < 1e-8 && Math.abs(longitude * 10 - Math.round(longitude * 10)) < 1e-8;
 }
 
+// src/journal/workout.ts
+var record = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+function validWorkout(value, allowIncomplete = false) {
+  if (!record(value) || !Array.isArray(value.exercises) || value.exercises.length < 1 || value.exercises.length > 20) return false;
+  return value.exercises.every((exercise) => record(exercise) && typeof exercise.name === "string" && exercise.name.length <= 120 && (allowIncomplete || exercise.name.trim().length > 0) && Array.isArray(exercise.sets) && exercise.sets.length >= 1 && exercise.sets.length <= 30 && exercise.sets.every((set) => record(set) && typeof set.reps === "number" && Number.isFinite(set.reps) && (allowIncomplete ? set.reps >= 0 && set.reps <= 1e6 : Number.isSafeInteger(set.reps) && set.reps >= 1 && set.reps <= 1e3) && (set.weightKg === void 0 || typeof set.weightKg === "number" && Number.isFinite(set.weightKg) && set.weightKg >= 0 && set.weightKg <= (allowIncomplete ? 1e6 : 1e4))) && (exercise.restSeconds === void 0 || typeof exercise.restSeconds === "number" && Number.isFinite(exercise.restSeconds) && (allowIncomplete ? exercise.restSeconds >= 0 && exercise.restSeconds <= 1e6 : Number.isSafeInteger(exercise.restSeconds) && exercise.restSeconds >= 0 && exercise.restSeconds <= 3600)));
+}
+
 // src/data.ts
 var shortcuts = [
-  { id: "journal", label: "Journal" },
+  { id: "journal", label: "Workout Tracker" },
   { id: "tasks", label: "Tasks" },
   { id: "focus", label: "Focus" },
   { id: "flow", label: "3 questions" }
@@ -61,25 +68,32 @@ var journalFolderColors = ["blue", "green", "purple", "amber", "pink", "slate"];
 var journalFolderIcons = ["folder", "briefcase", "book", "heart", "star", "lightbulb", "leaf", "camera"];
 
 // src/journal/cloud-model.ts
-var record = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+var record2 = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 var id = (value) => typeof value === "string" && value.length > 0 && value.length <= 200;
 var timestamp = (value) => typeof value === "string" && value.length <= 50 && Number.isFinite(Date.parse(value));
 function validCloudFolder(value) {
-  return record(value) && id(value.id) && typeof value.name === "string" && value.name.length > 0 && value.name.length <= maxJournalFolderNameLength && value.name === value.name.trim() && (value.order === void 0 || typeof value.order === "number" && Number.isSafeInteger(value.order) && value.order >= 0) && (value.color === void 0 || journalFolderColors.some((color) => color === value.color)) && (value.icon === void 0 || journalFolderIcons.some((icon) => icon === value.icon));
+  return record2(value) && id(value.id) && typeof value.name === "string" && value.name.length > 0 && value.name.length <= maxJournalFolderNameLength && value.name === value.name.trim() && (value.order === void 0 || typeof value.order === "number" && Number.isSafeInteger(value.order) && value.order >= 0) && (value.color === void 0 || journalFolderColors.some((color) => color === value.color)) && (value.icon === void 0 || journalFolderIcons.some((icon) => icon === value.icon));
 }
 function validCloudEntry(value) {
-  return record(value) && id(value.id) && typeof value.text === "string" && value.text.length <= 3e6 && timestamp(value.createdAt) && (value.updatedAt === void 0 || timestamp(value.updatedAt)) && (value.photo === void 0 || isJournalPhoto(value.photo)) && (value.taskId === void 0 || id(value.taskId)) && (value.linkedEntryId === void 0 || id(value.linkedEntryId) && value.linkedEntryId !== value.id) && (value.location === void 0 || validApproximateLocation(value.location)) && (value.folderId === void 0 || id(value.folderId));
+  return record2(value) && id(value.id) && typeof value.text === "string" && value.text.length <= 3e6 && timestamp(value.createdAt) && (value.updatedAt === void 0 || timestamp(value.updatedAt)) && (value.photo === void 0 || isJournalPhoto(value.photo)) && (value.taskId === void 0 || id(value.taskId)) && (value.linkedEntryId === void 0 || id(value.linkedEntryId) && value.linkedEntryId !== value.id) && (value.location === void 0 || validApproximateLocation(value.location)) && (value.workout === void 0 || validWorkout(value.workout)) && (value.folderId === void 0 || id(value.folderId));
+}
+function validCloudPlan(value) {
+  if (!record2(value) || !id(value.id) || typeof value.title !== "string" || !value.title.trim() || value.title.length > 140 || !timestamp(value.createdAt)) return false;
+  if (value.plannedFor === void 0) return true;
+  if (typeof value.plannedFor !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value.plannedFor)) return false;
+  const date = /* @__PURE__ */ new Date(`${value.plannedFor}T00:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value.plannedFor;
 }
 function validCloudItem(value) {
-  if (!record(value) || value.kind !== "folder" && value.kind !== "entry" || !id(value.id) || typeof value.deleted !== "boolean") return false;
+  if (!record2(value) || value.kind !== "folder" && value.kind !== "entry" && value.kind !== "plan" || !id(value.id) || typeof value.deleted !== "boolean") return false;
   if (value.deleted) return value.payload === null;
-  return value.kind === "folder" ? validCloudFolder(value.payload) && value.payload.id === value.id : validCloudEntry(value.payload) && value.payload.id === value.id;
+  return value.kind === "folder" ? validCloudFolder(value.payload) && value.payload.id === value.id : value.kind === "entry" ? validCloudEntry(value.payload) && value.payload.id === value.id : validCloudPlan(value.payload) && value.payload.id === value.id;
 }
 function validCloudOperation(value) {
-  if (!record(value)) return false;
+  if (!record2(value)) return false;
   const mode = value.mode;
   const previous = value.previous;
-  return (mode === "import" || mode === "change") && validCloudItem(value) && (mode !== "import" || !value.deleted) && (previous === void 0 || previous === null || (value.kind === "folder" ? validCloudFolder(previous) : validCloudEntry(previous)));
+  return (mode === "import" || mode === "change") && validCloudItem(value) && (mode !== "import" || !value.deleted) && (previous === void 0 || previous === null || (value.kind === "folder" ? validCloudFolder(previous) : value.kind === "entry" ? validCloudEntry(previous) : validCloudPlan(previous)));
 }
 
 // server/journal-handler.ts
@@ -92,7 +106,7 @@ function cursorFromUrl(url) {
   const raw = url.searchParams.get("after");
   if (!raw) return null;
   const decoded = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
-  if (!Array.isArray(decoded) || decoded.length !== 2 || decoded[0] !== "folder" && decoded[0] !== "entry" || typeof decoded[1] !== "string" || decoded[1].length > 200) throw new Error("Invalid cursor");
+  if (!Array.isArray(decoded) || decoded.length !== 2 || decoded[0] !== "folder" && decoded[0] !== "entry" && decoded[0] !== "plan" || typeof decoded[1] !== "string" || decoded[1].length > 200) throw new Error("Invalid cursor");
   return [decoded[0], decoded[1]];
 }
 function createJournalHandler(verify, store2, enabled) {
@@ -149,18 +163,18 @@ function createJournalStore(connectionString) {
   const sql = neon(connectionString);
   return {
     async guestExists(ownerId) {
-      const rows = await sql`SELECT 1 FROM lifeos_journal_guest_vaults WHERE owner_id = ${ownerId} LIMIT 1`;
+      const rows = await sql`SELECT 1 FROM livegym_guest_vaults WHERE owner_id = ${ownerId} LIMIT 1`;
       return rows.length > 0;
     },
     async createGuest(ownerId) {
-      await sql`INSERT INTO lifeos_journal_guest_vaults (owner_id) VALUES (${ownerId}) ON CONFLICT DO NOTHING`;
+      await sql`INSERT INTO livegym_guest_vaults (owner_id) VALUES (${ownerId}) ON CONFLICT DO NOTHING`;
     },
     async list(userId, after) {
       const kind = after?.[0] ?? "";
       const id2 = after?.[1] ?? "";
       const rows = await sql`
         SELECT kind, id, payload, deleted
-        FROM lifeos_journal_items
+        FROM livegym_storage_items
         WHERE user_id = ${userId} AND (kind, id) > (${kind}, ${id2})
         ORDER BY kind, id
         LIMIT 2
@@ -178,7 +192,7 @@ function createJournalStore(connectionString) {
       const payload = operation.deleted ? null : JSON.stringify(operation.payload);
       if (operation.kind === "entry" && !operation.deleted && operation.payload?.folderId) {
         const folders = await sql`
-          SELECT 1 FROM lifeos_journal_items
+          SELECT 1 FROM livegym_storage_items
           WHERE user_id = ${userId} AND kind = 'folder'
             AND id = ${operation.payload.folderId} AND NOT deleted
           LIMIT 1
@@ -187,14 +201,14 @@ function createJournalStore(connectionString) {
       }
       if (operation.mode === "import") {
         const inserted = await sql`
-          INSERT INTO lifeos_journal_items (user_id, kind, id, payload, deleted)
+          INSERT INTO livegym_storage_items (user_id, kind, id, payload, deleted)
           VALUES (${userId}, ${operation.kind}, ${operation.id}, ${payload}::jsonb, false)
           ON CONFLICT (user_id, kind, id) DO NOTHING
           RETURNING id
         `;
         if (!inserted.length) {
           const identical = await sql`
-            SELECT 1 FROM lifeos_journal_items
+            SELECT 1 FROM livegym_storage_items
             WHERE user_id = ${userId} AND kind = ${operation.kind} AND id = ${operation.id}
               AND NOT deleted AND payload = ${payload}::jsonb
             LIMIT 1
@@ -205,12 +219,12 @@ function createJournalStore(connectionString) {
       }
       if (operation.previous === void 0) throw new Error("Journal conflict");
       const changed = operation.previous === null ? await sql`
-          INSERT INTO lifeos_journal_items (user_id, kind, id, payload, deleted)
+          INSERT INTO livegym_storage_items (user_id, kind, id, payload, deleted)
           VALUES (${userId}, ${operation.kind}, ${operation.id}, ${payload}::jsonb, ${operation.deleted})
           ON CONFLICT (user_id, kind, id) DO NOTHING
           RETURNING id
         ` : await sql`
-          UPDATE lifeos_journal_items SET payload = ${payload}::jsonb, deleted = ${operation.deleted}, changed_at = now()
+          UPDATE livegym_storage_items SET payload = ${payload}::jsonb, deleted = ${operation.deleted}, changed_at = now()
           WHERE user_id = ${userId} AND kind = ${operation.kind} AND id = ${operation.id}
             AND NOT deleted AND payload = ${JSON.stringify(operation.previous)}::jsonb
           RETURNING id
@@ -218,7 +232,7 @@ function createJournalStore(connectionString) {
       if (!changed.length) throw new Error("Journal conflict");
       if (operation.kind === "folder" && operation.deleted) {
         await sql`
-          UPDATE lifeos_journal_items SET payload = payload - 'folderId', changed_at = now()
+          UPDATE livegym_storage_items SET payload = payload - 'folderId', changed_at = now()
           WHERE user_id = ${userId} AND kind = 'entry' AND NOT deleted
             AND payload->>'folderId' = ${operation.id}
         `;
@@ -252,7 +266,7 @@ var handler = createJournalHandler(async (token) => {
   write: async () => {
     throw new Error("Database unavailable");
   }
-}, () => process.env.JOURNAL_SYNC_ENABLED === "true" && (process.env.VERCEL_ENV === "preview" || process.env.VERCEL_ENV === "production"));
+}, () => process.env.GYM_STORAGE_ENABLED === "true" && (process.env.VERCEL_ENV === "preview" || process.env.VERCEL_ENV === "production"));
 var journal_entry_default = { fetch: handler };
 export {
   journal_entry_default as default

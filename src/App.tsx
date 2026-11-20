@@ -4,33 +4,34 @@ import TaskHistory from './TaskHistory'
 import AskLifeOS from './home/AskLifeOS'
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode, type SetStateAction } from 'react'
 import { ArrowRight, BookOpen, ClipboardList, House, Leaf, MessageCircle, Play, Settings2, Sparkles } from 'lucide-react'
-import { elapsedClock, focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, timerView, visibleShortcuts, STORAGE_KEY, type Factor, type JournalFolderAppearance, type LifeOSData, type Shortcut, type ShortcutLocation, type Task } from './data'
+import { elapsedClock, focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, timerView, visibleShortcuts, STORAGE_KEY, type Factor, type JournalFolderAppearance, type LifeOSData, type PlannedWorkout, type Shortcut, type Task } from './data'
 import { base64ToBytes, buildNoteBlocks, makeImportedNote, type SourceIndex } from './notes'
 import JournalPage, { type JournalDraft } from './journal/JournalPage'
+import WorkoutsPage from './workouts/WorkoutsPage'
+import { emptyExercise } from './journal/workout'
 import { clearJournalDraft, readJournalDraft, writeJournalDraft } from './journal/drafts'
 import { JournalCloudSync, guestJournalCount, withJournalChanges } from './journal/cloud-sync'
 import { cloudConsentKey, guestRecoveryStorageKey, normalizeRecoveryCode, readRecoveryCode } from './journal/guest-recovery'
 import FlowEnginePage from './flow/FlowEnginePage'
 import BreakReminder from './settings/BreakReminder'
 import SettingsPage from './settings/SettingsPage'
+import JournalCloudPanel from './settings/JournalCloudPanel'
 import PostFocusChoice from './PostFocusChoice'
-import FocusPresets from './presets/PresetsPage'
-import { applyFocusPreset, findFocusPreset, type FocusPresetId } from './presets/focusPresets'
+import { findFocusPreset } from './presets/focusPresets'
 import { useDeleteUndo } from './delete-undo'
 import UnifiedSearch from './search/UnifiedSearch'
 import type { AccountEntryMode } from './settings/AccountPanel'
-import WebOnboarding, { type OnboardingDestination } from './onboarding/WebOnboarding'
-import { completionKey, initialOnboardingMode } from './onboarding/state'
 import { translate, type AppLanguage } from './language'
 import './reflection-confirmation.css'
 import './mobile-navigation.css'
 
-type View = Exclude<Shortcut, 'focus'> | 'main' | 'ask' | 'settings' | 'focus-history' | 'presets'
+type View = Exclude<Shortcut, 'focus'> | 'main' | 'ask' | 'settings' | 'focus-history' | 'workouts'
 const shortcutIcons = { tasks: ClipboardList, journal: BookOpen, focus: Play, flow: MessageCircle }
 const factors: Factor[] = ['Meaningful Goal', 'Personal Control', 'Fast Feedback', 'Other']
-const repoUrl = 'https://github.com/ProgrammerLevpetrogradsky/LifeOS-Public'
+const repoUrl = 'https://github.com/LevPetrogradsky/LifeGym'
+const hubUrl = 'https://lifeos-demo-kappa.vercel.app/'
 
-function App({ storageKey, account, existingAccount = false, journalCloudToken, guestCloud = false }: { storageKey?: string; account?: (language: AppLanguage, initialMode?: AccountEntryMode) => ReactNode; existingAccount?: boolean; journalCloudToken?: () => Promise<string | null>; guestCloud?: boolean }) {
+function App({ storageKey, account, journalCloudToken, guestCloud = false }: { storageKey?: string; account?: (language: AppLanguage, initialMode?: AccountEntryMode) => ReactNode; existingAccount?: boolean; journalCloudToken?: () => Promise<string | null>; guestCloud?: boolean }) {
   const effectiveStorageKey = storageKey ?? STORAGE_KEY
   const [cloudEnabled, setCloudEnabled] = useState(() => {
     try { return Boolean(journalCloudToken && localStorage.getItem(cloudConsentKey(effectiveStorageKey)) === 'true' && (!guestCloud || readRecoveryCode())) }
@@ -38,7 +39,6 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
   })
   const [recoveryCode, setRecoveryCode] = useState(() => guestCloud ? readRecoveryCode() : null)
   const [loadResult, setLoadResult] = useState(() => loadData(storageKey))
-  const [onboardingMode, setOnboardingMode] = useState(() => initialOnboardingMode(storageKey, localStorage, window.location.search, existingAccount))
   const data = loadResult.data
   const language = data.language ?? 'en'
   const timeFormat = data.timeFormat ?? (language === 'ru' ? '24' : '12')
@@ -47,7 +47,6 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
   const dataRef = useRef(data)
   const hiddenSections = data.hiddenSections ?? []
   const showHome = !hiddenSections.includes('main')
-  const showAskLifeOS = data.askLifeOSInBar === true
   const onHome = (id: Shortcut) => shortcutVisible(data, id, 'home')
   const inBar = (id: Shortcut) => shortcutVisible(data, id, 'bar')
   const defaultView = showHome ? 'main' : (['journal', 'tasks'] as const).find(inBar) ?? 'settings'
@@ -56,7 +55,6 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     catch { return defaultView }
   })
   const [homeNavigationKey, setHomeNavigationKey] = useState(0)
-  const [presetsReturnView, setPresetsReturnView] = useState<View>(defaultView)
   const [reflectionReturnView, setReflectionReturnView] = useState<View>(defaultView)
   const [reflectionNotice, setReflectionNotice] = useState('')
   const [postFocusReflection, setPostFocusReflection] = useState(false)
@@ -87,7 +85,8 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
   const [selectedFactors, setSelectedFactors] = useState<Factor[]>([])
   const [taskHistoryId, setTaskHistoryId] = useState<string | null>(null)
   const [journalTaskId, setJournalTaskId] = useState<string | undefined>()
-  const [journalDraft, setJournalDraft] = useState<JournalDraft>(() => readJournalDraft(storageKey) ?? { text: '' })
+  const [journalDraft, setJournalDraft] = useState<JournalDraft>(() => readJournalDraft(storageKey) ?? { text: '', workout: { exercises: [emptyExercise()] } })
+  const [addExerciseRequest, setAddExerciseRequest] = useState(0)
   const [journalDraftError, setJournalDraftError] = useState(false)
   const journalDraftRef = useRef(journalDraft)
   const journalCloud = useRef<JournalCloudSync | null>(null)
@@ -189,13 +188,13 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
       token: journalCloudToken,
       status: message => {
         setJournalCloudStatus(message)
-        if (message === 'Syncing Journal…') setJournalCloudError(false)
-        if (message === 'Journal saved in cloud.') {
+        if (message === 'Syncing Life Storage…') setJournalCloudError(false)
+        if (message === 'Life Storage saved in cloud.') {
           setJournalCloudError(false)
           const savedAt = new Date().toISOString()
           setJournalLastSavedAt(savedAt)
           try { localStorage.setItem(`${effectiveStorageKey}.journal-last-synced`, savedAt) } catch { /* Status remains visible for this session. */ }
-        } else if (message !== 'Syncing Journal…') setJournalCloudError(true)
+        } else if (message !== 'Syncing Life Storage…') setJournalCloudError(true)
       },
     })
     journalCloud.current = sync
@@ -210,7 +209,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     const normalized = normalizeRecoveryCode(code)
     if (!normalized) return false
     try {
-      const response = await fetch('/api/journal?guest=status', { headers: { Authorization: `Guest ${normalized}` }, cache: 'no-store' })
+      const response = await fetch('/api/gym-storage?guest=status', { headers: { Authorization: `Guest ${normalized}` }, cache: 'no-store' })
       return response.ok && (await response.json()).exists === true
     } catch { return false }
   }
@@ -221,14 +220,20 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
       const normalized = normalizeRecoveryCode(code ?? '')
       if (!normalized) return false
       try {
-        const response = await fetch('/api/journal?guest=create', { method: 'POST', headers: { Authorization: `Guest ${normalized}` }, cache: 'no-store' })
+        const response = await fetch('/api/gym-storage?guest=create', { method: 'POST', headers: { Authorization: `Guest ${normalized}` }, cache: 'no-store' })
         if (!response.ok) return false
         localStorage.setItem(guestRecoveryStorageKey, normalized)
         localStorage.setItem(cloudConsentKey(effectiveStorageKey), 'true')
         setRecoveryCode(normalized)
       } catch { return false }
     } else {
-      try { localStorage.setItem(cloudConsentKey(effectiveStorageKey), 'true') }
+      try {
+        const token = await journalCloudToken()
+        if (!token) return false
+        const response = await fetch('/api/gym-storage', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+        if (!response.ok) return false
+        localStorage.setItem(cloudConsentKey(effectiveStorageKey), 'true')
+      }
       catch { return false }
     }
     setCloudEnabled(true)
@@ -254,13 +259,14 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
   }
 
   const importGuestJournal = async () => {
-    if (!window.confirm('Copy guest Journal entries and folders into this account? The guest copy will stay on this device.')) return
+    if (!window.confirm('Copy guest workouts, workout plans, and Journal entries into this account? The guest copy will stay on this device.')) return
     try {
       await journalCloud.current?.importGuest()
       setGuestNotesAvailable(0)
-      setJournalCloudStatus('Guest Journal copied into this account. The guest copy is still on this device.')
+      setBackupMessage('Guest workouts and Journal copied into this account. The guest copy is still on this device.')
     } catch (error) {
-      setJournalCloudStatus(error instanceof Error ? error.message : 'Guest Journal could not be copied. Its local copy was kept.')
+      setJournalCloudError(true)
+      setJournalCloudStatus(error instanceof Error ? error.message : 'Guest workouts could not be copied. Their local copy was kept.')
     }
   }
 
@@ -491,18 +497,23 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
   }
 
   const createJournalEntry = (draft: JournalDraft, folderId?: string) => {
+    const { plannedWorkoutId, ...entryDraft } = draft
     const saved = update(current => ({
       ...current,
+      plannedWorkouts: draft.workout && plannedWorkoutId
+        ? (current.plannedWorkouts ?? []).filter(plan => plan.id !== plannedWorkoutId)
+        : current.plannedWorkouts,
       journal: [{
-        ...draft, id: crypto.randomUUID(), createdAt: new Date().toISOString(), taskId: journalTaskId,
+        ...entryDraft, id: crypto.randomUUID(), createdAt: new Date().toISOString(), taskId: journalTaskId,
         folderId: current.journalFolders?.some(folder => folder.id === folderId) ? folderId : undefined,
       }, ...current.journal],
     }))
     if (saved) {
       if (!clearJournalDraft(storageKey)) setStorageError(true)
       setJournalDraftError(false)
-      journalDraftRef.current = { text: '' }
-      setJournalDraft({ text: '' })
+      const nextDraft = { text: '', workout: { exercises: [emptyExercise()] } }
+      journalDraftRef.current = nextDraft
+      setJournalDraft(nextDraft)
       setJournalTaskId(undefined)
       setJournalPrompt(false)
     }
@@ -511,7 +522,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
 
   const editJournalEntry = (id: string, draft: JournalDraft) => update(current => ({
     ...current,
-    journal: current.journal.map(entry => entry.id === id ? { ...entry, text: draft.text, photo: draft.photo, location: draft.location,
+    journal: current.journal.map(entry => entry.id === id ? { ...entry, text: draft.text, photo: draft.photo, location: draft.location, workout: draft.workout,
       linkedEntryId: draft.linkedEntryId === id ? undefined : draft.linkedEntryId, updatedAt: new Date().toISOString() } : entry),
   }))
 
@@ -550,17 +561,6 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     }))
   }
 
-  const exportData = () => {
-    const { journalCloud: _sync, ...exportable } = data
-    const blob = new Blob([JSON.stringify(exportable, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `lifeos-export-${new Date().toISOString().slice(0, 10)}.json`
-    link.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-  }
-
   const navigate = (next: View) => {
     setJournalSearchResult(undefined)
     if (next !== 'flow') setPostFocusReflection(false)
@@ -573,52 +573,51 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const openPresets = () => {
-    setPresetsReturnView(view)
-    navigate('presets')
+  const openAddExercise = () => {
+    changeJournalDraft(current => {
+      const exercises = current.workout?.exercises ?? []
+      const lastExercise = exercises.at(-1)
+      if (lastExercise && !lastExercise.name.trim() && lastExercise.sets.every(set => !set.reps)) return current
+      if (exercises.length >= 20) return current
+      return { ...current, workout: { exercises: [...exercises, emptyExercise()] } }
+    })
+    setAddExerciseRequest(request => request + 1)
+    navigate('journal')
   }
 
-  const applyPreset = (id: FocusPresetId) => {
-    const preset = findFocusPreset(id)
-    if (!preset) return false
-    const idle = !dataRef.current.activeSession && !dataRef.current.pendingSession
-    const startedAt = Date.now()
-    const sessionId = crypto.randomUUID()
-    const compact = timerView(dataRef.current) === 'compact'
-    const saved = update(current => {
-      const configured = applyFocusPreset(current, id)
-      if (!idle || configured.activeSession || configured.pendingSession) return configured
-      return {
-        ...configured,
-        activeSession: {
-          id: sessionId,
-          taskId: null,
-          taskTitle: preset.label,
-          startedAt: new Date(startedAt).toISOString(),
-          silenceBreakReminders: preset.silenceBreakReminders,
-        },
-      }
+  const savePlannedWorkout = (title: string, plannedFor?: string, id?: string) => {
+    const cleanTitle = title.trim()
+    if (!cleanTitle || cleanTitle.length > 140) return false
+    return update(current => {
+      const plans = current.plannedWorkouts ?? []
+      if (id && plans.some(plan => plan.id === id)) return { ...current, plannedWorkouts: plans.map(plan =>
+        plan.id === id ? { ...plan, title: cleanTitle, plannedFor } : plan) }
+      return { ...current, plannedWorkouts: [{ id: crypto.randomUUID(), title: cleanTitle,
+        createdAt: new Date().toISOString(), plannedFor }, ...plans] }
     })
-    if (saved && idle) {
-      if (compact) {
-        try { localStorage.setItem(`${storageKey ?? STORAGE_KEY}.focus-minimized`, sessionId) } catch { setStorageError(true) }
-        setMinimizedFocusScreen(sessionId)
-        navigate(showHome ? 'main' : defaultView)
-      } else {
-        try { localStorage.removeItem(`${storageKey ?? STORAGE_KEY}.focus-minimized`) } catch { /* Focus still opens. */ }
-        setMinimizedFocusScreen(undefined)
-      }
-      setPausedFocusScreen(undefined)
-      setNow(startedAt)
-    }
-    return saved
+  }
+
+  const removePlannedWorkout = (id: string) => update(current => ({ ...current,
+    plannedWorkouts: (current.plannedWorkouts ?? []).filter(plan => plan.id !== id),
+  }))
+
+  const logPlannedWorkout = (plan: PlannedWorkout) => {
+    const current = journalDraftRef.current
+    const hasExerciseInput = current.workout?.exercises.some(exercise => exercise.name.trim() ||
+      exercise.sets.some(set => set.reps > 0 || set.weightKg !== undefined))
+    if (current.text.trim() || current.photo || current.location || current.linkedEntryId || hasExerciseInput) return false
+    changeJournalDraft({ ...current, text: plan.title,
+      workout: current.workout ?? { exercises: [emptyExercise()] }, plannedWorkoutId: plan.id })
+    setAddExerciseRequest(request => request + 1)
+    navigate('journal')
+    return true
   }
 
   const returnLabel = showHome ? 'Back to Home' : 'Back to Settings'
   const returnFromSection = () => navigate(showHome ? 'main' : 'settings')
   const reflectionReturnLabel = reflectionReturnView === 'main' ? 'Back to Home'
     : reflectionReturnView === 'ask' ? 'Back to Ask LifeOS'
-      : reflectionReturnView === 'journal' ? 'Back to Journal'
+      : reflectionReturnView === 'journal' ? 'Back to Workout Tracker'
         : reflectionReturnView === 'tasks' ? 'Back to Tasks' : 'Back to Settings'
 
   const openSearchEntry = (id: string) => {
@@ -627,19 +626,6 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     setJournalPrompt(false)
     setJournalSearchResult({ id })
   }
-
-  const changeHomeVisibility = (visible: boolean) => update(current => {
-    const hidden = (current.hiddenSections ?? []).filter(id => id !== 'main')
-    return { ...current, hiddenSections: visible ? hidden : [...hidden, 'main'] }
-  })
-
-  const changeShortcut = (id: Shortcut, location: ShortcutLocation, visible: boolean) => update(current => ({
-    ...current,
-    shortcutPreferences: {
-      ...current.shortcutPreferences,
-      [id]: { ...current.shortcutPreferences?.[id], [location]: visible },
-    },
-  }))
 
   const renderNavigation = (iconSize: number, bottom = false) => <>
     {showHome && <NavButton icon={<House size={iconSize} />} label={t('Home')} selected={view === 'main'} onClick={() => {
@@ -656,14 +642,13 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
           else startFocus()
         }} />
     })}
-    {showAskLifeOS && <NavButton icon={<MessageCircle size={iconSize} />} label={t('Ask LifeOS')} selected={view === 'ask'} onClick={() => navigate('ask')} />}
     {bottom && <NavButton icon={<Settings2 size={iconSize} />} label={t('Settings')} selected={view === 'settings'} onClick={() => navigate('settings')} />}
   </>
 
   const renderBrand = (size: number) => {
-    const logo = <><span className="brand-mark"><Leaf size={size} strokeWidth={2.4} /></span><span>LifeOS<span className="brand-dot">.</span></span></>
+    const logo = <><span className="brand-mark"><Leaf size={size} strokeWidth={2.4} /></span><span>LifeGym<span className="brand-dot">.</span></span></>
     return showHome
-      ? <button className="brand" onClick={() => navigate('main')} aria-label="LifeOS home">{logo}</button>
+      ? <button className="brand" onClick={() => navigate('main')} aria-label="LifeGym home">{logo}</button>
       : <div className="brand">{logo}</div>
   }
 
@@ -680,28 +665,6 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
 
   const breakReminder = reminderDueAt !== null && <BreakReminder dueAt={reminderDueAt}
     onResume={resumeSession} onDismiss={dismissBreakReminder} />
-
-  const clearOnboardingPreviewUrl = () => {
-    const url = new URL(window.location.href)
-    if (!url.searchParams.has('onboarding')) return
-    url.searchParams.delete('onboarding')
-    window.history.replaceState(null, '', url.pathname + url.search + url.hash)
-  }
-
-  const finishOnboarding = (name: string, destination: OnboardingDestination) => {
-    if (onboardingMode === 'first-run') {
-      if (!update(current => ({ ...current, displayName: name || undefined }))) return false
-      try { localStorage.setItem(completionKey(storageKey), 'done') } catch { /* Saved data itself marks an existing user. */ }
-    }
-    clearOnboardingPreviewUrl()
-    setOnboardingMode(null)
-    navigate(destination === 'focus' ? 'presets' : destination)
-    return true
-  }
-
-  if (onboardingMode) return <WebOnboarding mode={onboardingMode} displayName={data.displayName ?? ''} language={language}
-    account={account && !existingAccount ? mode => account(language, mode) : undefined}
-    onComplete={finishOnboarding} onClose={() => { clearOnboardingPreviewUrl(); setOnboardingMode(null) }} />
 
   if (data.activeSession && ((!pausedSession && minimizedFocusScreen !== data.activeSession.id) ||
     (pausedSession !== null && pausedFocusScreen === pausedSession.id))) return <>
@@ -740,7 +703,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
   if (data.pendingSession) return (<>
     <main className="checkin-screen page-container">
       {storageError && <div className="storage-error" role="alert">{t('Your browser could not save the check-in. Your answers are still here. Check available storage and try again.')}</div>}
-      <div className="focus-top"><div className="brand-mark"><Leaf size={18} strokeWidth={2.3} /></div><span>{t('LifeOS / Check-in')}</span></div>
+      <div className="focus-top"><div className="brand-mark"><Leaf size={18} strokeWidth={2.3} /></div><span>{t('LifeGym / Check-in')}</span></div>
       <div className="checkin-card">
         <div className="section-icon"><Sparkles size={20} /></div>
         <p className="eyebrow">{t('A MOMENT TO REFLECT')}</p>
@@ -766,12 +729,17 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
       <aside className="sidebar">
         {renderBrand(20)}
         <nav aria-label="Main navigation">{renderNavigation(19)}</nav>
-        <div className="sidebar-foot"><div className="sidebar-quote"><span>✳</span><p>{t('A little space for what matters.')}</p></div><span>LifeOS v0.1</span></div>
+        <div className="sidebar-foot"><div className="sidebar-quote"><span>✳</span><p>{t('A little space for what matters.')}</p></div><span>LifeGym preview</span></div>
       </aside>
 
       <div className="main-area">
-        <header className="mobile-header">{renderBrand(18)}<span>v0.1</span></header>
-        {(storageError || loadResult.error) && <div className="storage-error" role="alert">{loadResult.error ?? 'Your browser could not save changes locally. Your unsaved text is still here. Check available storage, then try again.'} {loadResult.error && 'Import a valid backup below to recover. Existing saved content will not be changed until recovery succeeds.'}</div>}
+        <header className="mobile-header gym-header">{renderBrand(18)}
+          <a className="app-hub-return" href={hubUrl}>{language === 'ru' ? 'Вернуться в Hub' : 'Back to Hub'}</a>
+        </header>
+        {(storageError || loadResult.error) && <div className="storage-error" role="alert">{loadResult.error ?? 'Your browser could not save changes locally. Your unsaved text is still here. Check available storage, then try again.'} {loadResult.error && <label className="settings-page__action settings-page__upload">
+          {t('Restore from a copy')}
+          <input type="file" accept="application/json,.json" onChange={importBackup} />
+        </label>}</div>}
         {backupMessage && <div className="storage-error" role="status">{backupMessage}</div>}
         {reflectionNotice && <div className="lifeos-reflection-confirmation" role="status">{reflectionNotice}</div>}
         {breakReminder}
@@ -780,7 +748,6 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
           onReturnHome={view === 'tasks' ? returnFromSection : undefined}
           returnLabel={returnLabel}
           showTasksShortcut={onHome('tasks')}
-          showFocusShortcut={onHome('focus')}
           searchIncludesJournal={showJournal}
           repoUrl={repoUrl}
           tasks={data.tasks}
@@ -788,7 +755,6 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
           focusRunning={Boolean(data.activeSession && !pausedSession)}
           pausedActiveTime={data.activeSession ? elapsedClock(focusedDuration(data.activeSession, now)) : undefined}
           showPausedTime={showTime}
-          displayName={data.displayName}
           language={data.language ?? 'en'}
           onPauseFocus={() => pauseSession(false, false)}
           onContinueFocus={() => resumeSession(true)}
@@ -799,13 +765,31 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
           onOpenTask={openTaskHistory}
           onDeleteTask={deleteTask}
           onStart={startFocus}
-          onStartOpenFocus={() => startFocus()}
           onJournal={onHome('journal') ? () => navigate('journal') : undefined}
-          onPresets={openPresets}
-          onFocusHistory={() => navigate('focus-history')}
+          onAddExercise={onHome('journal') ? openAddExercise : undefined}
+          onWorkouts={() => navigate('workouts')}
           onSettings={() => navigate('settings')}
           onSearch={() => setSearchOpen(true)}
         />}
+
+        {view === 'workouts' && <WorkoutsPage language={language} plans={data.plannedWorkouts ?? []}
+          history={data.journal.filter(entry => entry.workout)} onReturn={returnFromSection} returnLabel={returnLabel}
+          onSavePlan={savePlannedWorkout} onRemovePlan={removePlannedWorkout} onLogPlan={logPlannedWorkout}
+          onOpenEntry={openSearchEntry}>
+          <details className="settings-page__group">
+            <summary className="settings-page__row">{language === 'ru' ? 'Синхронизация тренировок' : 'Workout sync'}</summary>
+            <div className="settings-page__panel">
+              <JournalCloudPanel cloud={{ available: Boolean(journalCloudToken), enabled: cloudEnabled, guest: guestCloud, code: recoveryCode, status: journalCloudStatus,
+              error: journalCloudError, lastSavedAt: journalLastSavedAt, pending: data.journalCloud?.pending.length ?? 0,
+              onRetry: () => void journalCloud.current?.sync(), onEnable: enableJournalCloud,
+              onVerifyRecovery: verifyRecoveryCode, onRecover: recoverJournalCloud }} language={language} />
+              {cloudEnabled && !guestCloud && guestNotesAvailable > 0 && <div className="journal-guest-import">
+                <span>{language === 'ru' ? `Гостевых тренировок, планов и записей на этом устройстве: ${guestNotesAvailable}` : `Guest workouts, plans and entries on this device: ${guestNotesAvailable}`}</span>
+                <button type="button" onClick={importGuestJournal}>{language === 'ru' ? 'Скопировать в этот аккаунт' : 'Copy into this account'}</button>
+              </div>}
+            </div>
+          </details>
+        </WorkoutsPage>}
 
         {view === 'ask' && <main className="life-main life-main-guide-page">
           <h1>Ask LifeOS</h1>
@@ -816,14 +800,6 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
             settings: () => navigate('settings'),
           }} />
         </main>}
-
-        {view === 'presets' && <FocusPresets
-          language={data.language ?? 'en'}
-          appliedPresetId={data.focusPresetId}
-          sessionState={data.pendingSession ? 'pending' : data.activeSession ? 'active' : 'idle'}
-          onApply={applyPreset}
-          onBack={() => navigate(presetsReturnView)}
-        />}
 
         {(view === 'flow' || view === 'focus-history') && <FlowEnginePage key={view}
           timeFormat={timeFormat}
@@ -839,10 +815,11 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
 
         {view === 'journal' && (
           <JournalPage language={language} timeFormat={timeFormat} entries={data.journal} folders={data.journalFolders ?? []} draft={journalDraft} onDraftChange={changeJournalDraft}
+            focusExerciseRequest={addExerciseRequest}
             draftSaveError={journalDraftError}
             draftStorageKey={storageKey} onDraftStorageError={() => setStorageError(true)}
             cloudStatus={cloudEnabled ? journalCloudStatus : undefined}
-            guestImportCount={cloudEnabled ? guestNotesAvailable : 0} onImportGuest={cloudEnabled && !guestCloud ? importGuestJournal : undefined}
+            guestImportCount={0}
             onReturn={returnFromSection} returnLabel={returnLabel}
             onSaveFolder={saveJournalFolder} onReorderFolders={reorderJournalFolders} onDeleteFolder={deleteJournalFolder} onMoveEntry={moveJournalEntry}
             linkedTaskTitle={linkedTaskTitle} onUnlinkTask={() => setJournalTaskId(undefined)}
@@ -854,42 +831,14 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
         {view === 'settings' && (
           <SettingsPage
             account={accountContent}
-            journalSync={{ available: Boolean(journalCloudToken), enabled: cloudEnabled, guest: guestCloud, code: recoveryCode, status: journalCloudStatus,
-              error: journalCloudError, lastSavedAt: journalLastSavedAt,
-              onRetry: () => void journalCloud.current?.sync(), onEnable: enableJournalCloud,
-              onVerifyRecovery: verifyRecoveryCode, onRecover: recoverJournalCloud }}
             theme={data.theme}
             language={data.language ?? 'en'}
             timeFormat={timeFormat}
             onTimeFormatChange={timeFormat => update(current => ({ ...current, timeFormat }))}
             onLanguageChange={language => update(current => ({ ...current, language }))}
             onThemeChange={theme => update(current => ({ ...current, theme }))}
-            interactiveTips={data.interactiveTips !== false}
-            onInteractiveTipsChange={interactiveTips => update(current => ({ ...current, interactiveTips }))}
-            showHome={showHome}
-            onHomeVisibilityChange={changeHomeVisibility}
-            showAskLifeOS={showAskLifeOS}
-            onAskLifeOSVisibilityChange={askLifeOSInBar => update(current => ({ ...current, askLifeOSInBar }))}
-            shortcutVisible={(id, location) => location === 'home' ? onHome(id) : inBar(id)}
-            onShortcutChange={changeShortcut}
-            onExport={exportData}
-            onImport={importBackup}
-            repoUrl={repoUrl}
             displayName={data.displayName ?? ''}
             onDisplayNameChange={displayName => update(current => ({ ...current, displayName: displayName || undefined }))}
-            reminderMinutes={reminderMinutes}
-            timerDefaultView={timerView(data)}
-            onTimerDefaultViewChange={timerDefaultView => update(current => ({ ...current, timerDefaultView }))}
-            onReminderMinutesChange={breakReminderMinutes => update(current => ({ ...current, breakReminderMinutes, focusPresetId: undefined }))}
-            focusCheckin={{
-              enabled: data.focusCheckinEnabled !== false,
-              onChange: focusCheckinEnabled => update(current => ({ ...current, focusCheckinEnabled })),
-            }}
-            postFocusAction={{
-              value: data.postFocusAction,
-              onChange: postFocusAction => update(current => ({ ...current, postFocusAction })),
-            }}
-            onOpenPresets={openPresets}
           />
         )}
       </div>
@@ -936,8 +885,10 @@ function NavButton({ icon, label, selected, onClick }: { icon: React.ReactNode; 
   const button = useRef<HTMLButtonElement>(null)
 
   useLayoutEffect(() => {
-    if (selected && button.current?.closest('.mobile-nav')) {
-      button.current.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    const nav = button.current?.closest('.mobile-nav')
+    if (selected && nav && nav.scrollWidth > nav.clientWidth) {
+      const center = button.current!.offsetLeft + button.current!.offsetWidth / 2 - nav.clientWidth / 2
+      nav.scrollTo({ left: center, behavior: 'smooth' })
     }
   })
 

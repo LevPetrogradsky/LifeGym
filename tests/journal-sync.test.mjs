@@ -8,6 +8,8 @@ import { approximateLocation, locationLabel, requestApproximateLocation, validAp
 import { journalDate, journalTime, groupJournalEntries } from '../src/journal/timeline.ts'
 
 const entry = (id, text, folderId) => ({ id, text, createdAt: '2026-11-16T10:00:00.000Z', ...(folderId ? { folderId } : {}) })
+const plan = (id, title) => ({ id, title, createdAt: '2026-11-16T10:00:00.000Z', plannedFor: '2026-11-18' })
+const workout = (id, text) => ({ ...entry(id, text), workout: { exercises: [{ name: 'Squat', sets: [{ reps: 8, weightKg: 40 }] }] } })
 const folder = { id: 'gym', name: 'Gym' }
 const photo = 'data:image/jpeg;base64,' + btoa(String.fromCharCode(
   255, 216, 255, 192, 0, 11, 8, 0, 1, 0, 1, 1, 1, 17, 0,
@@ -62,7 +64,7 @@ test('same account migrates folders and entries once and opens them in another b
     const sync = new JournalCloudSync(first)
     await sync.sync()
     assert.equal(first.getData().journalCloud.migrated, true)
-    assert.equal(first.statuses.at(-1), 'Journal saved in cloud.')
+    assert.equal(first.statuses.at(-1), 'Live Storage saved in cloud.')
     assert.equal(h.rows.size, 2)
     await sync.sync()
     assert.equal(h.rows.size, 2)
@@ -86,6 +88,218 @@ test('same account migrates folders and entries once and opens them in another b
   } finally { h.restore() }
 })
 
+test('workout plans and saved workouts follow one account across devices while tasks stay local', async () => {
+  const h = harness()
+  try {
+    const first = h.client('A', { ...emptyData(), tasks: [{ id: 'task-a', title: 'Private task', createdAt: '2026-11-16T10:00:00.000Z', completedAt: null }],
+      plannedWorkouts: [plan('leg-day', 'Leg day')], journal: [workout('session-1', 'First session')] })
+    await new JournalCloudSync(first).sync()
+    const second = h.client('A')
+    await new JournalCloudSync(second).sync()
+    assert.deepEqual(second.getData().plannedWorkouts, first.getData().plannedWorkouts)
+    assert.deepEqual(second.getData().journal, first.getData().journal)
+    assert.deepEqual(second.getData().tasks, [])
+    second.save(withJournalChanges(second.getData(), { ...second.getData(), plannedWorkouts: [],
+      journal: [workout('session-2', 'Completed leg day'), ...second.getData().journal] }))
+    await new JournalCloudSync(second).sync()
+    const signedInAgain = h.client('A')
+    await new JournalCloudSync(signedInAgain).sync()
+    assert.deepEqual(signedInAgain.getData().plannedWorkouts, [])
+    assert.deepEqual(signedInAgain.getData().journal.map(item => item.id).sort(), ['session-1', 'session-2'])
+    const otherAccount = h.client('B')
+    await new JournalCloudSync(otherAccount).sync()
+    assert.deepEqual(otherAccount.getData().plannedWorkouts, [])
+    assert.deepEqual(otherAccount.getData().journal, [])
+  } finally { h.restore() }
+})
+
+test('older synced Journal imports existing local workout plans on upgrade', async () => {
+  const h = harness()
+  try {
+    const older = h.client('A', { ...emptyData(), plannedWorkouts: [plan('old-local', 'Old local plan')],
+      journal: [workout('old-session', 'Old local workout')],
+      journalCloud: { version: 1, migrated: true, pending: [] } })
+    await new JournalCloudSync(older).sync()
+    assert.equal(older.getData().journalCloud.plansMigrated, true)
+    assert.equal(older.getData().journalCloud.endpoint, 'gym-storage-v1')
+    const second = h.client('A')
+    await new JournalCloudSync(second).sync()
+    assert.deepEqual(second.getData().plannedWorkouts, [plan('old-local', 'Old local plan')])
+    assert.deepEqual(second.getData().journal, [workout('old-session', 'Old local workout')])
+  } finally { h.restore() }
+})
+
+test('guest plan and workout import merges conflicting ids once and keeps the guest copy', async () => {
+  const h = harness()
+  const oldStorage = globalThis.localStorage
+  const values = new Map()
+  globalThis.localStorage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) }
+  try {
+    const guest = { ...emptyData(), plannedWorkouts: [plan('same', 'Guest plan')], journal: [workout('same', 'Guest workout')] }
+    saveData(guest)
+    const account = h.client('A', { ...emptyData(), plannedWorkouts: [plan('same', 'Account plan')], journal: [workout('same', 'Account workout')] })
+    const sync = new JournalCloudSync(account)
+    await sync.sync()
+    await sync.importGuest()
+    await sync.importGuest()
+    assert.equal(account.getData().plannedWorkouts.length, 2)
+    assert.equal(account.getData().journal.length, 2)
+    assert.deepEqual(loadData().data.plannedWorkouts, guest.plannedWorkouts)
+    assert.deepEqual(loadData().data.journal, guest.journal)
+  } finally { globalThis.localStorage = oldStorage; h.restore() }
+})
+
+test('offline plan and workout changes remain local and synchronize after reconnect', async () => {
+  const h = harness()
+  const onlineFetch = globalThis.fetch
+  try {
+    const account = h.client('A')
+    await new JournalCloudSync(account).sync()
+    account.save(withJournalChanges(account.getData(), { ...account.getData(), plannedWorkouts: [plan('offline', 'Offline plan')],
+      journal: [workout('offline', 'Offline workout')] }))
+    globalThis.fetch = async () => { throw new Error('Offline') }
+    await new JournalCloudSync(account).sync()
+    assert.equal(account.getData().journalCloud.pending.length, 2)
+    assert.equal(account.getData().plannedWorkouts.length, 1)
+    globalThis.fetch = onlineFetch
+    await new JournalCloudSync(account).sync()
+    assert.equal(account.getData().journalCloud.pending.length, 0)
+    const second = h.client('A')
+    await new JournalCloudSync(second).sync()
+    assert.equal(second.getData().plannedWorkouts[0].title, 'Offline plan')
+    assert.equal(second.getData().journal[0].workout.exercises[0].name, 'Squat')
+  } finally { h.restore() }
+})
+
+test('multiple offline edits keep their order and canceled plans stay deleted', async () => {
+  const h = harness()
+  try {
+    const account = h.client('A', { ...emptyData(), plannedWorkouts: [plan('steady', 'Original')], journal: [workout('session', 'Original session')] })
+    await new JournalCloudSync(account).sync()
+    account.save(withJournalChanges(account.getData(), { ...account.getData(),
+      plannedWorkouts: [{ ...plan('steady', 'Original'), title: 'First edit' }, plan('temporary', 'Temporary')],
+      journal: [{ ...workout('session', 'Original session'), text: 'First edit' }] }))
+    account.save(withJournalChanges(account.getData(), { ...account.getData(),
+      plannedWorkouts: [{ ...plan('steady', 'Original'), title: 'Final edit' }],
+      journal: [{ ...workout('session', 'Original session'), text: 'Final edit' }] }))
+    assert.equal(account.getData().journalCloud.pending.length, 6)
+    await new JournalCloudSync(account).sync()
+    assert.equal(h.rows.get('A:plan:steady').payload.title, 'Final edit')
+    assert.equal(h.rows.get('A:entry:session').payload.text, 'Final edit')
+    assert.equal(h.rows.get('A:plan:temporary').deleted, true)
+  } finally { h.restore() }
+})
+
+test('finishing a plan while its creation is in flight does not revive it on another device', async () => {
+  const h = harness()
+  const serverFetch = globalThis.fetch
+  try {
+    const account = h.client('A')
+    await new JournalCloudSync(account).sync()
+    account.save(withJournalChanges(account.getData(), { ...account.getData(), plannedWorkouts: [plan('fast', 'Fast plan')] }))
+    let releaseCreate
+    const heldCreate = new Promise(resolve => { releaseCreate = resolve })
+    let creationStarted
+    const started = new Promise(resolve => { creationStarted = resolve })
+    globalThis.fetch = async (url, options) => {
+      if (options?.method === 'POST' && JSON.parse(options.body).kind === 'plan' && !JSON.parse(options.body).deleted) {
+        creationStarted()
+        await heldCreate
+      }
+      return serverFetch(url, options)
+    }
+    const syncing = new JournalCloudSync(account).sync()
+    await started
+    account.save(withJournalChanges(account.getData(), { ...account.getData(), plannedWorkouts: [], journal: [workout('fast-session', 'Fast plan')] }))
+    releaseCreate()
+    await syncing
+    assert.equal(account.getData().journalCloud.pending.length, 0)
+    const second = h.client('A')
+    await new JournalCloudSync(second).sync()
+    assert.deepEqual(second.getData().plannedWorkouts, [])
+    assert.deepEqual(second.getData().journal.map(item => item.id), ['fast-session'])
+  } finally { h.restore() }
+})
+
+test('a stale plan edit cannot overwrite another device', async () => {
+  const h = harness()
+  try {
+    const first = h.client('A', { ...emptyData(), plannedWorkouts: [plan('same', 'Original')] })
+    await new JournalCloudSync(first).sync()
+    const second = h.client('A')
+    await new JournalCloudSync(second).sync()
+    first.save(withJournalChanges(first.getData(), { ...first.getData(), plannedWorkouts: [plan('same', 'First edit')] }))
+    await new JournalCloudSync(first).sync()
+    second.save(withJournalChanges(second.getData(), { ...second.getData(), plannedWorkouts: [plan('same', 'Second edit')] }))
+    await new JournalCloudSync(second).sync()
+    assert.match(second.statuses.at(-1), /another device/)
+    assert.equal(second.getData().plannedWorkouts[0].title, 'Second edit')
+    assert.equal(second.getData().journalCloud.pending.length, 1)
+    assert.equal(h.rows.get('A:plan:same').payload.title, 'First edit')
+  } finally { h.restore() }
+})
+
+test('server error leaves the changed plan queued and retry saves it', async () => {
+  const h = harness()
+  const serverFetch = globalThis.fetch
+  try {
+    const account = h.client('A')
+    await new JournalCloudSync(account).sync()
+    account.save(withJournalChanges(account.getData(), { ...account.getData(), plannedWorkouts: [plan('safe', 'Keep this plan')] }))
+    globalThis.fetch = (url, options) => options?.method === 'POST'
+      ? Promise.resolve(Response.json({ error: 'Unavailable' }, { status: 503 }))
+      : serverFetch(url, options)
+    await new JournalCloudSync(account).sync()
+    assert.equal(account.getData().plannedWorkouts[0].title, 'Keep this plan')
+    assert.equal(account.getData().journalCloud.pending.length, 1)
+    assert.match(account.statuses.at(-1), /local copy was kept/)
+    globalThis.fetch = serverFetch
+    await new JournalCloudSync(account).sync()
+    assert.equal(account.getData().journalCloud.pending.length, 0)
+    assert.equal(h.rows.get('A:plan:safe').payload.title, 'Keep this plan')
+  } finally { h.restore() }
+})
+
+test('a plan created while initial cloud fetch is pending is preserved', async () => {
+  const h = harness()
+  const serverFetch = globalThis.fetch
+  try {
+    const account = h.client('A')
+    let changed = false
+    globalThis.fetch = async (url, options) => {
+      if (!changed && !options?.method) {
+        changed = true
+        account.save({ ...account.getData(), plannedWorkouts: [plan('during-sync', 'Created during sync')] })
+      }
+      return serverFetch(url, options)
+    }
+    await new JournalCloudSync(account).sync()
+    assert.equal(account.getData().plannedWorkouts[0].title, 'Created during sync')
+    assert.equal(h.rows.get('A:plan:during-sync').payload.title, 'Created during sync')
+  } finally { h.restore() }
+})
+
+test('a partial server list cannot erase an already synced workout or plan', async () => {
+  const h = harness()
+  const serverFetch = globalThis.fetch
+  try {
+    const account = h.client('A', { ...emptyData(), plannedWorkouts: [plan('plan-1', 'Plan')], journal: [workout('session-1', 'Workout')] })
+    await new JournalCloudSync(account).sync()
+    globalThis.fetch = async (url, options) => {
+      if (!options?.method) {
+        const response = await serverFetch(url, options)
+        const body = await response.json()
+        return Response.json({ items: body.items.filter(item => item.kind === 'plan'), after: null })
+      }
+      return serverFetch(url, options)
+    }
+    await new JournalCloudSync(account).sync()
+    assert.match(account.statuses.at(-1), /omitted a local item/)
+    assert.equal(account.getData().plannedWorkouts.length, 1)
+    assert.equal(account.getData().journal.length, 1)
+  } finally { h.restore() }
+})
+
 test('server uses verified account identity and keeps accounts isolated', async () => {
   const h = harness()
   try {
@@ -95,7 +309,7 @@ test('server uses verified account identity and keeps accounts isolated', async 
     await new JournalCloudSync(b).sync()
     assert.deepEqual(b.getData().journal, [])
     assert.equal(h.rows.get('B:entry:private'), undefined)
-    const unauthorized = await fetch('/api/journal', { headers: { Authorization: 'Bearer fake' } })
+    const unauthorized = await fetch('/api/gym-storage', { headers: { Authorization: 'Bearer fake' } })
     assert.equal(unauthorized.status, 401)
   } finally { h.restore() }
 })
@@ -105,10 +319,10 @@ test('two guest recovery codes restore only their own notes without an account',
   const codeA = 'a'.repeat(64)
   const codeB = 'b'.repeat(64)
   try {
-    const missing = await fetch('/api/journal?guest=status', { headers: { Authorization: `Guest ${codeA}` } })
+    const missing = await fetch('/api/gym-storage?guest=status', { headers: { Authorization: `Guest ${codeA}` } })
     assert.equal(missing.status, 404)
     for (const code of [codeA, codeB]) {
-      const created = await fetch('/api/journal?guest=create', { method: 'POST', headers: { Authorization: `Guest ${code}` } })
+      const created = await fetch('/api/gym-storage?guest=create', { method: 'POST', headers: { Authorization: `Guest ${code}` } })
       assert.equal(created.status, 201)
     }
     const a = h.client(`Guest ${codeA}`, { ...emptyData(), journal: [entry('private', 'Guest A')] })
@@ -121,9 +335,9 @@ test('two guest recovery codes restore only their own notes without an account',
     await new JournalCloudSync(restoredB).sync()
     assert.deepEqual(restoredA.getData().journal.map(item => item.text), ['Guest A'])
     assert.deepEqual(restoredB.getData().journal.map(item => item.text), ['Guest B'])
-    const unknown = await fetch('/api/journal', { headers: { Authorization: `Guest ${'c'.repeat(64)}` } })
+    const unknown = await fetch('/api/gym-storage', { headers: { Authorization: `Guest ${'c'.repeat(64)}` } })
     assert.equal(unknown.status, 404)
-    assert.equal((await fetch('/api/journal')).status, 401)
+    assert.equal((await fetch('/api/gym-storage')).status, 401)
   } finally { h.restore() }
 })
 
@@ -131,7 +345,7 @@ test('recovery merge preserves different local and remote entries sharing an id'
   const h = harness()
   const code = 'd'.repeat(64)
   try {
-    await fetch('/api/journal?guest=create', { method: 'POST', headers: { Authorization: `Guest ${code}` } })
+    await fetch('/api/gym-storage?guest=create', { method: 'POST', headers: { Authorization: `Guest ${code}` } })
     const original = h.client(`Guest ${code}`, { ...emptyData(), journal: [entry('same', 'Remote note')] })
     await new JournalCloudSync(original).sync()
     const recovering = h.client(`Guest ${code}`, { ...emptyData(), journal: [entry('same', 'Local note')] })

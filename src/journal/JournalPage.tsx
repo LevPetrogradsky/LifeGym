@@ -12,11 +12,15 @@ import { clearJournalDraft, readJournalDraft, readOpenJournalEditor, writeJourna
 import { locationLabel, requestApproximateLocation, type ApproximateLocation } from './location'
 import { groupJournalEntries, journalDate, journalTime } from './timeline'
 import { dictationLanguages, useJournalDictation } from './useJournalDictation'
+import WorkoutFields from './WorkoutFields'
+import { validWorkout, type WorkoutRecord } from './workout'
 import { translate, type AppLanguage } from '../language'
 import './journal.css'
 
 export interface JournalDraft {
   text: string
+  workout?: WorkoutRecord
+  plannedWorkoutId?: string
   photo?: string
   location?: ApproximateLocation
   linkedEntryId?: string
@@ -37,6 +41,7 @@ interface JournalPageProps {
   onDeleteFolder: (id: string) => boolean
   onMoveEntry: (id: string, folderId?: string) => boolean
   draft: JournalDraft
+  focusExerciseRequest?: number
   draftSaveError?: boolean
   onDraftChange: Dispatch<SetStateAction<JournalDraft>>
   draftStorageKey?: string
@@ -71,7 +76,7 @@ interface JournalFormProps {
 
 function entryLabel(entry: JournalEntry, language: AppLanguage) {
   const excerpt = entry.text.trim().replace(/\s+/g, ' ').slice(0, 65)
-  return excerpt || `${language === 'ru' ? 'Запись от' : 'Entry from'} ${journalDate(entry.createdAt, language)}`
+  return excerpt || entry.workout?.exercises[0]?.name || `${language === 'ru' ? 'Запись от' : 'Entry from'} ${journalDate(entry.createdAt, language)}`
 }
 
 function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folders, folderId, onFolderChange, entries, currentEntryId, linkedTaskTitle, onUnlinkTask, onCancel, language = 'en' }: JournalFormProps) {
@@ -93,7 +98,10 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
     }))
   })
   const dictating = dictation.status !== 'idle'
-  const canSave = !loadingPhoto && (draft.text.trim().length > 0 || !!draft.photo)
+  const workoutReady = draft.workout !== undefined && validWorkout(draft.workout)
+  const workoutStarted = draft.workout?.exercises.some(exercise => exercise.name.trim() ||
+    exercise.sets.some(set => set.reps > 0 || set.weightKg !== undefined))
+  const canSave = !loadingPhoto && (!draft.workout || workoutReady) && (draft.text.trim().length > 0 || !!draft.photo || workoutReady)
   const selectedLanguage = dictationLanguages.find(([code]) => code === dictation.language) ?? dictationLanguages[0]
   const selectedEntry = entries.find(entry => entry.id === draft.linkedEntryId)
 
@@ -168,7 +176,9 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
     <form className={onCancel ? 'journal-form journal-form-edit' : 'journal-form journal-form-new'} onSubmit={event => {
       event.preventDefault()
       if (!canSave) return
-      const saved = onSubmit({ ...draft, text: draft.text.trim() })
+      const saved = onSubmit({ ...draft, text: draft.text.trim(), workout: draft.workout && {
+        exercises: draft.workout.exercises.map(exercise => ({ ...exercise, name: exercise.name.trim() })),
+      } })
       setSaveError(!saved)
       if (saved) {
         submitted.current = true
@@ -180,12 +190,16 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
         <span>{t('Linked to:')} <strong>{linkedTaskTitle}</strong></span>
         <button type="button" className="journal-icon" aria-label={t('Unlink task')} onClick={onUnlinkTask}><X size={17} aria-hidden="true" /></button>
       </div>}
-      {!onCancel && <label htmlFor={id}>{t('Brain dump')}</label>}
+      <WorkoutFields language={language} workout={draft.workout} onChange={workout => onDraftChange(current => ({ ...current, workout }))} />
+      {draft.workout && workoutStarted && !workoutReady && <p className="workout-required" role="status">{language === 'ru'
+        ? 'Проверьте название упражнения, повторы, вес и отдых.'
+        : 'Check exercise name, reps, weight, and rest.'}</p>}
+      <label htmlFor={id}>{draft.workout ? (language === 'ru' ? 'Заметки (необязательно)' : 'Notes (optional)') : t('Brain dump')}</label>
       <textarea
         ref={textArea}
         id={id}
         aria-label={onCancel ? t('Entry text') : undefined}
-        placeholder={t('What’s on your mind?')}
+        placeholder={draft.workout ? (language === 'ru' ? 'Как прошла тренировка?' : 'How did it go?') : t('What’s on your mind?')}
         rows={onCancel ? 3 : 2}
         value={draft.text}
         onInput={event => {
@@ -208,6 +222,9 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
           onDraftChange(current => ({ ...current, text }))
         }}
       />
+      <details className="journal-workout-advanced" open={Boolean(onCancel || draft.photo || draft.location || draft.linkedEntryId || folderId)}>
+        <summary>{language === 'ru' ? 'Дополнительно: папка, фото и место' : 'More options: folder, photo, location'}</summary>
+        <div className="journal-workout-advanced-content">
       {!onCancel && folders && onFolderChange && <div className="journal-form-folder">
         <span className="journal-form-folder-label">{t('Save in folder')}</span>
         <FolderPicker label={t('Save in folder')} value={folderId ?? ''} dialogClassName="journal-sheet--centered"
@@ -258,22 +275,13 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
           </button>}
       </div>
       {locationMessage && <p className="journal-local-note" role="status">{locationMessage}</p>}
-      {dictation.message && <p className="journal-dictation-message" role="status">{t(dictation.message)}</p>}
-      {saveError && <p className="journal-photo-error" role="alert">{t('Couldn’t save this entry. Your draft is still here.')}</p>}
-      {draftSaveError && <p className="journal-photo-error" role="alert">{language === 'ru'
-        ? 'Черновик не удалось сохранить на устройстве. Сохраните запись сейчас или скопируйте текст.'
-        : 'This device could not keep the draft. Save now or copy your text.'}</p>}
-      <div className="journal-form-actions">
+      <div className="journal-workout-media-actions">
         <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" onChange={attachPhoto} hidden />
         <button type="button" className="journal-icon journal-photo-action" aria-label={t(draft.photo ? 'Replace photo' : 'Attach photo')} disabled={loadingPhoto} onClick={() => fileInput.current?.click()}><ImagePlus size={19} /></button>
         {!onCancel && (
-          <button
-            type="button"
-            className="journal-icon journal-voice-action"
+          <button type="button" className="journal-icon journal-voice-action"
             aria-label={t(dictation.status === 'listening' ? 'Stop dictation' : dictating ? 'Cancel dictation' : 'Start dictation')}
-            data-listening={dictating}
-            onClick={dictation.toggle}
-          >
+            data-listening={dictating} onClick={dictation.toggle}>
             {dictating ? <Square size={16} fill="currentColor" aria-hidden="true" /> : <Mic size={19} aria-hidden="true" />}
           </button>
         )}
@@ -293,17 +301,26 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
             </div>
           </details>
         )}
-        {dictation.status !== 'idle' && <span className="journal-local-note" role="status">
-          {{
-            starting: 'Starting microphone…',
-            listening: 'Recording… Tap to finish.',
-            preparing: 'Preparing dictation… The first time may take a minute.',
-            transcribing: 'Turning speech into text…',
-          }[dictation.status]}
-        </span>}
+        {dictation.status !== 'idle' && <span className="journal-local-note" role="status">{{
+          starting: 'Starting microphone…', listening: 'Recording… Tap to finish.',
+          preparing: 'Preparing dictation… The first time may take a minute.',
+          transcribing: 'Turning speech into text…',
+        }[dictation.status]}</span>}
         {loadingPhoto && <span className="journal-local-note" role="status">{t('Preparing photo…')}</span>}
+      </div>
+        </div>
+      </details>
+      {dictation.message && <p className="journal-dictation-message" role="status">{t(dictation.message)}</p>}
+      {saveError && <p className="journal-photo-error" role="alert">{t('Couldn’t save this entry. Your draft is still here.')}</p>}
+      {draftSaveError && <p className="journal-photo-error" role="alert">{language === 'ru'
+        ? 'Черновик не удалось сохранить на устройстве. Сохраните запись сейчас или скопируйте текст.'
+        : 'This device could not keep the draft. Save now or copy your text.'}</p>}
+      <div className="journal-form-actions">
         {onCancel && <button type="button" className="journal-text-action" onClick={onCancel}>{t('Cancel')}</button>}
-        <button type="submit" className="journal-save" disabled={!canSave} aria-label={t(onCancel ? 'Save changes' : 'Save entry')}>{t(onCancel ? 'Save changes' : 'Save')}</button>
+        <button type="submit" className="journal-save" disabled={!canSave}
+          aria-label={onCancel ? t('Save changes') : draft.workout ? (language === 'ru' ? 'Сохранить тренировку' : 'Save workout') : t('Save entry')}>
+          {onCancel ? t('Save changes') : draft.workout ? (language === 'ru' ? 'Сохранить тренировку' : 'Save workout') : t('Save')}
+        </button>
       </div>
     </form>
   )
@@ -328,8 +345,8 @@ function JournalCard({ entry, entries, folders, onEdit, onDelete, onMove, onOpen
   const folder = folders.find(folder => folder.id === entry.folderId)
   const linkedEntry = entries.find(item => item.id === entry.linkedEntryId)
   const [draft, setDraft] = useState<JournalDraft>(() => readOpenJournalEditor(draftStorageKey) === entry.id
-    ? readJournalDraft(draftStorageKey, entry.id) ?? { text: entry.text, photo: entry.photo, location: entry.location, linkedEntryId: entry.linkedEntryId }
-    : { text: entry.text, photo: entry.photo, location: entry.location, linkedEntryId: entry.linkedEntryId })
+    ? readJournalDraft(draftStorageKey, entry.id) ?? { text: entry.text, photo: entry.photo, location: entry.location, linkedEntryId: entry.linkedEntryId, workout: entry.workout }
+    : { text: entry.text, photo: entry.photo, location: entry.location, linkedEntryId: entry.linkedEntryId, workout: entry.workout })
   const draftRef = useRef(draft)
   const [draftSaveError, setDraftSaveError] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -362,7 +379,7 @@ function JournalCard({ entry, entries, folders, onEdit, onDelete, onMove, onOpen
       actionMenu.current.open = false
       actionMenu.current.querySelector('summary')?.focus()
     }
-    const next = readJournalDraft(draftStorageKey, entry.id) ?? { text: entry.text, photo: entry.photo, location: entry.location, linkedEntryId: entry.linkedEntryId }
+    const next = readJournalDraft(draftStorageKey, entry.id) ?? { text: entry.text, photo: entry.photo, location: entry.location, linkedEntryId: entry.linkedEntryId, workout: entry.workout }
     draftRef.current = next
     setDraft(next)
     if (!writeOpenJournalEditor(entry.id, draftStorageKey)) onDraftStorageError?.()
@@ -399,6 +416,11 @@ function JournalCard({ entry, entries, folders, onEdit, onDelete, onMove, onOpen
             {entry.location && <span className="journal-entry-location"><MapPin size={12} aria-hidden="true" />{locationLabel(entry.location, language)}</span>}
             {folder && <span className="journal-entry-folder"><FolderGlyph {...folder} size={12} />{folder.name}</span>}
           </div>
+          {entry.workout && <div className="workout-summary">{entry.workout.exercises.map((exercise, index) => <div key={index}>
+            <strong>{exercise.name}</strong>
+            <span>{exercise.sets.map((set, position) => `${position + 1}: ${set.reps} ${language === 'ru' ? 'повт.' : 'reps'}${set.weightKg === undefined ? '' : ` · ${set.weightKg} kg`}`).join('  ·  ')}</span>
+            {exercise.restSeconds !== undefined && <small>{language === 'ru' ? 'Отдых' : 'Rest'}: ${exercise.restSeconds} {language === 'ru' ? 'сек' : 'sec'}</small>}
+          </div>)}</div>}
           {entry.text && <p>{entry.text}</p>}
           {entry.linkedEntryId && (linkedEntry
             ? <button type="button" className="journal-entry-linked" onClick={() => onOpenLinked(linkedEntry.id)}>
@@ -471,7 +493,7 @@ function JournalCard({ entry, entries, folders, onEdit, onDelete, onMove, onOpen
 export default function JournalPage({
   language = 'en', timeFormat,
   onReturn, returnLabel,
-  entries, folders, cloudStatus, guestImportCount = 0, onImportGuest, onSaveFolder, onReorderFolders, onDeleteFolder, onMoveEntry, draft, draftSaveError, onDraftChange, draftStorageKey, onDraftStorageError, linkedTaskTitle, onUnlinkTask, sessionPrompt, onDismissPrompt, onCreate, onEdit, onDelete, searchResult, onSelectSearchEntry,
+  entries, folders, cloudStatus, guestImportCount = 0, onImportGuest, onSaveFolder, onReorderFolders, onDeleteFolder, onMoveEntry, draft, draftSaveError, onDraftChange, focusExerciseRequest = 0, draftStorageKey, onDraftStorageError, linkedTaskTitle, onUnlinkTask, sessionPrompt, onDismissPrompt, onCreate, onEdit, onDelete, searchResult, onSelectSearchEntry,
 }: JournalPageProps) {
   const t = (text: string) => translate(language, text)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -491,6 +513,14 @@ export default function JournalPage({
   }, [sessionPrompt])
 
   useEffect(() => {
+    if (!focusExerciseRequest) return
+    const inputs = document.querySelectorAll<HTMLInputElement>('.journal-form-new [data-workout-name]')
+    const name = inputs.item(inputs.length - 1)
+    name?.focus({ preventScroll: true })
+    name?.scrollIntoView({ block: 'center' })
+  }, [focusExerciseRequest])
+
+  useEffect(() => {
     if (!searchResult) return
     const card = document.getElementById(`journal-entry-${searchResult.id}`)
     card?.focus({ preventScroll: true })
@@ -504,9 +534,9 @@ export default function JournalPage({
           <button type="button" className="journal-icon journal-search-toggle" aria-label={t(returnLabel)} onClick={onReturn}>
             <ArrowLeft size={21} aria-hidden="true" />
           </button>
-          <h1>{t('Journal')}</h1>
+          <h1>{t('Workout Tracker')}</h1>
         </div>
-        <button type="button" className="journal-icon journal-search-toggle" aria-label={t('Search journal')}
+        <button type="button" className="journal-icon journal-search-toggle" aria-label={t('Search workouts')}
           aria-haspopup="dialog" onClick={() => setSearchOpen(true)}>
           <Search size={21} aria-hidden="true" />
         </button>
@@ -538,6 +568,8 @@ export default function JournalPage({
         }
         return saved
       }} />
+      <details className="journal-history-options" open={Boolean(currentFolder || folderFilter === 'unfiled')}>
+        <summary>{language === 'ru' ? 'Папки и фильтры' : 'Folders and filters'}</summary>
       <JournalFolders language={language} folders={folders} entries={entries} filter={currentFolder || folderFilter === 'unfiled' ? folderFilter : 'all'}
         onFilterChange={setFolderFilter} onSave={onSaveFolder} onReorder={onReorderFolders} onDelete={id => {
           const deleted = onDeleteFolder(id)
@@ -545,16 +577,19 @@ export default function JournalPage({
           if (deleted && composerFolderId === id) setComposerFolderId('')
           return deleted
         }} />
+      </details>
       <section className="journal-timeline" aria-labelledby="journal-timeline-title">
         <header className="journal-timeline-heading">
-          <h2 id="journal-timeline-title">{t('Entries')}</h2>
+          <h2 id="journal-timeline-title">{language === 'ru' ? 'История' : 'History'}</h2>
           <span className="journal-entry-count" aria-live="polite">{resultCount} {t(resultCount === 1 ? 'entry' : 'entries')}</span>
         </header>
         <span className="journal-sr-only" role="status">{notice}</span>
         {groups.length === 0 ? (
           <div className="journal-timeline-empty">
             <BookOpen size={23} aria-hidden="true" />
-            <p>{t(folderFilter === 'unfiled' || currentFolder ? 'No entries here yet.' : 'Your entries will appear here.')}</p>
+            <p>{folderFilter === 'unfiled' || currentFolder
+              ? t('No entries here yet.')
+              : language === 'ru' ? 'Здесь появятся сохранённые тренировки.' : 'Your saved workouts will appear here.'}</p>
           </div>
         ) : groups.map(group => (
           <section className="journal-day" key={group.key}>

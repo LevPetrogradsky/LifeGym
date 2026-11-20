@@ -118,7 +118,7 @@ export default function EntryFolderDrag({ folders, entry, onMove, onChooseFolder
     </button>
     {dragging && <div className="journal-entry-drag-preview" ref={preview} aria-hidden="true">
       {entry.photo && <img src={entry.photo} alt="" />}
-      <span>{entry.text || 'Photo entry'}</span>
+      <span>{entry.text || entry.workout?.exercises[0]?.name || 'Photo entry'}</span>
       <GripVertical size={19} />
     </div>}
     {dragging && <div className="journal-entry-drop-tray" aria-hidden="true">

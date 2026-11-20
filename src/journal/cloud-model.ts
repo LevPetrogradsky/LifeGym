@@ -1,8 +1,9 @@
-import { journalFolderColors, journalFolderIcons, maxJournalFolderNameLength, type JournalEntry, type JournalFolder } from '../data.ts'
+import { journalFolderColors, journalFolderIcons, maxJournalFolderNameLength, type JournalEntry, type JournalFolder, type PlannedWorkout } from '../data.ts'
 import { isJournalPhoto } from './photo.ts'
 import { validApproximateLocation } from './location.ts'
+import { validWorkout } from './workout.ts'
 
-export type CloudKind = 'folder' | 'entry'
+export type CloudKind = 'folder' | 'entry' | 'plan'
 type CloudBase = {
   id: string
   deleted: boolean
@@ -10,7 +11,8 @@ type CloudBase = {
 export type CloudItem =
   | (CloudBase & { kind: 'folder'; payload: JournalFolder | null })
   | (CloudBase & { kind: 'entry'; payload: JournalEntry | null })
-export type CloudOperation = CloudItem & { mode: 'import' | 'change'; previous?: JournalFolder | JournalEntry | null }
+  | (CloudBase & { kind: 'plan'; payload: PlannedWorkout | null })
+export type CloudOperation = CloudItem & { mode: 'import' | 'change'; previous?: JournalFolder | JournalEntry | PlannedWorkout | null }
 
 const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -35,16 +37,28 @@ export function validCloudEntry(value: unknown): value is JournalEntry {
     (value.taskId === undefined || id(value.taskId)) &&
     (value.linkedEntryId === undefined || (id(value.linkedEntryId) && value.linkedEntryId !== value.id)) &&
     (value.location === undefined || validApproximateLocation(value.location)) &&
+    (value.workout === undefined || validWorkout(value.workout)) &&
     (value.folderId === undefined || id(value.folderId))
 }
 
+export function validCloudPlan(value: unknown): value is PlannedWorkout {
+  if (!record(value) || !id(value.id) || typeof value.title !== 'string' ||
+    !value.title.trim() || value.title.length > 140 || !timestamp(value.createdAt)) return false
+  if (value.plannedFor === undefined) return true
+  if (typeof value.plannedFor !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.plannedFor)) return false
+  const date = new Date(`${value.plannedFor}T00:00:00Z`)
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value.plannedFor
+}
+
 export function validCloudItem(value: unknown): value is CloudItem {
-  if (!record(value) || (value.kind !== 'folder' && value.kind !== 'entry') ||
+  if (!record(value) || (value.kind !== 'folder' && value.kind !== 'entry' && value.kind !== 'plan') ||
     !id(value.id) || typeof value.deleted !== 'boolean') return false
   if (value.deleted) return value.payload === null
   return value.kind === 'folder'
     ? validCloudFolder(value.payload) && value.payload.id === value.id
-    : validCloudEntry(value.payload) && value.payload.id === value.id
+    : value.kind === 'entry'
+      ? validCloudEntry(value.payload) && value.payload.id === value.id
+      : validCloudPlan(value.payload) && value.payload.id === value.id
 }
 
 export function validCloudOperation(value: unknown): value is CloudOperation {
@@ -54,5 +68,5 @@ export function validCloudOperation(value: unknown): value is CloudOperation {
   return (mode === 'import' || mode === 'change') &&
     validCloudItem(value) && (mode !== 'import' || !value.deleted) &&
     (previous === undefined || previous === null ||
-      (value.kind === 'folder' ? validCloudFolder(previous) : validCloudEntry(previous)))
+      (value.kind === 'folder' ? validCloudFolder(previous) : value.kind === 'entry' ? validCloudEntry(previous) : validCloudPlan(previous)))
 }

@@ -18,7 +18,7 @@ function cursorFromUrl(url: URL): [string, string] | null {
   if (!raw) return null
   const decoded: unknown = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8'))
   if (!Array.isArray(decoded) || decoded.length !== 2 ||
-    (decoded[0] !== 'folder' && decoded[0] !== 'entry') ||
+    (decoded[0] !== 'folder' && decoded[0] !== 'entry' && decoded[0] !== 'plan') ||
     typeof decoded[1] !== 'string' || decoded[1].length > 200) throw new Error('Invalid cursor')
   return [decoded[0], decoded[1]]
 }
