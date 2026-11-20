@@ -64,7 +64,7 @@ test('same account migrates folders and entries once and opens them in another b
     const sync = new JournalCloudSync(first)
     await sync.sync()
     assert.equal(first.getData().journalCloud.migrated, true)
-    assert.equal(first.statuses.at(-1), 'Live Storage saved in cloud.')
+    assert.equal(first.statuses.at(-1), 'Life Storage saved in cloud.')
     assert.equal(h.rows.size, 2)
     await sync.sync()
     assert.equal(h.rows.size, 2)
