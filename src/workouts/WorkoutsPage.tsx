@@ -1,7 +1,8 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { ArrowLeft, Plus, Search } from 'lucide-react'
 import type { JournalEntry, PlannedWorkout } from '../data'
 import { translate, type AppLanguage } from '../language'
+import UnifiedSearch from '../search/UnifiedSearch'
 import './workouts.css'
 
 interface Props {
@@ -25,6 +26,7 @@ export default function WorkoutsPage({ language, plans, history, onReturn, retur
   const [title, setTitle] = useState('')
   const [plannedFor, setPlannedFor] = useState('')
   const [notice, setNotice] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
   const sortedPlans = [...plans].sort((a, b) =>
     (a.plannedFor ?? '9999-12-31').localeCompare(b.plannedFor ?? '9999-12-31') ||
     Date.parse(a.createdAt) - Date.parse(b.createdAt))
@@ -86,7 +88,12 @@ export default function WorkoutsPage({ language, plans, history, onReturn, retur
     </section>
 
     <section className="workouts-panel" aria-labelledby="workouts-history-title">
-      <h2 id="workouts-history-title">{ru ? 'История тренировок' : 'Workout history'}</h2>
+      <div className="workouts-history-heading">
+        <h2 id="workouts-history-title">{ru ? 'История тренировок' : 'Workout history'}</h2>
+        <button type="button" aria-haspopup="dialog" className="workouts-secondary" onClick={() => setSearchOpen(true)}>
+          <Search size={17} aria-hidden="true" /> {t('Search workouts')}
+        </button>
+      </div>
       {sortedHistory.length === 0 ? <p className="workouts-empty">{ru ? 'Сохранённые тренировки появятся здесь.' : 'Saved workouts will appear here.'}</p>
         : <ul className="workouts-list">{sortedHistory.map(entry => {
           const workout = entry.workout
@@ -101,5 +108,10 @@ export default function WorkoutsPage({ language, plans, history, onReturn, retur
     </section>
     <p className="workouts-notice" role="status">{notice}</p>
     {children}
+    <UnifiedSearch language={language} journalOnly open={searchOpen} entries={history}
+      onClose={() => setSearchOpen(false)} onSelectEntry={id => {
+        setSearchOpen(false)
+        onOpenEntry(id)
+      }} />
   </main>
 }

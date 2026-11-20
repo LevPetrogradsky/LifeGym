@@ -19,7 +19,6 @@ import JournalCloudPanel from './settings/JournalCloudPanel'
 import PostFocusChoice from './PostFocusChoice'
 import { findFocusPreset } from './presets/focusPresets'
 import { useDeleteUndo } from './delete-undo'
-import UnifiedSearch from './search/UnifiedSearch'
 import type { AccountEntryMode } from './settings/AccountPanel'
 import { translate, type AppLanguage } from './language'
 import './reflection-confirmation.css'
@@ -28,8 +27,6 @@ import './mobile-navigation.css'
 type View = Exclude<Shortcut, 'focus'> | 'main' | 'ask' | 'settings' | 'focus-history' | 'workouts'
 const shortcutIcons = { tasks: ClipboardList, journal: BookOpen, focus: Play, flow: MessageCircle }
 const factors: Factor[] = ['Meaningful Goal', 'Personal Control', 'Fast Feedback', 'Other']
-const repoUrl = 'https://github.com/LevPetrogradsky/LifeGym'
-const hubUrl = 'https://lifeos-demo-kappa.vercel.app/'
 
 function App({ storageKey, account, journalCloudToken, guestCloud = false }: { storageKey?: string; account?: (language: AppLanguage, initialMode?: AccountEntryMode) => ReactNode; existingAccount?: boolean; journalCloudToken?: () => Promise<string | null>; guestCloud?: boolean }) {
   const effectiveStorageKey = storageKey ?? STORAGE_KEY
@@ -47,7 +44,6 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
   const dataRef = useRef(data)
   const hiddenSections = data.hiddenSections ?? []
   const showHome = !hiddenSections.includes('main')
-  const onHome = (id: Shortcut) => shortcutVisible(data, id, 'home')
   const inBar = (id: Shortcut) => shortcutVisible(data, id, 'bar')
   const defaultView = showHome ? 'main' : (['journal', 'tasks'] as const).find(inBar) ?? 'settings'
   const [requestedView, setView] = useState<View>(() => {
@@ -58,12 +54,9 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
   const [reflectionReturnView, setReflectionReturnView] = useState<View>(defaultView)
   const [reflectionNotice, setReflectionNotice] = useState('')
   const [postFocusReflection, setPostFocusReflection] = useState(false)
-  const isHidden = (page: View) => page === 'main' ? !showHome
-    : page === 'flow' ? !postFocusReflection
-      : page === 'journal' && !inBar(page) && !(showHome && onHome(page))
+  const isHidden = (page: View) => page === 'main' ? !showHome : page === 'flow' && !postFocusReflection
   const view = isHidden(requestedView) ? defaultView : requestedView
   const showJournal = !isHidden('journal')
-  const [searchOpen, setSearchOpen] = useState(false)
   const [journalSearchResult, setJournalSearchResult] = useState<{ id: string }>()
   const [storageError, setStorageError] = useState(false)
   const [showTime, setShowTime] = useState(() => {
@@ -573,14 +566,8 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const openAddExercise = () => {
-    changeJournalDraft(current => {
-      const exercises = current.workout?.exercises ?? []
-      const lastExercise = exercises.at(-1)
-      if (lastExercise && !lastExercise.name.trim() && lastExercise.sets.every(set => !set.reps)) return current
-      if (exercises.length >= 20) return current
-      return { ...current, workout: { exercises: [...exercises, emptyExercise()] } }
-    })
+  const openWorkoutDraft = () => {
+    changeJournalDraft(current => current.workout ? current : { ...current, workout: { exercises: [emptyExercise()] } })
     setAddExerciseRequest(request => request + 1)
     navigate('journal')
   }
@@ -612,6 +599,13 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
     navigate('journal')
     return true
   }
+
+  const today = new Date()
+  const todayDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  const nextWorkout = (data.plannedWorkouts ?? [])
+    .filter(plan => !plan.plannedFor || plan.plannedFor >= todayDate)
+    .sort((a, b) => (a.plannedFor ?? '9999-12-31').localeCompare(b.plannedFor ?? '9999-12-31') ||
+      Date.parse(a.createdAt) - Date.parse(b.createdAt))[0]
 
   const returnLabel = showHome ? 'Back to Home' : 'Back to Settings'
   const returnFromSection = () => navigate(showHome ? 'main' : 'settings')
@@ -729,13 +723,9 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
       <aside className="sidebar">
         {renderBrand(20)}
         <nav aria-label="Main navigation">{renderNavigation(19)}</nav>
-        <div className="sidebar-foot"><div className="sidebar-quote"><span>✳</span><p>{t('A little space for what matters.')}</p></div><span>LifeGym preview</span></div>
       </aside>
 
       <div className="main-area">
-        <header className="mobile-header gym-header">{renderBrand(18)}
-          <a className="app-hub-return" href={hubUrl}>{language === 'ru' ? 'Вернуться в Hub' : 'Back to Hub'}</a>
-        </header>
         {(storageError || loadResult.error) && <div className="storage-error" role="alert">{loadResult.error ?? 'Your browser could not save changes locally. Your unsaved text is still here. Check available storage, then try again.'} {loadResult.error && <label className="settings-page__action settings-page__upload">
           {t('Restore from a copy')}
           <input type="file" accept="application/json,.json" onChange={importBackup} />
@@ -747,9 +737,7 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
           initialScreen={view === 'tasks' ? 'tasks' : 'home'}
           onReturnHome={view === 'tasks' ? returnFromSection : undefined}
           returnLabel={returnLabel}
-          showTasksShortcut={onHome('tasks')}
-          searchIncludesJournal={showJournal}
-          repoUrl={repoUrl}
+          nextWorkout={nextWorkout}
           tasks={data.tasks}
           focusTaskTitle={data.activeSession?.taskTitle}
           focusRunning={Boolean(data.activeSession && !pausedSession)}
@@ -765,11 +753,9 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
           onOpenTask={openTaskHistory}
           onDeleteTask={deleteTask}
           onStart={startFocus}
-          onJournal={onHome('journal') ? () => navigate('journal') : undefined}
-          onAddExercise={onHome('journal') ? openAddExercise : undefined}
+          onLogWorkout={openWorkoutDraft}
+          onLogPlan={logPlannedWorkout}
           onWorkouts={() => navigate('workouts')}
-          onSettings={() => navigate('settings')}
-          onSearch={() => setSearchOpen(true)}
         />}
 
         {view === 'workouts' && <WorkoutsPage language={language} plans={data.plannedWorkouts ?? []}
@@ -873,8 +859,6 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
           navigate('journal')
         } : undefined}
       />}
-      <UnifiedSearch language={language} open={searchOpen} tasks={data.tasks} tasksOnly={!showJournal} entries={showJournal ? data.journal : []}
-        onClose={() => setSearchOpen(false)} onSelectTask={openTaskHistory} onSelectEntry={openSearchEntry} />
       <nav className="mobile-nav" aria-label="Main navigation">{renderNavigation(21, true)}</nav>
       {undoNotice}
     </div>
