@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { ArrowLeft, CloudUpload, Plus } from 'lucide-react'
 import type { JournalEntry, PlannedWorkout } from '../data'
 import { translate, type AppLanguage } from '../language'
 import './workouts.css'
@@ -14,10 +14,14 @@ interface Props {
   onRemovePlan: (id: string) => boolean
   onLogPlan: (plan: PlannedWorkout) => boolean
   onOpenEntry: (id: string) => void
+  onSaveToCloud: () => Promise<void>
+  cloudSaveBusy: boolean
+  cloudStatus: string
+  cloudAvailable: boolean
 }
 
 export default function WorkoutsPage({ language, plans, history, onReturn, returnLabel,
-  onSavePlan, onRemovePlan, onLogPlan, onOpenEntry }: Props) {
+  onSavePlan, onRemovePlan, onLogPlan, onOpenEntry, onSaveToCloud, cloudSaveBusy, cloudStatus, cloudAvailable }: Props) {
   const ru = language === 'ru'
   const t = (value: string) => translate(language, value)
   const [editingId, setEditingId] = useState<string>()
@@ -49,6 +53,14 @@ export default function WorkoutsPage({ language, plans, history, onReturn, retur
       <div><h1>{ru ? 'Тренировки' : 'Workouts'}</h1>
         <p>{ru ? 'Планы и история ваших тренировок.' : 'Your plans and completed workouts.'}</p></div>
     </header>
+
+    <div className="workouts-cloud-actions">
+      <button type="button" className="workouts-cloud-save" disabled={cloudSaveBusy} onClick={() => void onSaveToCloud()}>
+        <CloudUpload size={18} aria-hidden="true" />{ru ? 'Сохранить в облако' : 'Save to cloud'}
+      </button>
+      {!cloudAvailable && <small>{ru ? 'Для облака войдите в аккаунт в Live Storage. Гостевые тренировки останутся на устройстве до вашего подтверждения копирования.' : 'Sign in under Live Storage to use the cloud. Guest workouts stay on this device until you choose to copy them.'}</small>}
+      {cloudStatus && <span role="status">{cloudStatus}</span>}
+    </div>
 
     <section className="workouts-panel" aria-labelledby="workouts-planned-title">
       <h2 id="workouts-planned-title">{ru ? 'Запланировано' : 'Planned'}</h2>

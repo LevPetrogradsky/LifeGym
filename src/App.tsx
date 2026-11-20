@@ -91,6 +91,7 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
   const journalCloud = useRef<JournalCloudSync | null>(null)
   const [journalCloudStatus, setJournalCloudStatus] = useState('')
   const [journalCloudError, setJournalCloudError] = useState(false)
+  const [cloudSaveBusy, setCloudSaveBusy] = useState(false)
   const [journalLastSavedAt, setJournalLastSavedAt] = useState<string | null>(() => {
     if (!journalCloudToken || !cloudEnabled) return null
     try {
@@ -583,6 +584,23 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const saveWorkoutsToCloud = async () => {
+    if (!journalCloudToken) { navigate('settings'); return }
+    if (cloudSaveBusy) return
+    setCloudSaveBusy(true)
+    setJournalCloudError(false)
+    setJournalCloudStatus('Syncing Live Storage…')
+    try {
+      if (!cloudEnabled) {
+        if (await enableJournalCloud(null)) return
+      } else if (journalCloud.current && await journalCloud.current.sync()) return
+      setJournalCloudError(true)
+      setJournalCloudStatus('Could not save workouts to the cloud. Your local copy was kept.')
+    } finally {
+      setCloudSaveBusy(false)
+    }
+  }
+
   const openAddExercise = () => {
     changeJournalDraft(current => {
       const exercises = current.workout?.exercises ?? []
@@ -802,7 +820,8 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
         {view === 'workouts' && <WorkoutsPage language={language} plans={data.plannedWorkouts ?? []}
           history={data.journal.filter(entry => entry.workout)} onReturn={returnFromSection} returnLabel={returnLabel}
           onSavePlan={savePlannedWorkout} onRemovePlan={removePlannedWorkout} onLogPlan={logPlannedWorkout}
-          onOpenEntry={openSearchEntry} />}
+          onOpenEntry={openSearchEntry} onSaveToCloud={saveWorkoutsToCloud} cloudSaveBusy={cloudSaveBusy}
+          cloudStatus={journalCloudStatus} cloudAvailable={Boolean(journalCloudToken)} />}
 
         {view === 'ask' && <main className="life-main life-main-guide-page">
           <h1>Ask LifeOS</h1>
