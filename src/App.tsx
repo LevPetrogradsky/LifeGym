@@ -701,6 +701,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
   }
 
   if (onboardingMode) return <ServiceOnboarding mode={onboardingMode} language={language}
+    hubReturn={renderHubReturn(18, 'service-onboarding__note')}
     onClose={closeOnboarding} onComplete={() => {
       if (onboardingMode === 'first-run') {
         try { localStorage.setItem(completionKey(storageKey), 'done') }

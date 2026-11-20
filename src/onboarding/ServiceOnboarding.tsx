@@ -1,14 +1,15 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import type { AppLanguage } from '../language'
 import type { OnboardingMode } from './state'
 import './onboarding.css'
 
-export default function ServiceOnboarding({ mode, language, onComplete, onClose }: {
+export default function ServiceOnboarding({ mode, language, onComplete, onClose, hubReturn }: {
   mode: Exclude<OnboardingMode, null>
   language: AppLanguage
   onComplete: () => boolean
   onClose: () => void
+  hubReturn: ReactNode
 }) {
   const [error, setError] = useState(false)
   const ru = language === 'ru'
@@ -24,6 +25,7 @@ export default function ServiceOnboarding({ mode, language, onComplete, onClose 
       {error && <p role="alert" className="lifeos-onboarding__error">{ru ? 'Не удалось сохранить выбор. Попробуйте ещё раз.' : 'Could not save your choice. Try again.'}</p>}
       <button type="button" className="lifeos-onboarding__primary" onClick={() => setError(!onComplete())}>{ru ? 'Открыть LifeGym' : 'Open LifeGym'}</button>
       <p className="service-onboarding__note">{ru ? 'Для гостей это вступление пропускается только на этом сайте.' : 'For guests, this intro is skipped only on this site.'}</p>
+      {hubReturn}
     </div>
   </div>
 }
