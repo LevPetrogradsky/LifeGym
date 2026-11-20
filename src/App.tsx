@@ -3,10 +3,12 @@ import MainFocus from './MainFocus'
 import TaskHistory from './TaskHistory'
 import AskLifeOS from './home/AskLifeOS'
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode, type SetStateAction } from 'react'
-import { ArrowRight, BookOpen, ClipboardList, House, Leaf, MessageCircle, Play, Settings2, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, ClipboardList, Dumbbell, House, Leaf, MessageCircle, Play, Settings2, Sparkles } from 'lucide-react'
 import { elapsedClock, focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, timerView, visibleShortcuts, STORAGE_KEY, type Factor, type JournalFolderAppearance, type LifeOSData, type PlannedWorkout, type Shortcut, type Task } from './data'
 import { base64ToBytes, buildNoteBlocks, makeImportedNote, type SourceIndex } from './notes'
 import JournalPage, { type JournalDraft } from './journal/JournalPage'
+import ServiceOnboarding from './onboarding/ServiceOnboarding'
+import { completionKey, initialOnboardingMode } from './onboarding/state'
 import WorkoutsPage from './workouts/WorkoutsPage'
 import { emptyExercise } from './journal/workout'
 import { clearJournalDraft, readJournalDraft, writeJournalDraft } from './journal/drafts'
@@ -28,7 +30,7 @@ type View = Exclude<Shortcut, 'focus'> | 'main' | 'ask' | 'settings' | 'focus-hi
 const shortcutIcons = { tasks: ClipboardList, journal: BookOpen, focus: Play, flow: MessageCircle }
 const factors: Factor[] = ['Meaningful Goal', 'Personal Control', 'Fast Feedback', 'Other']
 
-function App({ storageKey, account, journalCloudToken, guestCloud = false }: { storageKey?: string; account?: (language: AppLanguage, initialMode?: AccountEntryMode) => ReactNode; existingAccount?: boolean; journalCloudToken?: () => Promise<string | null>; guestCloud?: boolean }) {
+function App({ storageKey, account, existingAccount = false, journalCloudToken, guestCloud = false }: { storageKey?: string; account?: (language: AppLanguage, initialMode?: AccountEntryMode) => ReactNode; existingAccount?: boolean; journalCloudToken?: () => Promise<string | null>; guestCloud?: boolean }) {
   const effectiveStorageKey = storageKey ?? STORAGE_KEY
   const [cloudEnabled, setCloudEnabled] = useState(() => {
     try { return Boolean(journalCloudToken && localStorage.getItem(cloudConsentKey(effectiveStorageKey)) === 'true' && (!guestCloud || readRecoveryCode())) }
@@ -36,6 +38,8 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
   })
   const [recoveryCode, setRecoveryCode] = useState(() => guestCloud ? readRecoveryCode() : null)
   const [loadResult, setLoadResult] = useState(() => loadData(storageKey))
+  const [onboardingMode, setOnboardingMode] = useState(() =>
+    initialOnboardingMode(storageKey, localStorage, window.location.search, existingAccount))
   const data = loadResult.data
   const language = data.language ?? 'en'
   const timeFormat = data.timeFormat ?? (language === 'ru' ? '24' : '12')
@@ -621,6 +625,13 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
     setJournalSearchResult({ id })
   }
 
+  const renderHubReturn = (iconSize: number, className: string) => (
+    <a className={className} href="https://lifeos-demo-kappa.vercel.app/">
+      <ArrowLeft size={iconSize} aria-hidden="true" />
+      <span>{language === 'ru' ? 'Вернуться в Hub' : 'Back to Hub'}</span>
+    </a>
+  )
+
   const renderNavigation = (iconSize: number, bottom = false) => <>
     {showHome && <NavButton icon={<House size={iconSize} />} label={t('Home')} selected={view === 'main'} onClick={() => {
       if (view === 'main') setHomeNavigationKey(key => key + 1)
@@ -637,6 +648,8 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
         }} />
     })}
     {bottom && <NavButton icon={<Settings2 size={iconSize} />} label={t('Settings')} selected={view === 'settings'} onClick={() => navigate('settings')} />}
+    {bottom && <NavButton icon={<Dumbbell size={iconSize} />} label={language === 'ru' ? 'Тренировки' : 'Workouts'} selected={view === 'workouts'} onClick={() => navigate('workouts')} />}
+    {bottom && renderHubReturn(iconSize, 'nav-button gym-hub-return')}
   </>
 
   const renderBrand = (size: number) => {
@@ -659,6 +672,25 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
 
   const breakReminder = reminderDueAt !== null && <BreakReminder dueAt={reminderDueAt}
     onResume={resumeSession} onDismiss={dismissBreakReminder} />
+
+  const closeOnboarding = () => {
+    if (onboardingMode === 'preview') {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('onboarding')
+      window.history.replaceState(window.history.state, '', url)
+    }
+    setOnboardingMode(null)
+  }
+
+  if (onboardingMode) return <ServiceOnboarding mode={onboardingMode} language={language}
+    onClose={closeOnboarding} onComplete={() => {
+      if (onboardingMode === 'first-run') {
+        try { localStorage.setItem(completionKey(storageKey), 'done') }
+        catch { return false }
+      }
+      closeOnboarding()
+      return true
+    }} />
 
   if (data.activeSession && ((!pausedSession && minimizedFocusScreen !== data.activeSession.id) ||
     (pausedSession !== null && pausedFocusScreen === pausedSession.id))) return <>
@@ -859,6 +891,7 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
           navigate('journal')
         } : undefined}
       />}
+      {renderHubReturn(19, "nav-button gym-hub-return gym-hub-return--desktop")}
       <nav className="mobile-nav" aria-label="Main navigation">{renderNavigation(21, true)}</nav>
       {undoNotice}
     </div>

@@ -28,6 +28,10 @@
     box-shadow: none;
   }
 
+  .app-shell .mobile-nav:has(> .gym-hub-return) {
+    grid-auto-columns: minmax(0, 1fr);
+  }
+
   .app-shell .mobile-nav .nav-button {
     min-width: 0;
     height: 62px;
@@ -84,5 +88,30 @@
 
   .app-shell .mobile-nav:has(> :nth-child(7)) .nav-button {
     scroll-snap-align: center;
+  }
+}
+
+.gym-hub-return {
+  text-decoration: none;
+}
+
+.nav-button.gym-hub-return--desktop {
+  position: fixed;
+  right: 22px;
+  z-index: 2;
+  bottom: 22px;
+  width: auto;
+  background: var(--surface);
+  color: var(--accent);
+  border: 1px solid var(--line);
+}
+
+.nav-button.gym-hub-return--desktop:hover {
+  background: var(--surface2);
+}
+
+@media (max-width: 760px) {
+  .nav-button.gym-hub-return--desktop {
+    display: none;
   }
 }

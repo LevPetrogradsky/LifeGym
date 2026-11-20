@@ -119,3 +119,5 @@
 .lifeos-onboarding__account .settings-page__description { color: var(--onboarding-muted); }
 .lifeos-onboarding button:focus-visible,
 .lifeos-onboarding input:focus-visible { outline: 2px solid var(--onboarding-accent); outline-offset: 3px; }
+
+.service-onboarding__note { text-align: center; color: var(--onboarding-muted); font-size: 13px; }
