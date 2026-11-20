@@ -9,7 +9,7 @@
 .workouts-plan-form label { display: grid; flex: 1 1 180px; gap: 5px; color: var(--muted); font-size: 12px; font-weight: 600; }
 .workouts-plan-form input { box-sizing: border-box; width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface2); color: var(--text); font-size: 16px; }
 .workouts-page button { cursor: pointer; }
-.workouts-plan-form > button, .workouts-plan-actions button, .workouts-list > li > button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 42px; padding: 8px 12px; border: 1px solid var(--accent); border-radius: 10px; background: var(--soft); color: var(--text); font: inherit; font-size: 13px; font-weight: 700; }
+.workouts-plan-form > button, .workouts-plan-actions button, .workouts-list > li > button, .workouts-history-heading > button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 42px; padding: 8px 12px; border: 1px solid var(--accent); border-radius: 10px; background: var(--soft); color: var(--text); font: inherit; font-size: 13px; font-weight: 700; }
 .workouts-plan-form > button:disabled { opacity: .5; cursor: not-allowed; }
 .workouts-plan-form > .workouts-secondary, .workouts-plan-actions .workouts-secondary { border-color: var(--line); background: var(--surface); color: var(--muted); }
 .workouts-list { display: grid; gap: 10px; margin: 15px 0 0; padding: 0; list-style: none; }
@@ -26,3 +26,14 @@
   .workouts-panel { padding: 15px; }
   .workouts-plan-form > button { flex: 1 1 120px; }
 }
+
+.workouts-history-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.workouts-history-heading h2 { margin: 0; }

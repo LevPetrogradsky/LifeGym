@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Circle, ClipboardList, Dumbbell, Flag, Github, GripHorizontal, ListTodo, Maximize2, Pause, Pencil, Play, Plus, Search, Settings2, Trash2, X } from 'lucide-react'
-import { taskLists, type LifeOSData, type Task, type TaskList } from './data'
+import { ArrowLeft, ArrowRight, Check, ChevronRight, Circle, Dumbbell, Flag, GripHorizontal, ListTodo, Maximize2, Pause, Pencil, Play, Plus, Trash2, X } from 'lucide-react'
+import { taskLists, type LifeOSData, type PlannedWorkout, type Task, type TaskList } from './data'
 import { todayTaskLimit } from './task-rules'
 import { translate } from './language'
 import { JournalSheet } from './journal/JournalSheet'
@@ -11,9 +11,7 @@ interface MainDashboardProps {
   initialScreen?: 'home' | 'tasks'
   onReturnHome?: () => void
   returnLabel: string
-  showTasksShortcut: boolean
-  searchIncludesJournal: boolean
-  repoUrl: string
+  nextWorkout?: PlannedWorkout
   tasks: Task[]
   focusTaskTitle?: string
   focusRunning?: boolean
@@ -29,11 +27,9 @@ interface MainDashboardProps {
   onOpenTask: (taskId: string) => void
   onDeleteTask: (id: string) => boolean
   onStart: (task: Task) => void
-  onJournal?: () => void
-  onAddExercise?: () => void
+  onLogWorkout: () => void
+  onLogPlan: (plan: PlannedWorkout) => boolean
   onWorkouts: () => void
-  onSettings: () => void
-  onSearch: () => void
 }
 
 const listLabels: Record<TaskList, string> = { today: 'Today', someday: 'Someday' }
@@ -83,9 +79,10 @@ function BreakCard({ taskTitle, activeTime, showTime, running, language, onPause
   </section>
 }
 
-export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, searchIncludesJournal, repoUrl, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, language = 'en', onPauseFocus, onContinueFocus, onReturnToFocus, onFinishPaused, onCancelFocus, onUpdate, onOpenTask, onDeleteTask, onStart, onJournal, onAddExercise, onWorkouts, onSettings, onSearch }: MainDashboardProps) {
+export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, nextWorkout, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, language = 'en', onPauseFocus, onContinueFocus, onReturnToFocus, onFinishPaused, onCancelFocus, onUpdate, onOpenTask, onDeleteTask, onStart, onLogWorkout, onLogPlan, onWorkouts }: MainDashboardProps) {
   const t = (text: string) => translate(language, text)
   const [screen, setScreen] = useState(initialScreen)
+  const [planBlocked, setPlanBlocked] = useState(false)
   const [filter, setFilter] = useState<TaskList | 'completed'>('today')
   const [editor, setEditor] = useState<TaskEditor | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -139,12 +136,6 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
     if (list === 'today' && todayIsFull) return
     showList(list)
     setEditor({ id: null, title: '', list })
-  }
-
-  const openTasks = (add = false) => {
-    showList('today')
-    setScreen('tasks')
-    if (add) addTo(todayIsFull ? 'someday' : 'today')
   }
 
   const saveTask = (event: FormEvent) => {
@@ -220,43 +211,33 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
     onPause={onPauseFocus} onContinue={onContinueFocus} onReturn={onReturnToFocus} onFinish={onFinishPaused} onCancel={onCancelFocus} />
   if (screen === 'home') return <main className="life-main life-main-home">
     <header className="life-main-hero">
-      <div><h1 ref={heading} tabIndex={-1}>LifeGym</h1>
-        <p className="life-main-thanks">{language === 'ru' ? 'LifeGym: запланируйте занятие и сохраните запись о тренировке.' : 'LifeGym: plan a session and keep a record of your workout.'}</p>
-        <a className="life-main-github" href={repoUrl} target="_blank" rel="noopener noreferrer">
-          <Github size={15} aria-hidden="true" /> {t('View on GitHub')}
-        </a>
-      </div>
-      <div className="life-main-hero-actions">
-        <span className="home-icon-action">
-          <button type="button" className="life-main-icon life-main-settings" aria-label={t(searchIncludesJournal ? 'Search tasks and workouts' : 'Search tasks')}
-            aria-haspopup="dialog" onClick={onSearch}><Search size={20} aria-hidden="true" /></button>
-        </span>
-        <span className="home-icon-action">
-          <button type="button" className="life-main-icon life-main-settings" aria-label={t('Open settings')} onClick={onSettings}><Settings2 size={20} /></button>
-        </span>
-      </div>
+      <h1 ref={heading} tabIndex={-1}>LifeGym</h1>
     </header>
 
     <div className="life-main-stack">
       {breakCard}
+      <button type="button" className="life-main-primary" onClick={onLogWorkout}>
+        <Plus size={20} aria-hidden="true" /> {language === 'ru' ? 'Записать тренировку' : 'Log workout'}
+      </button>
 
-      <nav className="life-main-shortcuts" aria-label="Home shortcuts">
-        {showTasksShortcut && <button type="button" onClick={() => openTasks()}>
-          <span className="life-main-shortcut-icon tasks"><ClipboardList size={21} aria-hidden="true" /></span>
-          <strong>{t('Tasks')}</strong>
-        </button>}
+      {nextWorkout && <section className="life-main-next-workout" aria-labelledby="next-workout-title">
+        <h2 id="next-workout-title">{language === 'ru' ? 'Ближайшая тренировка' : 'Next workout'}</h2>
+        <p><strong>{nextWorkout.title}</strong>
+          {nextWorkout.plannedFor && <> · <time dateTime={nextWorkout.plannedFor}>
+            {new Intl.DateTimeFormat(language, { dateStyle: 'medium' }).format(new Date(`${nextWorkout.plannedFor}T12:00:00`))}
+          </time></>}
+        </p>
+        <button type="button" className="life-main-text" onClick={() => setPlanBlocked(!onLogPlan(nextWorkout))}>
+          {language === 'ru' ? 'Записать' : 'Log workout'}
+        </button>
+        {planBlocked && <p role="status">{language === 'ru' ? 'Сначала сохраните текущий черновик.' : 'Save your current workout draft first.'}</p>}
+      </section>}
+
+      <nav className="life-main-shortcuts" aria-label={language === 'ru' ? 'Тренировки' : 'Workouts'}>
         <button type="button" onClick={onWorkouts}>
           <span className="life-main-shortcut-icon tasks"><Dumbbell size={21} aria-hidden="true" /></span>
           <strong>{language === 'ru' ? 'Тренировки' : 'Workouts'}</strong>
         </button>
-        {onJournal && <button type="button" onClick={onJournal}>
-          <span className="life-main-shortcut-icon journal"><BookOpen size={21} aria-hidden="true" /></span>
-          <strong>{t('Workout Tracker')}</strong>
-        </button>}
-        {onAddExercise && <button type="button" onClick={onAddExercise}>
-          <span className="life-main-shortcut-icon journal"><Plus size={21} aria-hidden="true" /></span>
-          <strong>{t('Add Exercise')}</strong>
-        </button>}
       </nav>
     </div>
   </main>
