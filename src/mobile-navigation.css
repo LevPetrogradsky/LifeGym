@@ -14,7 +14,18 @@
 }
 .app-hub-return:hover { background: var(--surface2); }
 .app-hub-return:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.sidebar > .app-hub-return { align-self: flex-end; margin-left: 0; }
+.app-shell .main-area > .gym-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 22px;
+}
+.gym-header .app-hub-return { margin: 0; }
+
+@media (min-width: 761px) {
+  .gym-header > .brand { display: none; }
+  .gym-header > .app-hub-return { margin-left: auto; }
+}
 
 @media (max-width: 760px) {
   .app-shell .main-area > .mobile-header:has(.app-hub-return) { display: flex; }

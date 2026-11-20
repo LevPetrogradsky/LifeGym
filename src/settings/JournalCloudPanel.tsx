@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Cloud, Copy, Download, RotateCw } from 'lucide-react'
+import { Cloud, Copy, RotateCw } from 'lucide-react'
 import { formatRecoveryCode, generateRecoveryCode, normalizeRecoveryCode } from '../journal/guest-recovery'
 import type { AppLanguage } from '../language'
 
@@ -18,10 +18,9 @@ export type JournalCloudControls = {
   onRecover: (code: string) => Promise<boolean>
 }
 
-export default function JournalCloudPanel({ cloud, language, onSaveCopy }: {
+export default function JournalCloudPanel({ cloud, language }: {
   cloud: JournalCloudControls
   language: AppLanguage
-  onSaveCopy: () => void
 }) {
   const ru = language === 'ru'
   const [mode, setMode] = useState<'enable' | 'recover' | null>(null)
@@ -76,7 +75,7 @@ export default function JournalCloudPanel({ cloud, language, onSaveCopy }: {
     {cloud.enabled ? <>
       <span>{cloud.error
         ? (ru ? 'Ошибка синхронизации. Тренировки и планы остались на этом устройстве.' : 'Sync error. Your workouts and plans are still on this device.')
-        : cloud.lastSavedAt && cloud.status === 'Live Storage saved in cloud.' && cloud.pending === 0
+        : cloud.lastSavedAt && cloud.status === 'Life Storage saved in cloud.' && cloud.pending === 0
           ? (ru ? 'Синхронизировано с облаком' : 'Synced with cloud storage')
           : (ru ? 'Проверяем синхронизацию…' : 'Checking sync…')}</span>
       {cloud.error && cloud.status && <small role="alert">{cloud.status}</small>}
@@ -95,7 +94,6 @@ export default function JournalCloudPanel({ cloud, language, onSaveCopy }: {
         <button type="button" className="settings-page__action" onClick={startEnable}>{ru ? 'Включить облако' : 'Turn on cloud storage'}</button>
         {cloud.guest && <button type="button" className="settings-page__action" onClick={startRecover}>{ru ? 'У меня есть код' : 'I have a recovery code'}</button>}
       </div>}
-      {!cloud.available && <button type="button" className="settings-page__action" onClick={onSaveCopy}><Download size={15} />{ru ? 'Сохранить копию' : 'Save a copy'}</button>}
     </>}
     {mode === 'enable' && !cloud.enabled && <div className="settings-page__cloud-confirm">
       <p>{cloud.guest

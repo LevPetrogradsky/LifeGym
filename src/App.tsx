@@ -3,8 +3,8 @@ import MainFocus from './MainFocus'
 import TaskHistory from './TaskHistory'
 import AskLifeOS from './home/AskLifeOS'
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode, type SetStateAction } from 'react'
-import { ArrowLeft, ArrowRight, BookOpen, ClipboardList, House, Leaf, MessageCircle, Play, Settings2, Sparkles } from 'lucide-react'
-import { elapsedClock, focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, timerView, visibleShortcuts, STORAGE_KEY, type Factor, type JournalFolderAppearance, type LifeOSData, type PlannedWorkout, type Shortcut, type ShortcutLocation, type Task } from './data'
+import { ArrowRight, BookOpen, ClipboardList, House, Leaf, MessageCircle, Play, Settings2, Sparkles } from 'lucide-react'
+import { elapsedClock, focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, timerView, visibleShortcuts, STORAGE_KEY, type Factor, type JournalFolderAppearance, type LifeOSData, type PlannedWorkout, type Shortcut, type Task } from './data'
 import { base64ToBytes, buildNoteBlocks, makeImportedNote, type SourceIndex } from './notes'
 import JournalPage, { type JournalDraft } from './journal/JournalPage'
 import WorkoutsPage from './workouts/WorkoutsPage'
@@ -15,6 +15,7 @@ import { cloudConsentKey, guestRecoveryStorageKey, normalizeRecoveryCode, readRe
 import FlowEnginePage from './flow/FlowEnginePage'
 import BreakReminder from './settings/BreakReminder'
 import SettingsPage from './settings/SettingsPage'
+import JournalCloudPanel from './settings/JournalCloudPanel'
 import PostFocusChoice from './PostFocusChoice'
 import { findFocusPreset } from './presets/focusPresets'
 import { useDeleteUndo } from './delete-undo'
@@ -187,13 +188,13 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
       token: journalCloudToken,
       status: message => {
         setJournalCloudStatus(message)
-        if (message === 'Syncing Live Storage…') setJournalCloudError(false)
-        if (message === 'Live Storage saved in cloud.') {
+        if (message === 'Syncing Life Storage…') setJournalCloudError(false)
+        if (message === 'Life Storage saved in cloud.') {
           setJournalCloudError(false)
           const savedAt = new Date().toISOString()
           setJournalLastSavedAt(savedAt)
           try { localStorage.setItem(`${effectiveStorageKey}.journal-last-synced`, savedAt) } catch { /* Status remains visible for this session. */ }
-        } else if (message !== 'Syncing Live Storage…') setJournalCloudError(true)
+        } else if (message !== 'Syncing Life Storage…') setJournalCloudError(true)
       },
     })
     journalCloud.current = sync
@@ -560,17 +561,6 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
     }))
   }
 
-  const exportData = () => {
-    const { journalCloud: _sync, ...exportable } = data
-    const blob = new Blob([JSON.stringify(exportable, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `lifeos-export-${new Date().toISOString().slice(0, 10)}.json`
-    link.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-  }
-
   const navigate = (next: View) => {
     setJournalSearchResult(undefined)
     if (next !== 'flow') setPostFocusReflection(false)
@@ -637,19 +627,6 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
     setJournalSearchResult({ id })
   }
 
-  const changeHomeVisibility = (visible: boolean) => update(current => {
-    const hidden = (current.hiddenSections ?? []).filter(id => id !== 'main')
-    return { ...current, hiddenSections: visible ? hidden : [...hidden, 'main'] }
-  })
-
-  const changeShortcut = (id: Shortcut, location: ShortcutLocation, visible: boolean) => update(current => ({
-    ...current,
-    shortcutPreferences: {
-      ...current.shortcutPreferences,
-      [id]: { ...current.shortcutPreferences?.[id], [location]: visible },
-    },
-  }))
-
   const renderNavigation = (iconSize: number, bottom = false) => <>
     {showHome && <NavButton icon={<House size={iconSize} />} label={t('Home')} selected={view === 'main'} onClick={() => {
       if (view === 'main') setHomeNavigationKey(key => key + 1)
@@ -666,11 +643,6 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
         }} />
     })}
     {bottom && <NavButton icon={<Settings2 size={iconSize} />} label={t('Settings')} selected={view === 'settings'} onClick={() => navigate('settings')} />}
-    {bottom && <a className="nav-button mobile-nav-hub-return" href={hubUrl}
-      aria-label={language === 'ru' ? 'Вернуться в LiveHub' : 'Back to LiveHub'}>
-      <ArrowLeft size={iconSize} aria-hidden="true" />
-      <span>{language === 'ru' ? 'В LiveHub' : 'Back to LiveHub'}</span>
-    </a>}
   </>
 
   const renderBrand = (size: number) => {
@@ -757,15 +729,17 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
       <aside className="sidebar">
         {renderBrand(20)}
         <nav aria-label="Main navigation">{renderNavigation(19)}</nav>
-        {view !== 'main' && <a className="app-hub-return" href={hubUrl}>{language === 'ru' ? 'Вернуться в LiveHub' : 'Back to LiveHub'}</a>}
         <div className="sidebar-foot"><div className="sidebar-quote"><span>✳</span><p>{t('A little space for what matters.')}</p></div><span>LifeGym preview</span></div>
       </aside>
 
       <div className="main-area">
-        <header className="mobile-header">{renderBrand(18)}{view === 'main'
-          ? <span>v0.1</span>
-          : <a className="app-hub-return" href={hubUrl}>{language === 'ru' ? 'Вернуться в Hub' : 'Back to Hub'}</a>}</header>
-        {(storageError || loadResult.error) && <div className="storage-error" role="alert">{loadResult.error ?? 'Your browser could not save changes locally. Your unsaved text is still here. Check available storage, then try again.'} {loadResult.error && 'Import a valid backup below to recover. Existing saved content will not be changed until recovery succeeds.'}</div>}
+        <header className="mobile-header gym-header">{renderBrand(18)}
+          <a className="app-hub-return" href={hubUrl}>{language === 'ru' ? 'Вернуться в Hub' : 'Back to Hub'}</a>
+        </header>
+        {(storageError || loadResult.error) && <div className="storage-error" role="alert">{loadResult.error ?? 'Your browser could not save changes locally. Your unsaved text is still here. Check available storage, then try again.'} {loadResult.error && <label className="settings-page__action settings-page__upload">
+          {t('Restore from a copy')}
+          <input type="file" accept="application/json,.json" onChange={importBackup} />
+        </label>}</div>}
         {backupMessage && <div className="storage-error" role="status">{backupMessage}</div>}
         {reflectionNotice && <div className="lifeos-reflection-confirmation" role="status">{reflectionNotice}</div>}
         {breakReminder}
@@ -776,7 +750,6 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
           showTasksShortcut={onHome('tasks')}
           searchIncludesJournal={showJournal}
           repoUrl={repoUrl}
-          hubUrl={hubUrl}
           tasks={data.tasks}
           focusTaskTitle={data.activeSession?.taskTitle}
           focusRunning={Boolean(data.activeSession && !pausedSession)}
@@ -802,7 +775,21 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
         {view === 'workouts' && <WorkoutsPage language={language} plans={data.plannedWorkouts ?? []}
           history={data.journal.filter(entry => entry.workout)} onReturn={returnFromSection} returnLabel={returnLabel}
           onSavePlan={savePlannedWorkout} onRemovePlan={removePlannedWorkout} onLogPlan={logPlannedWorkout}
-          onOpenEntry={openSearchEntry} />}
+          onOpenEntry={openSearchEntry}>
+          <details className="settings-page__group">
+            <summary className="settings-page__row">{language === 'ru' ? 'Синхронизация тренировок' : 'Workout sync'}</summary>
+            <div className="settings-page__panel">
+              <JournalCloudPanel cloud={{ available: Boolean(journalCloudToken), enabled: cloudEnabled, guest: guestCloud, code: recoveryCode, status: journalCloudStatus,
+              error: journalCloudError, lastSavedAt: journalLastSavedAt, pending: data.journalCloud?.pending.length ?? 0,
+              onRetry: () => void journalCloud.current?.sync(), onEnable: enableJournalCloud,
+              onVerifyRecovery: verifyRecoveryCode, onRecover: recoverJournalCloud }} language={language} />
+              {cloudEnabled && !guestCloud && guestNotesAvailable > 0 && <div className="journal-guest-import">
+                <span>{language === 'ru' ? `Гостевых тренировок, планов и записей на этом устройстве: ${guestNotesAvailable}` : `Guest workouts, plans and entries on this device: ${guestNotesAvailable}`}</span>
+                <button type="button" onClick={importGuestJournal}>{language === 'ru' ? 'Скопировать в этот аккаунт' : 'Copy into this account'}</button>
+              </div>}
+            </div>
+          </details>
+        </WorkoutsPage>}
 
         {view === 'ask' && <main className="life-main life-main-guide-page">
           <h1>Ask LifeOS</h1>
@@ -844,24 +831,12 @@ function App({ storageKey, account, journalCloudToken, guestCloud = false }: { s
         {view === 'settings' && (
           <SettingsPage
             account={accountContent}
-            guestImportCount={cloudEnabled && !guestCloud ? guestNotesAvailable : 0}
-            onImportGuest={cloudEnabled && !guestCloud ? importGuestJournal : undefined}
-            journalSync={{ available: Boolean(journalCloudToken), enabled: cloudEnabled, guest: guestCloud, code: recoveryCode, status: journalCloudStatus,
-              error: journalCloudError, lastSavedAt: journalLastSavedAt, pending: data.journalCloud?.pending.length ?? 0,
-              onRetry: () => void journalCloud.current?.sync(), onEnable: enableJournalCloud,
-              onVerifyRecovery: verifyRecoveryCode, onRecover: recoverJournalCloud }}
             theme={data.theme}
             language={data.language ?? 'en'}
             timeFormat={timeFormat}
             onTimeFormatChange={timeFormat => update(current => ({ ...current, timeFormat }))}
             onLanguageChange={language => update(current => ({ ...current, language }))}
             onThemeChange={theme => update(current => ({ ...current, theme }))}
-            showHome={showHome}
-            onHomeVisibilityChange={changeHomeVisibility}
-            shortcutVisible={(id, location) => location === 'home' ? onHome(id) : inBar(id)}
-            onShortcutChange={changeShortcut}
-            onExport={exportData}
-            onImport={importBackup}
             displayName={data.displayName ?? ''}
             onDisplayNameChange={displayName => update(current => ({ ...current, displayName: displayName || undefined }))}
           />

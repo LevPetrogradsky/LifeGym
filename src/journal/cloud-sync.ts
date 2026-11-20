@@ -200,7 +200,7 @@ export class JournalCloudSync {
       throw new Error('Cloud Journal returned empty data. Guest and account copies were kept.')
     }
     if (!this.client.save(applyItems(current, items))) throw new Error('Guest Journal reached the cloud, but the local view could not update. The guest copy was kept.')
-    this.client.status('Live Storage saved in cloud.')
+    this.client.status('Life Storage saved in cloud.')
   }
 
   private async requireToken() {
@@ -249,7 +249,7 @@ export class JournalCloudSync {
   }
 
   private async perform() {
-    this.client.status('Syncing Live Storage…')
+    this.client.status('Syncing Life Storage…')
     const token = await this.requireToken()
     const original = this.client.getData()
     if (!meta(original).migrated || meta(original).endpoint !== 'gym-storage-v1') {
@@ -316,7 +316,7 @@ export class JournalCloudSync {
     if (!this.client.save(applyItems(latest, items))) {
       throw new Error('Could not save cloud Journal locally. Your local copy was kept.')
     }
-    this.client.status('Live Storage saved in cloud.')
+    this.client.status('Life Storage saved in cloud.')
   }
 }
 

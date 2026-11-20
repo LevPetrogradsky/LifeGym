@@ -14,7 +14,6 @@ interface MainDashboardProps {
   showTasksShortcut: boolean
   searchIncludesJournal: boolean
   repoUrl: string
-  hubUrl: string
   tasks: Task[]
   focusTaskTitle?: string
   focusRunning?: boolean
@@ -84,7 +83,7 @@ function BreakCard({ taskTitle, activeTime, showTime, running, language, onPause
   </section>
 }
 
-export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, searchIncludesJournal, repoUrl, hubUrl, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, language = 'en', onPauseFocus, onContinueFocus, onReturnToFocus, onFinishPaused, onCancelFocus, onUpdate, onOpenTask, onDeleteTask, onStart, onJournal, onAddExercise, onWorkouts, onSettings, onSearch }: MainDashboardProps) {
+export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, searchIncludesJournal, repoUrl, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, language = 'en', onPauseFocus, onContinueFocus, onReturnToFocus, onFinishPaused, onCancelFocus, onUpdate, onOpenTask, onDeleteTask, onStart, onJournal, onAddExercise, onWorkouts, onSettings, onSearch }: MainDashboardProps) {
   const t = (text: string) => translate(language, text)
   const [screen, setScreen] = useState(initialScreen)
   const [filter, setFilter] = useState<TaskList | 'completed'>('today')
@@ -221,13 +220,10 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
     onPause={onPauseFocus} onContinue={onContinueFocus} onReturn={onReturnToFocus} onFinish={onFinishPaused} onCancel={onCancelFocus} />
   if (screen === 'home') return <main className="life-main life-main-home">
     <header className="life-main-hero">
-      <div><h1 ref={heading} tabIndex={-1}>LiveGym</h1>
+      <div><h1 ref={heading} tabIndex={-1}>LifeGym</h1>
         <p className="life-main-thanks">{language === 'ru' ? 'LifeGym: запланируйте занятие и сохраните запись о тренировке.' : 'LifeGym: plan a session and keep a record of your workout.'}</p>
         <a className="life-main-github" href={repoUrl} target="_blank" rel="noopener noreferrer">
           <Github size={15} aria-hidden="true" /> {t('View on GitHub')}
-        </a>
-        <a className="life-main-github" href={hubUrl}>
-          <ArrowLeft size={15} aria-hidden="true" /> {language === 'ru' ? 'Вернуться в LiveHub' : 'Back to LiveHub'}
         </a>
       </div>
       <div className="life-main-hero-actions">

@@ -1,27 +1,17 @@
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
-import { ChevronRight, Compass, Download, HardDrive, Monitor, Moon, Palette, Search, Sun, Upload, UserRound, X } from 'lucide-react'
-import { maxDisplayNameLength, visibleShortcuts, type Shortcut, type ShortcutLocation, type Theme } from '../data'
+import { useState, type ReactNode } from 'react'
+import { Monitor, Moon, Sun } from 'lucide-react'
+import { maxDisplayNameLength, type Theme } from '../data'
 import { translate, type AppLanguage } from '../language'
-import JournalCloudPanel, { type JournalCloudControls } from './JournalCloudPanel'
 import './settings.css'
 
 interface SettingsPageProps {
   account?: ReactNode
-  journalSync: JournalCloudControls
-  guestImportCount?: number
-  onImportGuest?: () => void
   theme: Theme
   language: 'en' | 'ru'
   timeFormat: '12' | '24'
   onTimeFormatChange: (format: '12' | '24') => void
   onLanguageChange: (language: 'en' | 'ru') => void
   onThemeChange: (theme: Theme) => void
-  showHome: boolean
-  onHomeVisibilityChange: (visible: boolean) => void
-  shortcutVisible: (id: Shortcut, location: ShortcutLocation) => boolean
-  onShortcutChange: (id: Shortcut, location: ShortcutLocation, visible: boolean) => void
-  onExport: () => void
-  onImport: (event: ChangeEvent<HTMLInputElement>) => void
   displayName: string
   onDisplayNameChange: (name: string) => boolean
 }
@@ -31,31 +21,6 @@ const themes = [
   { value: 'dark', label: 'Dark', Icon: Moon },
   { value: 'system', label: 'System', Icon: Monitor },
 ] as const
-
-type SettingsSection = 'account' | 'profile' | 'backups' | 'navigation'
-const gymShortcuts = visibleShortcuts.filter(({ id }) => id === 'journal' || id === 'tasks')
-
-function SettingsGroup({ id, title, icon, summary, open, onOpenChange, children }: {
-  id?: string
-  title: string
-  icon: ReactNode
-  summary?: string
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  children: ReactNode
-}) {
-  return (
-    <details id={id} className="settings-page__group" open={open}>
-      <summary className="settings-page__row" onClick={event => { event.preventDefault(); onOpenChange(!open) }}>
-        <span className="settings-page__icon" aria-hidden="true">{icon}</span>
-        <span className="settings-page__label">{title}</span>
-        {summary && <span className="settings-page__value">{summary}</span>}
-        <ChevronRight className="settings-page__chevron" size={18} aria-hidden="true" />
-      </summary>
-      <div className="settings-page__panel">{children}</div>
-    </details>
-  )
-}
 
 function DisplayNameForm({ name, onSave, language }: { name: string; onSave: (name: string) => boolean; language: AppLanguage }) {
   const [draft, setDraft] = useState(name)
@@ -77,119 +42,18 @@ function DisplayNameForm({ name, onSave, language }: { name: string; onSave: (na
 }
 
 export default function SettingsPage({
-  account,
-  journalSync,
-  guestImportCount = 0,
-  onImportGuest,
-  theme, onThemeChange, language, onLanguageChange, timeFormat, onTimeFormatChange, showHome, onHomeVisibilityChange, shortcutVisible, onShortcutChange, onExport, onImport, displayName, onDisplayNameChange,
+  account, theme, onThemeChange, language, onLanguageChange,
+  timeFormat, onTimeFormatChange, displayName, onDisplayNameChange,
 }: SettingsPageProps) {
   const t = (text: string) => translate(language, text)
-  const [openSections, setOpenSections] = useState<Record<SettingsSection, boolean>>({
-    account: true, profile: true, backups: false, navigation: false,
-  })
-  const sectionIds: SettingsSection[] = ['account', 'profile', 'backups', 'navigation']
-  const anyOpen = sectionIds.some(id => openSections[id])
-  const setSection = (id: SettingsSection, open: boolean) =>
-    setOpenSections(current => current[id] === open ? current : { ...current, [id]: open })
-  const toggleAll = () => setOpenSections(current => ({ ...current,
-    ...Object.fromEntries(sectionIds.map(id => [id, !anyOpen])),
-  }))
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [scrollTarget, setScrollTarget] = useState('')
-  const searchInput = useRef<HTMLInputElement>(null)
-  const jumpTo = (section: SettingsSection, target: string = section) => {
-    setOpenSections(current => ({ ...current, [section]: true }))
-    setSearchOpen(false)
-    setSearchQuery('')
-    setScrollTarget(target)
-  }
-  useEffect(() => {
-    if (searchOpen) searchInput.current?.focus()
-  }, [searchOpen])
-  useEffect(() => {
-    if (!scrollTarget) return
-    const frame = requestAnimationFrame(() => {
-      const element = document.getElementById(`settings-target-${scrollTarget}`)
-      element?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' })
-      const focusable = element?.matches('input, select, button, summary, a') ? element : element?.querySelector('summary, input, select, button, a')
-      if (focusable instanceof HTMLElement) focusable.focus({ preventScroll: true })
-      setScrollTarget('')
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [scrollTarget, openSections])
-  const searchItems: { title: string; section: SettingsSection; target: string; keywords?: string }[] = [
-    { title: 'Live Storage', section: 'account', target: 'account', keywords: 'sign in register email password аккаунт вход пароль' },
-    { title: language === 'ru' ? 'Хранение тренировок' : 'Workout storage', section: 'account', target: 'journal-storage', keywords: 'sync backup тренировки планы синхронизация' },
-    { title: t('Profile & appearance'), section: 'profile', target: 'profile', keywords: 'profile appearance профиль оформление' },
-    { title: t('Theme'), section: 'profile', target: 'theme', keywords: 'light dark system светлая темная системная' },
-    { title: language === 'ru' ? 'Формат времени' : 'Time format', section: 'profile', target: 'time-format', keywords: '12 24 часы clock' },
-    { title: t('Language / Язык'), section: 'profile', target: 'language', keywords: 'english русский перевод' },
-    { title: t('Display name'), section: 'profile', target: 'display-name', keywords: 'name имя' },
-    { title: t('Backups'), section: 'backups', target: 'backups', keywords: 'export import restore копия восстановить' },
-    { title: t('Save a copy'), section: 'backups', target: 'save-copy', keywords: 'export backup экспорт скачать' },
-    { title: t('Restore from a copy'), section: 'backups', target: 'restore-copy', keywords: 'import backup импорт json' },
-    { title: t('Home & navigation'), section: 'navigation', target: 'navigation', keywords: 'shortcuts bar главная панель ярлыки' },
-    { title: t('Home in bottom bar'), section: 'navigation', target: 'home-bar', keywords: 'navigation навигация' },
-    ...gymShortcuts.map(({ id, label }) => ({ title: t(label), section: 'navigation' as const, target: `shortcut-${id}`, keywords: 'shortcut home bar ярлык главная панель' })),
-  ]
-  const sectionTitle = (section: SettingsSection) => t({
-    account: 'Live Storage', profile: 'Profile & appearance', backups: 'Backups', navigation: 'Home & navigation',
-  }[section])
-  const normalizedQuery = searchQuery.trim().toLocaleLowerCase()
-  const results = normalizedQuery ? searchItems.filter(item =>
-    `${item.title} ${sectionTitle(item.section)} ${item.keywords ?? ''}`.toLocaleLowerCase().includes(normalizedQuery)) : []
   return (
     <main className="settings-page" aria-labelledby="settings-page-title">
       <div className="settings-page__header">
         <h1 id="settings-page-title">{t('Settings')}</h1>
-        <div className="settings-page__header-actions">
-          <button type="button" className="settings-page__search-toggle" aria-label={language === 'ru' ? 'Поиск по настройкам' : 'Search settings'}
-            aria-expanded={searchOpen} aria-controls="settings-search" onClick={() => { setSearchOpen(value => !value); setSearchQuery('') }}>
-            {searchOpen ? <X size={19} aria-hidden="true" /> : <Search size={19} aria-hidden="true" />}
-          </button>
-        <div className="settings-page__toggle-all-wrap">
-          <button type="button" className="settings-page__toggle-all" onClick={toggleAll}>
-            {t(anyOpen ? 'Collapse All' : 'Expand All')}
-          </button>
-        </div>
-        </div>
       </div>
-
-      <nav className="settings-page__quick-nav" aria-label={language === 'ru' ? 'Быстрый переход по настройкам' : 'Settings quick links'}>
-        <button type="button" onClick={() => jumpTo('account')}><UserRound size={16} aria-hidden="true" />Live Storage</button>
-        <button type="button" onClick={() => jumpTo('profile')}><Palette size={16} aria-hidden="true" />{t('Profile & appearance')}</button>
-        <button type="button" onClick={() => jumpTo('backups')}><HardDrive size={16} aria-hidden="true" />{t('Backups')}</button>
-        <button type="button" onClick={() => jumpTo('navigation')}><Compass size={16} aria-hidden="true" />{t('Home & navigation')}</button>
-      </nav>
-
-      {searchOpen && <div id="settings-search" className="settings-page__search" role="search" onKeyDown={event => {
-        if (event.key === 'Escape') { setSearchOpen(false); setSearchQuery('') }
-      }}>
-        <label htmlFor="settings-search-input">{language === 'ru' ? 'Найти настройку' : 'Find a setting'}</label>
-        <input ref={searchInput} id="settings-search-input" type="search" value={searchQuery}
-          placeholder={language === 'ru' ? 'Например, тема или резервная копия' : 'Try theme or backup'}
-          onChange={event => setSearchQuery(event.currentTarget.value)} />
-        {normalizedQuery ? <div className="settings-page__search-results" aria-live="polite">
-          {results.length ? results.map(item => <button type="button" key={`${item.section}-${item.target}-${item.title}`}
-            onClick={() => jumpTo(item.section, item.target)}>
-            <span>{item.title}</span>{sectionTitle(item.section) !== item.title && <small>{sectionTitle(item.section)}</small>}
-          </button>) : <p>{language === 'ru' ? 'Ничего не найдено. Попробуйте другое слово.' : 'No settings found. Try another word.'}</p>}
-        </div> : <p className="settings-page__search-hint">{language === 'ru' ? 'Поиск охватывает и свернутые разделы.' : 'Search includes collapsed sections.'}</p>}
-      </div>}
-
-      <div className="settings-page__groups">
-        <SettingsGroup id="settings-target-account" title="Live Storage" icon={<UserRound size={18} />} open={openSections.account} onOpenChange={open => setSection('account', open)}>
-          {account}
-          <div id="settings-target-journal-storage"><JournalCloudPanel cloud={journalSync} language={language} onSaveCopy={onExport} /></div>
-          {guestImportCount > 0 && onImportGuest && <div className="journal-guest-import">
-            <span>{language === 'ru' ? `Гостевых тренировок, планов и записей на этом устройстве: ${guestImportCount}` : `Guest workouts, plans and entries on this device: ${guestImportCount}`}</span>
-            <button type="button" onClick={onImportGuest}>{language === 'ru' ? 'Скопировать в этот аккаунт' : 'Copy into this account'}</button>
-          </div>}
-        </SettingsGroup>
-        <SettingsGroup id="settings-target-profile" title={t('Profile & appearance')} icon={<Palette size={18} />} open={openSections.profile} onOpenChange={open => setSection('profile', open)}
-          summary={t(themes.find(option => option.value === theme)?.label ?? '')}>
-          <fieldset id="settings-target-theme" className="settings-page__themes">
+      <div className="settings-page__group">
+        <div className="settings-page__panel">
+          <fieldset className="settings-page__themes">
             <legend>{t('Theme')}</legend>
             <div className="settings-page__theme-options">
               {themes.map(({ value, label, Icon }) => (
@@ -201,7 +65,7 @@ export default function SettingsPage({
               ))}
             </div>
           </fieldset>
-          <fieldset id="settings-target-time-format" className="settings-page__themes">
+          <fieldset className="settings-page__themes">
             <legend>{language === 'ru' ? 'Формат времени' : 'Time format'}</legend>
             <div className="settings-page__theme-options">
               {(['12', '24'] as const).map(value => <label className="settings-page__theme" key={value}>
@@ -210,7 +74,7 @@ export default function SettingsPage({
               </label>)}
             </div>
           </fieldset>
-          <fieldset id="settings-target-language" className="settings-page__themes">
+          <fieldset className="settings-page__themes">
             <legend>{t('Language / Язык')}</legend>
             <div className="settings-page__theme-options">
               {(['en', 'ru'] as const).map(value => <label className="settings-page__theme" key={value}>
@@ -219,38 +83,9 @@ export default function SettingsPage({
               </label>)}
             </div>
           </fieldset>
-          <div id="settings-target-display-name"><DisplayNameForm key={displayName} name={displayName} onSave={onDisplayNameChange} language={language} /></div>
-        </SettingsGroup>
-
-        <SettingsGroup id="settings-target-backups" title={t('Backups')} icon={<HardDrive size={18} />} open={openSections.backups} onOpenChange={open => setSection('backups', open)}>
-          <div className="settings-page__actions">
-            <button id="settings-target-save-copy" type="button" className="settings-page__action" onClick={onExport}>
-              <Download size={17} aria-hidden="true" />{t('Save a copy')}
-            </button>
-            <label id="settings-target-restore-copy" className="settings-page__action settings-page__upload">
-              <Upload size={17} aria-hidden="true" />{t('Restore from a copy')}
-              <input type="file" accept="application/json,.json" onChange={onImport} />
-            </label>
-          </div>
-        </SettingsGroup>
-        <SettingsGroup id="settings-target-navigation" title={t('Home & navigation')} icon={<Compass size={18} />} open={openSections.navigation} onOpenChange={open => setSection('navigation', open)}>
-          <label id="settings-target-home-bar" className="settings-page__toggle settings-page__navigation-toggle">
-            <span className="settings-page__toggle-copy"><strong>{t('Home in bottom bar')}</strong></span>
-            <input type="checkbox" role="switch" aria-label={t('Home in navigation bar')} checked={showHome}
-              onChange={event => onHomeVisibilityChange(event.currentTarget.checked)} />
-          </label>
-          {!showHome && <p className="settings-page__description">{t('Home shortcuts appear when Home is visible.')}</p>}
-          {gymShortcuts.map(({ id, label }) => <fieldset id={`settings-target-shortcut-${id}`} key={id} className="settings-page__shortcut">
-            <legend>{t(label)}</legend>
-            {([['home', 'On Home'], ['bar', 'In navigation bar']] as const).map(([location, text]) => <label
-              className="settings-page__toggle settings-page__shortcut-option" key={location}>
-              <span>{t(text)}</span>
-              <input type="checkbox" role="switch" aria-label={`${t(label)} ${t(text).toLowerCase()}`}
-                checked={shortcutVisible(id, location)} onChange={event => onShortcutChange(id, location, event.currentTarget.checked)} />
-            </label>)}
-          </fieldset>)}
-        </SettingsGroup>
-
+          <div><DisplayNameForm key={displayName} name={displayName} onSave={onDisplayNameChange} language={language} /></div>
+          {account}
+        </div>
       </div>
     </main>
   )

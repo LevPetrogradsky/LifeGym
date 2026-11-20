@@ -1,10 +1,11 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { ArrowLeft, Plus } from 'lucide-react'
 import type { JournalEntry, PlannedWorkout } from '../data'
 import { translate, type AppLanguage } from '../language'
 import './workouts.css'
 
 interface Props {
+  children?: ReactNode
   language: AppLanguage
   plans: PlannedWorkout[]
   history: JournalEntry[]
@@ -17,7 +18,7 @@ interface Props {
 }
 
 export default function WorkoutsPage({ language, plans, history, onReturn, returnLabel,
-  onSavePlan, onRemovePlan, onLogPlan, onOpenEntry }: Props) {
+  onSavePlan, onRemovePlan, onLogPlan, onOpenEntry, children }: Props) {
   const ru = language === 'ru'
   const t = (value: string) => translate(language, value)
   const [editingId, setEditingId] = useState<string>()
@@ -99,5 +100,6 @@ export default function WorkoutsPage({ language, plans, history, onReturn, retur
         })}</ul>}
     </section>
     <p className="workouts-notice" role="status">{notice}</p>
+    {children}
   </main>
 }
